@@ -1,0 +1,55 @@
+{% extends "hotspots/base.html" %}
+{% load static %}
+{% block title %}{{ hotspot.display_name }} · Connect NYC{% endblock %}
+{% block scripts %}
+  <script defer src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
+  <script defer src="{% static 'hotspots/map.js' %}"></script>
+{% endblock %}
+{% block content %}
+  <a class="back-link" href="{% url 'hotspots:map' %}"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16 10H4m5-5-5 5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Back to map</a>
+  <section class="profile-intro" aria-labelledby="profile-title">
+    <div><div class="location-kicker">{{ hotspot.borough }}{% if hotspot.neighborhood %} / {{ hotspot.neighborhood }}{% endif %}</div><h1 id="profile-title">{{ hotspot.display_name }}</h1><p>{{ hotspot.location|default:"Location details not provided" }}</p></div>
+    {% if demo_mode %}<span class="demo-badge"><span class="status-dot" aria-hidden="true"></span>Demo dataset</span>{% endif %}
+  </section>
+
+  <section class="official-section" aria-labelledby="official-title">
+    <div class="official-information">
+      <div class="section-heading"><h2 id="official-title">Location information</h2><span class="source-badge official-badge">Official data</span></div>
+      <p class="section-description">Details from NYC Open Data.</p>
+      <dl class="profile-facts">
+        <div><dt>Provider</dt><dd>{{ hotspot.provider|default:"Not provided" }}</dd></div>
+        <div><dt>Hotspot type</dt><dd>{{ hotspot.location_type|default:"Not provided" }}</dd></div>
+        <div><dt>Access</dt><dd>{{ hotspot.access_type|default:"Not provided" }}</dd></div>
+        <div><dt>Network name (SSID)</dt><dd>{{ hotspot.ssid|default:"Not provided" }}</dd></div>
+        <div><dt>Borough</dt><dd>{{ hotspot.borough|default:"Not provided" }}</dd></div>
+        <div><dt>Neighborhood</dt><dd>{{ hotspot.neighborhood|default:"Not provided" }}</dd></div>
+      </dl>
+      {% if hotspot.remarks %}<div class="access-notes"><h3>Access notes</h3><p>{{ hotspot.remarks }}</p></div>{% endif %}
+      <div class="availability-note"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="6" r="1" fill="currentColor"/></svg><p>Current availability is unknown.<br><span>Official location records do not confirm whether Wi-Fi is working now.</span></p></div>
+      <div class="source-reference"><a class="text-link" href="{{ hotspot.source_url }}">View official dataset <span aria-hidden="true">↗</span></a><p>Official record {{ hotspot.pk }}<br>Source updated {{ hotspot.source_last_updated_on|date:"M j, Y" }}<br>Acquired {{ hotspot.source_acquired_on|date:"M j, Y" }}</p></div>
+    </div>
+    <div class="profile-map-wrap"><div id="hotspot-map" class="profile-map" role="region" aria-label="Map showing {{ hotspot.display_name }}" data-profile-only="true" data-tile-url="{{ tile_url }}" data-tile-attribution="{{ tile_attribution }}"></div><p id="map-notice" class="map-notice" role="status" hidden></p><noscript><p class="map-notice">Enable JavaScript to view the map. The official location information is shown beside it.</p></noscript><div class="map-caption"><span class="map-key"><span class="legend-pin" aria-hidden="true"></span>Official hotspot location</span></div></div>
+  </section>
+
+  <section class="community-section" aria-labelledby="community-title">
+    <div class="section-heading"><h2 id="community-title">Community experience</h2><span class="source-badge community-badge">Community feedback</span></div>
+    <p class="section-description">Ratings and written reviews are separate from official location data.</p>
+    {% if rating_summary.has_demo_reviews %}<div class="demo-review-notice"><strong>Demo content</strong><span>Sample ratings and reviews illustrate this page. They are not verified reports from visitors.</span></div>{% endif %}
+    <div class="community-layout">
+      <aside class="rating-summary" aria-label="Average community rating">
+        {% if rating_summary.count %}<div class="rating-total"><span class="star" aria-hidden="true">★</span><strong>{{ rating_summary.average|floatformat:1 }}</strong><span>/ 5</span></div><p>{{ rating_summary.count }} rating{{ rating_summary.count|pluralize }}</p><span class="review-total">{{ rating_summary.review_count }} written review{{ rating_summary.review_count|pluralize }}</span>{% if rating_summary.has_demo_reviews %}<span class="demo-note">Includes demo ratings</span>{% endif %}
+        {% else %}<div class="no-rating-stars" aria-hidden="true">☆☆☆☆☆</div><h3>No ratings yet</h3><p>This hotspot has no community ratings.</p>{% endif %}
+      </aside>
+      <div class="review-list">
+        <h3>Reviews <span>{{ rating_summary.review_count }}</span></h3>
+        {% for review in reviews %}
+        <article class="review" aria-label="Review by {{ review.author.username }}">
+          <div class="review-header"><span class="review-avatar" aria-hidden="true">{{ review.author.first_name|default:review.author.username|slice:":1"|upper }}</span><div><h4>{{ review.author.get_full_name|default:review.author.username }}</h4><div class="review-meta"><span class="review-rating"><span aria-hidden="true">★</span> {{ review.rating }} / 5</span><time datetime="{{ review.created_at|date:'c' }}">{{ review.created_at|date:"M j, Y" }}</time></div></div>{% if review.is_demo %}<span class="review-demo-badge">Demo review</span>{% endif %}</div>
+          <p class="review-body">{{ review.body|linebreaksbr }}</p>
+        </article>
+        {% empty %}<div class="no-reviews"><h4>No written reviews yet</h4><p>When reviews are available, you can read them here.</p></div>{% endfor %}
+      </div>
+    </div>
+  </section>
+  {{ profile_map_data|json_script:"map-data" }}
+{% endblock %}

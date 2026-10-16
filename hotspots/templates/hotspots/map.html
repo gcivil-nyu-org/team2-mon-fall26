@@ -1,0 +1,61 @@
+{% extends "hotspots/base.html" %}
+{% load static %}
+{% block title %}Find a Wi-Fi hotspot · Connect NYC{% endblock %}
+{% block map_nav_class %}is-current{% endblock %}
+{% block map_nav_current %}aria-current="page"{% endblock %}
+{% block scripts %}
+  <script defer src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
+  <script defer src="{% static 'hotspots/map.js' %}"></script>
+{% endblock %}
+{% block content %}
+  <section class="page-intro" aria-labelledby="page-title">
+    <div><h1 id="page-title">Find a Wi-Fi hotspot</h1><p>Explore the city. Find a place to connect.</p></div>
+    {% if demo_mode %}<span class="demo-badge"><span class="status-dot" aria-hidden="true"></span>Demo dataset</span>{% endif %}
+  </section>
+
+  {% if hotspot_count %}
+  <section class="explorer" aria-label="Hotspot explorer">
+    <div class="explorer-toolbar">
+      <p class="result-count"><strong>{{ hotspot_count }}</strong> hotspot{{ hotspot_count|pluralize }} <span>across {{ borough_count }} borough{{ borough_count|pluralize }}</span></p>
+      <div class="hotspot-chooser js-only">
+        <label for="hotspot-select">Choose a hotspot</label>
+        <select id="hotspot-select">
+          {% for hotspot in hotspots %}<option value="{{ hotspot.pk }}">{{ hotspot.display_name }} — {{ hotspot.borough }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="explorer-body">
+      <div class="map-column">
+        <div id="hotspot-map" class="main-map" role="region" aria-label="Map of public Wi-Fi hotspot locations" data-tile-url="{{ tile_url }}" data-tile-attribution="{{ tile_attribution }}"></div>
+        <p id="map-notice" class="map-notice" role="status" hidden></p>
+        <noscript><p class="map-notice">The interactive map needs JavaScript. Browse the hotspot profiles below to view location information.</p></noscript>
+        <div class="map-caption"><span class="map-key"><span class="legend-pin" aria-hidden="true"></span>Official hotspot location</span><span>Choose a marker to see details</span></div>
+      </div>
+
+      <aside class="hotspot-preview" aria-label="Selected hotspot">
+        {% with first=map_data.0 %}
+        <div class="preview-topline"><span class="source-badge official-badge"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m2 6 6-4 6 4M3 7h10M4 8v5m4-5v5m4-5v5M2 14h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Official data</span><span class="preview-caption">Selected hotspot</span></div>
+        <div class="preview-heading" aria-live="polite" aria-atomic="true"><span id="preview-borough" class="location-kicker">{{ first.borough }}</span><h2 id="preview-name">{{ first.name }}</h2><p id="preview-location">{{ first.location|default:"Location details not provided" }}</p></div>
+        <dl class="preview-facts">
+          <div><dt>Provider</dt><dd id="preview-provider">{{ first.provider|default:"Not provided" }}</dd></div>
+          <div><dt>Hotspot type</dt><dd id="preview-type">{{ first.location_type|default:"Not provided" }}</dd></div>
+          <div><dt>Access</dt><dd id="preview-access">{{ first.access_type|default:"Not provided" }}</dd></div>
+          <div><dt>Network name</dt><dd id="preview-ssid">{{ first.ssid|default:"Not provided" }}</dd></div>
+        </dl>
+        <div class="preview-community js-only" id="preview-community"><div class="community-label">Community ratings</div><p id="preview-rating"></p><span id="preview-demo-label" class="demo-note" hidden>Sample ratings for this demo</span></div>
+        <div class="availability-note"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="6" r="1" fill="currentColor"/></svg><p>Current availability is unknown.<br><span>This is a recorded location, not a live connection status.</span></p></div>
+        <a id="preview-profile-link" class="button button-primary" href="{{ first.profile_url }}">View hotspot profile <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        {% endwith %}
+      </aside>
+    </div>
+  </section>
+  <div class="dataset-note"><span class="source-badge official-badge">NYC Open Data</span><p>{% if demo_mode %}This demo shows a {{ hotspot_count }}-record sample of official hotspot locations. {% endif %}Location information comes from the NYC Open Data hotspot dataset. Open a profile to see its source dates.</p></div>
+  <details class="hotspot-directory">
+    <summary>Browse all {{ hotspot_count }} hotspot profiles</summary>
+    <ul>{% for hotspot in hotspots %}<li><a href="{{ hotspot.get_absolute_url }}"><span>{{ hotspot.display_name }}</span><span>{{ hotspot.borough }} · {{ hotspot.provider|default:"Provider not provided" }} · Record {{ hotspot.pk }}</span></a></li>{% endfor %}</ul>
+  </details>
+  {{ map_data|json_script:"map-data" }}
+  {% else %}
+  <section class="empty-state"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M26 13c0 8-10 16-10 16S6 21 6 13a10 10 0 0 1 20 0Z" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="13" r="3" stroke="currentColor" stroke-width="2"/></svg><h2>No hotspot locations yet</h2><p>There are no hotspot records to display. Please check back when the dataset is available.</p><a href="https://data.cityofnewyork.us/City-Government/NYC-Wi-Fi-Hotspot-Locations/yjub-udmw" class="text-link">Visit NYC Open Data</a></section>
+  {% endif %}
+{% endblock %}
