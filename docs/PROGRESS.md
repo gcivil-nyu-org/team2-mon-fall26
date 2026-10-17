@@ -10,7 +10,7 @@ The Django/MySQL foundation and Boqing's assigned E01 demo work are implemented:
 
 **Full E01 is still in progress.** Search and filters, the remaining data-design deliverable, and full-journey acceptance checks are outstanding. Existing review display does not mean review creation, editing, or deletion has been implemented.
 
-Implementation statuses below describe the code, not automatic issue closure. At this snapshot, all eight active Epic issues and all 31 User Story issues are open. US01, US31, and US18 were moved to In Progress in ZenHub. Work is published on `boqing-E01-US01/31/18`; pull requests record review and merge state.
+Implementation statuses below describe the code, not automatic issue closure. At this snapshot, all eight active Epic issues and all 31 User Story issues are open. US01, US31, and US18 were moved to In Progress in ZenHub. Work is published on `boqing-E01-US01/31/18` through [PR #47](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/47), which records review and merge state.
 
 ## Epic overview
 
@@ -127,3 +127,4 @@ CI/CD timing and AWS deployment remain to be confirmed against course requiremen
 - Created this Epic/Story progress baseline from current GitHub issues and implemented code. Added next steps and archival instructions.
 - Created `boqing-E01-US01/31/18` from the implementation branch and pulled the latest main; no incoming changes or conflicts were found.
 - Rebuilt the updated demo and reran all 21 MySQL tests, Django system checks, and migration consistency checks successfully before publication.
+- Published the consolidated implementation and documentation in [PR #47](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/47), superseding the earlier draft #46.
