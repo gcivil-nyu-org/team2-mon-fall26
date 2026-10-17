@@ -1,10 +1,18 @@
 # Connect NYC
 
-Find public Wi-Fi locations in New York City and distinguish official location data from community feedback. This English-language demo uses **Python 3.13, Django 5.2, and MySQL 8.4**, with server-rendered templates and Leaflet maps.
+Connect NYC is an English-language web application that helps New York City residents, students, and visitors discover public Wi-Fi hotspots. It brings official NYC location information and clearly labeled community feedback together so people can compare places to connect before they visit.
 
-## Current scope
+## Project description
 
-This branch implements the E01 stories assigned to Boqing (`jay-den-21`):
+The core user journey is to browse a map, search or filter locations, and open a hotspot profile to see its provider, access information, ratings, and reviews. Public browsing does not require an account. The planned contribution features let signed-in users share hotspot reviews, while a separate discussion area supports Wi-Fi questions and conversations. Availability reporting, reliability indicators, and following hotspots are planned extensions.
+
+The application uses **Python 3.13, Django 5.2, and MySQL 8.4**. The frontend is built with Django templates, HTML, CSS, and JavaScript; Leaflet and OpenStreetMap provide the map. The current local demo runs as one web application and one database through Docker Compose.
+
+For current implementation status, remaining work, and dated development history, see [docs/PROGRESS.md](docs/PROGRESS.md). Contributors and coding agents should also read [agents.md](agents.md).
+
+## Implemented demo
+
+The current E01 demo includes Boqing's map/profile stories and the shared E04 source-label story:
 
 | Story | Demo behavior |
 | --- | --- |
@@ -12,7 +20,7 @@ This branch implements the E01 stories assigned to Boqing (`jay-den-21`):
 | [US31 / #41](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/41) | Open the selected hotspot's public profile and read its existing ratings and reviews. |
 | [US18 / #28](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/28) | See clearly separated, labeled official data and community feedback. |
 
-The profile includes a small rating aggregation service for its dependency on US16 / #22; that story remains owned by Jiahao. Search and filters (#9–#12), contribution forms, authentication flows, availability reporting, reliability scores, and notifications are outside this implementation.
+The profile includes a small rating aggregation service for its dependency on US12 / #22 under E03; that story remains owned by Jiahao. US18 / #28 retains its E04 parent and is integrated into the E01 interface. Search and filters (#9–#12), contribution forms, authentication flows, availability reporting, reliability scores, and notifications are not yet implemented. The full E01 Epic remains in progress.
 
 ## Run the demo
 
@@ -30,7 +38,7 @@ Open **http://localhost:8000**. The environment script generates local secrets i
 Suggested walkthrough:
 
 1. Select a map marker or use **Choose a hotspot**. The adjacent panel changes to the same hotspot.
-2. Open **View hotspot profile** and compare its official information with the community section.
+2. Open **View hotspot profile** and compare its official information with **Hotspot Reviews**.
 3. Visit [Bryant Park](http://localhost:8000/hotspots/1344/) for three explicitly fictional demo ratings (average 4.0) and two written demo reviews.
 4. Visit [Union Square](http://localhost:8000/hotspots/1343/) for the empty-rating/review state.
 
@@ -95,6 +103,8 @@ hotspots/           Official location model, importer, public views and map API
 reviews/            Review model, shared rating summary and demo seed command
 data/               Team-provided official CSV sample and data verification script
 scripts/            Local environment generation and MySQL test helper
+docs/PROGRESS.md     Epic/story status, next steps, and dated development archive
+agents.md            Instructions for maintaining the project progress record
 ```
 
 `Hotspot` owns official fields. `Review` links to a hotspot and Django's user model; rating-only entries have an empty body and still count toward the average. `reviews.services` provides the read-side summary. Reviews are escaped in templates and map labels are inserted as text.
@@ -113,4 +123,4 @@ Jiahao can extend the active-hotspot queryset and map interface for search/filte
 
 The local demo runs one Django web service with Gunicorn/WhiteNoise and one MySQL service. Leaflet 1.9.4 is vendored with its license; map tiles come from OpenStreetMap with visible attribution. Internet access is needed for the map background, not for the stored hotspot records.
 
-This change does not deploy to AWS or set up CI/CD. A later AWS deployment needs an HTTPS endpoint, correct allowed hosts, secure cookies, managed secrets, a persistent MySQL database, and deployment-specific security review. Keep `DJANGO_DEBUG=0` and `DEMO_MODE=0` outside a clearly identified demo environment.
+AWS deployment and CI/CD are not configured yet. A later AWS deployment needs an HTTPS endpoint, correct allowed hosts, secure cookies, managed secrets, a persistent MySQL database, and deployment-specific security review. Keep `DJANGO_DEBUG=0` and `DEMO_MODE=0` outside a clearly identified demo environment.
