@@ -6,6 +6,7 @@
 {% block scripts %}
   <script defer src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
   <script defer src="{% static 'hotspots/map.js' %}"></script>
+  <script defer src="{% static 'hotspots/filters.js' %}"></script>
 {% endblock %}
 {% block content %}
   <section class="page-intro" aria-labelledby="page-title">
@@ -13,10 +14,59 @@
     {% if demo_mode %}<span class="demo-badge"><span class="status-dot" aria-hidden="true"></span>Demo dataset</span>{% endif %}
   </section>
 
+  {% if total_count %}
+  <section class="search-panel" aria-labelledby="search-title">
+    <h2 id="search-title" class="visually-hidden">Search and filter hotspots</h2>
+    <form id="hotspot-filters" class="search-form" method="get" action="{% url 'hotspots:map' %}" role="search">
+      <div class="search-field">
+        <label for="search-q">Search by location, address or landmark</label>
+        <input id="search-q" name="q" type="search" value="{{ filters.q|default:'' }}" maxlength="100" placeholder="e.g. Bryant Park, Court St or 11201" autocomplete="off">
+      </div>
+      <div class="filter-field">
+        <label for="filter-borough">Borough</label>
+        <select id="filter-borough" name="borough" data-autosubmit>
+          <option value="">All boroughs</option>
+          {% for value in filter_options.borough %}<option value="{{ value }}"{% if value == filters.borough %} selected{% endif %}>{{ value }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="filter-field">
+        <label for="filter-neighborhood">Neighborhood</label>
+        <select id="filter-neighborhood" name="neighborhood" data-autosubmit>
+          <option value="">All neighborhoods</option>
+          {% for group in filter_options.neighborhood %}<optgroup label="{{ group.borough }}">{% for value in group.names %}<option value="{{ value }}"{% if value == filters.neighborhood %} selected{% endif %}>{{ value }}</option>{% endfor %}</optgroup>{% endfor %}
+        </select>
+      </div>
+      <div class="filter-field">
+        <label for="filter-provider">Provider</label>
+        <select id="filter-provider" name="provider" data-autosubmit>
+          <option value="">All providers</option>
+          {% for value in filter_options.provider %}<option value="{{ value }}"{% if value == filters.provider %} selected{% endif %}>{{ value }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="filter-field">
+        <label for="filter-type">Access type</label>
+        <select id="filter-type" name="type" data-autosubmit>
+          <option value="">All access types</option>
+          {% for value in filter_options.type %}<option value="{{ value }}"{% if value == filters.type %} selected{% endif %}>{{ value }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="search-actions">
+        <button type="submit" class="button button-primary">Search</button>
+        {% if is_filtered %}<a class="button button-secondary" href="{% url 'hotspots:map' %}">Clear all</a>{% endif %}
+      </div>
+    </form>
+    {% if filter_chips %}
+    <ul class="filter-chips" aria-label="Active search and filters">
+      {% for chip in filter_chips %}<li><span>{{ chip.label }}: <strong>{{ chip.value }}</strong></span><a href="{{ chip.remove_url }}" aria-label="Remove {{ chip.label|lower }} {{ chip.value }}">×</a></li>{% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+  {% endif %}
+
   {% if hotspot_count %}
   <section class="explorer" aria-label="Hotspot explorer">
     <div class="explorer-toolbar">
-      <p class="result-count"><strong>{{ hotspot_count }}</strong> hotspot{{ hotspot_count|pluralize }} <span>across {{ borough_count }} borough{{ borough_count|pluralize }}</span></p>
+      <p class="result-count" role="status"><strong>{{ hotspot_count }}</strong> {% if is_filtered %}of {{ total_count }} hotspot{{ total_count|pluralize }} match{{ hotspot_count|pluralize:"es," }}{% else %}hotspot{{ hotspot_count|pluralize }}{% endif %} <span>across {{ borough_count }} borough{{ borough_count|pluralize }}</span></p>
       <div class="hotspot-chooser js-only">
         <label for="hotspot-select">Choose a hotspot</label>
         <select id="hotspot-select">
@@ -49,12 +99,14 @@
       </aside>
     </div>
   </section>
-  <div class="dataset-note"><span class="source-badge official-badge">NYC Open Data</span><p>{% if demo_mode %}This demo shows a {{ hotspot_count }}-record sample of official hotspot locations. {% endif %}Location information comes from the NYC Open Data hotspot dataset. Open a profile to see its source dates.</p></div>
+  <div class="dataset-note"><span class="source-badge official-badge">NYC Open Data</span><p>{% if demo_mode %}This demo shows a {{ total_count }}-record sample of official hotspot locations. {% endif %}Location information comes from the NYC Open Data hotspot dataset. Open a profile to see its source dates.</p></div>
   <details class="hotspot-directory">
-    <summary>Browse all {{ hotspot_count }} hotspot profiles</summary>
+    <summary>{% if is_filtered %}Browse {{ hotspot_count }} matching hotspot profile{{ hotspot_count|pluralize }}{% else %}Browse all {{ hotspot_count }} hotspot profiles{% endif %}</summary>
     <ul>{% for hotspot in hotspots %}<li><a href="{{ hotspot.get_absolute_url }}"><span>{{ hotspot.display_name }}</span><span>{{ hotspot.borough }} · {{ hotspot.provider|default:"Provider not provided" }} · Record {{ hotspot.pk }}</span></a></li>{% endfor %}</ul>
   </details>
   {{ map_data|json_script:"map-data" }}
+  {% elif is_filtered %}
+  <section class="empty-state no-matches" role="status"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="14" cy="14" r="9" stroke="currentColor" stroke-width="2"/><path d="m21 21 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><h2>No hotspots match your search</h2><p>None of the {{ total_count }} official hotspot locations match{% if filters.q %} &ldquo;{{ filters.q }}&rdquo;{% endif %}{% if filter_chips|length > 1 or not filters.q %} with the selected filters{% endif %}. Try a different location, or remove a filter above.</p><a href="{% url 'hotspots:map' %}" class="button button-primary">Show all hotspots</a></section>
   {% else %}
   <section class="empty-state"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M26 13c0 8-10 16-10 16S6 21 6 13a10 10 0 0 1 20 0Z" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="13" r="3" stroke="currentColor" stroke-width="2"/></svg><h2>No hotspot locations yet</h2><p>There are no hotspot records to display. Please check back when the dataset is available.</p><a href="https://data.cityofnewyork.us/City-Government/NYC-Wi-Fi-Hotspot-Locations/yjub-udmw" class="text-link">Visit NYC Open Data</a></section>
   {% endif %}

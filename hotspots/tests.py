@@ -226,3 +226,142 @@ class HotspotReadExperienceTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["map_data"], [])
         self.assertEqual(response.context["hotspot_count"], 0)
+
+
+@override_settings(DEMO_MODE=False)
+class SearchAndFilterTests(TestCase):
+    """E01 US02 (#9) search and US03–US05 (#10–#12) filters, on the page and API."""
+
+    @classmethod
+    def setUpTestData(cls):
+        make_hotspot(1344)  # Bryant Park, Manhattan / Midtown, Partner, Partner Site
+        make_hotspot(
+            53, name="Clinton Hill Library", location_description="380 Washington Ave",
+            borough="Brooklyn", neighborhood_name="Clinton Hill", zip_code="11238",
+            provider="BPL", access_type="Free", location_type="Library",
+        )
+        make_hotspot(
+            70, name=None, location_description="125 Court St.",
+            borough="Brooklyn", neighborhood_name="Brooklyn Heights-Cobble Hill", zip_code="11201",
+            provider="Downtown Brooklyn", access_type="Free", location_type="Outdoor",
+        )
+        make_hotspot(
+            80, name="Flushing Library", location_description="41-17 Main St",
+            borough="Queens", neighborhood_name="Flushing", zip_code="11355",
+            provider="QPL", access_type="Limited Free", location_type="Library",
+        )
+        make_hotspot(90, name="Retired Brooklyn kiosk", borough="Brooklyn", provider="BPL", is_active=False)
+
+    def page_ids(self, **params):
+        response = self.client.get(reverse("hotspots:map"), params)
+        self.assertEqual(response.status_code, 200)
+        return response, {item["id"] for item in response.context["map_data"]}
+
+    def api_ids(self, **params):
+        payload = self.client.get(reverse("hotspots:data"), params).json()
+        self.assertEqual(payload["count"], len(payload["hotspots"]))
+        return {item["id"] for item in payload["hotspots"]}
+
+    def assert_results(self, expected, **params):
+        response, ids = self.page_ids(**params)
+        self.assertEqual(ids, expected)
+        self.assertEqual(self.api_ids(**params), expected)
+        self.assertEqual(response.context["hotspot_count"], len(expected))
+        return response
+
+    def test_no_parameters_show_every_active_hotspot(self):
+        response = self.assert_results({1344, 53, 70, 80})
+        self.assertFalse(response.context["is_filtered"])
+        self.assertContains(response, 'id="hotspot-filters"')
+
+    def test_search_matches_landmark_address_neighborhood_borough_and_zip(self):
+        cases = {
+            "Bryant Park": {1344},
+            "bryant": {1344},
+            "Court St": {70},
+            "Clinton Hill": {53},
+            "flushing": {80},
+            "Queens": {80},
+            "11201": {70},
+            "library": {53, 80},
+            "  library   main ": {80},
+        }
+        for query, expected in cases.items():
+            with self.subTest(query=query):
+                self.assert_results(expected, q=query)
+
+    def test_search_results_identify_location_and_link_to_profile(self):
+        response, _ids = self.page_ids(q="Court St")
+        record = response.context["map_data"][0]
+        self.assertEqual(record["location"], "125 Court St.")
+        self.assertEqual(record["profile_url"], reverse("hotspots:detail", args=[70]))
+        self.assertContains(response, "125 Court St.")
+        self.assertContains(response, 'value="Court St"')
+
+    def test_search_without_matches_shows_message_not_empty_dataset_state(self):
+        response = self.assert_results(set(), q="Staten Island ferry")
+        self.assertContains(response, "No hotspots match your search")
+        self.assertContains(response, "Staten Island ferry")
+        self.assertNotContains(response, "No hotspot locations yet")
+        self.assertContains(response, 'id="hotspot-filters"')
+
+    def test_search_never_returns_inactive_records(self):
+        self.assert_results(set(), q="Retired")
+
+    def test_borough_filter_select_change_and_remove(self):
+        self.assert_results({53, 70}, borough="Brooklyn")
+        self.assert_results({80}, borough="Queens")
+        self.assert_results({1344, 53, 70, 80}, borough="")
+
+    def test_neighborhood_filter(self):
+        self.assert_results({53}, neighborhood="Clinton Hill")
+        self.assert_results({70}, neighborhood="Brooklyn Heights-Cobble Hill")
+        self.assert_results(set(), borough="Queens", neighborhood="Clinton Hill")
+
+    def test_provider_filter_select_change_and_remove(self):
+        self.assert_results({53}, provider="BPL")
+        self.assert_results({70}, provider="Downtown Brooklyn")
+        self.assert_results({1344, 53, 70, 80}, provider="")
+
+    def test_type_filter_uses_official_access_type(self):
+        self.assert_results({53, 70}, type="Free")
+        self.assert_results({80}, type="Limited Free")
+        self.assert_results({1344}, type="Partner Site")
+        self.assert_results({1344, 53, 70, 80}, type="")
+
+    def test_filters_combine_with_search(self):
+        self.assert_results({53}, q="library", borough="Brooklyn")
+        self.assert_results({70}, borough="Brooklyn", type="Free", provider="Downtown Brooklyn")
+        self.assert_results(set(), provider="QPL", type="Free")
+
+    def test_unknown_filter_value_shows_no_match_message(self):
+        response = self.assert_results(set(), provider="Not a provider")
+        self.assertContains(response, "No hotspots match your search")
+
+    def test_dropdowns_list_values_from_all_active_hotspots(self):
+        response, _ids = self.page_ids(borough="Queens")
+        options = response.context["filter_options"]
+        self.assertEqual(options["borough"], ["Brooklyn", "Manhattan", "Queens"])
+        self.assertEqual(options["provider"], ["BPL", "Downtown Brooklyn", "Partner", "QPL"])
+        self.assertEqual(options["type"], ["Free", "Limited Free", "Partner Site"])
+        self.assertIn({"borough": "Brooklyn", "names": ["Brooklyn Heights-Cobble Hill", "Clinton Hill"]}, options["neighborhood"])
+        self.assertContains(response, '<option value="Queens" selected>')
+
+    def test_each_active_filter_can_be_removed_on_its_own(self):
+        response, _ids = self.page_ids(q="library", borough="Brooklyn")
+        chips = {chip["name"]: chip["remove_url"] for chip in response.context["filter_chips"]}
+        self.assertEqual(chips, {"q": "/?borough=Brooklyn", "borough": "/?q=library"})
+        self.assertContains(response, "Clear all")
+        _response, ids = self.page_ids(borough="Brooklyn")
+        self.assertEqual(ids, {53, 70})
+
+    def test_result_count_reports_matches_out_of_total(self):
+        response, _ids = self.page_ids(borough="Brooklyn")
+        self.assertEqual(response.context["total_count"], 4)
+        self.assertContains(response, "<strong>2</strong> of 4 hotspots match")
+        with override_settings(DEMO_MODE=True):
+            self.assertContains(self.client.get(reverse("hotspots:map"), {"borough": "Brooklyn"}), "4-record sample")
+
+    def test_api_echoes_applied_filters(self):
+        payload = self.client.get(reverse("hotspots:data"), {"q": " park ", "borough": ""}).json()
+        self.assertEqual(payload["filters"], {"q": "park"})
