@@ -1,6 +1,6 @@
 # Project progress
 
-Last updated: **October 16, 2026**.
+Last updated: **October 18, 2026**.
 
 This document records implementation progress, remaining work, and development history for Connect NYC. GitHub and ZenHub remain the sources for requirements, assignments, and workflow status. Update this record as work progresses; preserve the dated archive below.
 
@@ -8,7 +8,9 @@ This document records implementation progress, remaining work, and development h
 
 The Django/MySQL foundation and Boqing's assigned E01 demo work are implemented: interactive map (US01), hotspot profiles with existing reviews (US31), and official/community source labels (US18, an E04 dependency). The profile section is titled **Hotspot Reviews**. The demo has been validated with 21 automated tests against MySQL and desktop/mobile browser checks.
 
-**Full E01 is still in progress.** Search and filters, the remaining data-design deliverable, and full-journey acceptance checks are outstanding. Existing review display does not mean review creation, editing, or deletion has been implemented.
+Jiahao's location search and borough/neighborhood, provider and access-type filters (US02–US05) and the US12 average-rating checks are implemented on branch `jiahao-E01-US02-05`. All 39 tests pass against MySQL; they are pending code review and merge.
+
+**Full E01 is still in progress.** The remaining data-design deliverable (ERD) and full-journey acceptance checks are outstanding. Existing review display does not mean review creation, editing, or deletion has been implemented.
 
 Implementation statuses below describe the code, not automatic issue closure. At this snapshot, all eight active Epic issues and all 31 User Story issues are open. US01, US31, and US18 were moved to In Progress in ZenHub. Work is published on `boqing-E01-US01/31/18` through [PR #47](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/47), which records review and merge state.
 
@@ -16,7 +18,7 @@ Implementation statuses below describe the code, not automatic issue closure. At
 
 | Epic | Implementation status | Remaining scope |
 | --- | --- | --- |
-| [E01 — Finding a Wi-Fi Hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/1) | Partially implemented | Location search, filters, rating integration verification, ERD, and complete acceptance checks. |
+| [E01 — Finding a Wi-Fi Hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/1) | Partially implemented | Search/filters and rating checks awaiting review and merge; ERD and complete acceptance checks. |
 | [E02 — Account Registration & Access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) | Framework foundation only | Product sign-up, login/logout, contribution sign-in flow, and administrator access workflow. |
 | [E03 — Rate & Review Hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/3) | Review model and rating read-side implemented | Create/edit/delete own contributions; owner verification of US12; helpful-review votes remain MLP. |
 | [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | CLI import foundation and source labels implemented | Administrator import/list/update/removal workflows and retirement policy. |
@@ -34,10 +36,10 @@ Implementation statuses below describe the code, not automatic issue closure. At
 | Story | Owner | Status and remaining work |
 | --- | --- | --- |
 | [US01 / #8 — Interactive map](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/8) | Boqing | Implemented. Official markers, matching preview/profile links, and distinct selection for records sharing coordinates. |
-| [US02 / #9 — Location search](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/9) | Jiahao | Not implemented. Add the existing location/address/landmark search requirements and result feedback. |
-| [US03 / #10 — Borough/neighborhood filters](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/10) | Jiahao | Not implemented. Connect filters to official borough and NTA fields. |
-| [US04 / #11 — Provider filter](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/11) | Jiahao | Not implemented. Add provider filtering and filter change/removal behavior. |
-| [US05 / #12 — Hotspot-type filter](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/12) | Jiahao | Not implemented. Apply the agreed access-type/location-type mapping. |
+| [US02 / #9 — Location search](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/9) | Jiahao | Implemented (branch `jiahao-E01-US02-05`). Free-text `q` search over name, address/description, neighborhood, borough and ZIP; every word must match. Matching markers only, "X of Y hotspots match" count, and a separate no-match message. |
+| [US03 / #10 — Borough/neighborhood filters](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/10) | Jiahao | Implemented (branch). `borough` and `neighborhood` (2010 NTA name, grouped by borough) filters; each can be selected, changed, or removed with its chip or "Clear all". |
+| [US04 / #11 — Provider filter](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/11) | Jiahao | Implemented (branch). `provider` filter using the same select/change/remove behavior. |
+| [US05 / #12 — Hotspot-type filter](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/12) | Jiahao | Implemented (branch) against the official `type` field (`access_type`: Free, Limited Free, Partner Site), labelled "Access type". Team to confirm whether a grouped `location_type` filter is also wanted. |
 | [US31 / #41 — Profile and existing reviews](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/41) | Boqing | Implemented. Public official profile, hotspot-specific reviews, average/no-rating state, and explicit demo labels. |
 
 E01 also integrates US12 / #22 from E03 and US18 / #28 from E04. Their original Epic parents and owners remain unchanged.
@@ -57,7 +59,7 @@ E01 also integrates US12 / #22 from E03 and US18 / #28 from E04. Their original 
 | Story | Status and remaining work |
 | --- | --- |
 | [US11 / #21 — Rate/review a hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/21) | Partial foundation. Review model, author/hotspot links, optional body, and 1–5 rating constraint exist. No submission interface. |
-| [US12 / #22 — Average rating](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/22) | Read-side implemented; Jiahao retains ownership. Average/count/no-rating behavior includes rating-only records. Complete owner acceptance checks for stored rating additions, edits, and deletions. Contribution UI is not required for that verification. |
+| [US12 / #22 — Average rating](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/22) | Read-side implemented; Jiahao retains ownership. Owner acceptance test added (branch): 1 and 3 → 2.0; add 5 → 3.0; edit 1 to 4 → 4.0; delete 5 → 3.5; unrated hotspot shows "No ratings yet" and a null API average. Contribution UI remains E03 work. |
 | [US13 / #23 — Edit own rating/review](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/23) | Not implemented. Add authenticated ownership enforcement and editing. |
 | [US14 / #24 — Delete own rating/review](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/24) | Not implemented. Add authenticated ownership enforcement and deletion confirmation. |
 | [US15 / #25 — Helpful-review upvotes](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/25) | Planned MLP; not implemented. Votes must remain separate from star ratings. |
@@ -101,8 +103,8 @@ Closed test issue #44 is excluded from product completion progress.
 
 ## Next development steps
 
-1. **Jiahao:** implement and integrate US02–US05 (#9–#12) with the current map, active-hotspot queryset, and profile links. Check changed/removed filters and no-match cases against the existing story criteria.
-2. **Jiahao and Boqing:** finish US12 (#22) integration verification using stored rating additions, edits, and deletions; keep rating-only entries and no-rating behavior correct.
+1. **Jiahao:** open the PR for `jiahao-E01-US02-05` and get review from Boqing. Confirm the US05 type mapping with the team.
+2. **Jiahao and Boqing:** review the US12 (#22) acceptance test on the branch and move #9–#12 and #22 in ZenHub once merged.
 3. **Kavya and Suvan:** finish the ERD in #42 and confirm the data handoff. The running demo currently uses 36 official sample records, not the full citywide dataset.
 4. **Xiaoqi, with Boqing/Jiahao fixing defects:** complete #43 across the signed-out map → search/filter → profile → existing reviews/ratings journey.
 5. **Boqing:** check the full E01 scope and required dependencies against the shared Definition of Done before marking the Epic complete.
@@ -111,6 +113,15 @@ Closed test issue #44 is excluded from product completion progress.
 CI/CD timing and AWS deployment remain to be confirmed against course requirements. Neither is configured in this demo.
 
 ## Development archive
+
+### October 18, 2026 — E01 search and filters (US02–US05) and US12 checks
+
+- Added `hotspots/filters.py`, shared by the map page and `/api/hotspots/`: `q` location search and `borough`, `neighborhood`, `provider` and `type` (official access type) filters, combined with AND. Blank values remove a filter; inactive records are never returned.
+- Added the search/filter form above the map with removable filter chips, "Clear all", an "X of Y hotspots match" count, and a "No hotspots match your search" state separate from the empty-dataset state. Dropdowns apply on change with JavaScript and through the Search button without it. The API echoes the applied filters.
+- Added 15 search/filter tests (expected hotspot IDs on page and API, select/change/remove, combined filters, no-match) and the US12 average-rating sequence test.
+- Verified locally: all 39 tests, `manage.py check`, and `makemigrations --check` pass on SQLite. Checked the page against the 36-record sample in a desktop and a mobile browser. All 39 tests then passed against the Docker Compose MySQL database (`docker compose exec web python manage.py test`).
+- Added optional `compose.dev.yaml` for live-reload development (documented in README).
+- Branch: `jiahao-E01-US02-05`.
 
 ### October 16, 2026 — E01 foundation and first working demo
 

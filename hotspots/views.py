@@ -6,6 +6,7 @@ from django.views.decorators.http import require_GET
 
 from reviews.services import rating_summary, visible_reviews
 
+from .filters import active_filter_chips, apply_filters, filter_options, read_params
 from .models import Hotspot
 
 
@@ -71,15 +72,23 @@ def _map_data(hotspots):
 
 @require_GET
 def map_view(request):
-    hotspots = Hotspot.objects.filter(is_active=True)
+    active_hotspots = Hotspot.objects.filter(is_active=True)
+    filters = read_params(request.GET)
+    hotspots = apply_filters(active_hotspots, filters)
     map_data = _map_data(hotspots)
+    total_count = active_hotspots.count()
     context = {
         **_map_settings(),
         "hotspots": hotspots,
         "map_data": map_data,
         "hotspot_count": len(map_data),
+        "total_count": total_count,
         "provider_count": len({item["provider"] for item in map_data}),
         "borough_count": len({item["borough"] for item in map_data}),
+        "filters": filters,
+        "is_filtered": bool(filters),
+        "filter_options": filter_options(active_hotspots) if total_count else {},
+        "filter_chips": active_filter_chips(filters, request.path),
     }
     return render(request, "hotspots/map.html", context)
 
@@ -101,5 +110,6 @@ def detail(request, pk):
 
 @require_GET
 def hotspot_data(request):
-    records = _map_data(Hotspot.objects.filter(is_active=True))
-    return JsonResponse({"count": len(records), "hotspots": records})
+    filters = read_params(request.GET)
+    records = _map_data(apply_filters(Hotspot.objects.filter(is_active=True), filters))
+    return JsonResponse({"count": len(records), "filters": filters, "hotspots": records})

@@ -19,8 +19,9 @@ The current E01 demo includes Boqing's map/profile stories and the shared E04 so
 | [US01 / #8](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/8) | Browse official hotspots on an interactive map, select a marker, and see the corresponding location/provider information. |
 | [US31 / #41](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/41) | Open the selected hotspot's public profile and read its existing ratings and reviews. |
 | [US18 / #28](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/28) | See clearly separated, labeled official data and community feedback. |
+| [US02–US05 / #9–#12](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/9) | Search by location, address or landmark, and filter by borough/neighborhood, provider and access type. Filters combine, can be removed one at a time, and show a message when nothing matches. |
 
-The profile includes a small rating aggregation service for its dependency on US12 / #22 under E03; that story remains owned by Jiahao. US18 / #28 retains its E04 parent and is integrated into the E01 interface. Search and filters (#9–#12), contribution forms, authentication flows, availability reporting, reliability scores, and notifications are not yet implemented. The full E01 Epic remains in progress.
+The profile includes a small rating aggregation service for its dependency on US12 / #22 under E03; that story remains owned by Jiahao. US18 / #28 retains its E04 parent and is integrated into the E01 interface. Contribution forms, authentication flows, availability reporting, reliability scores, and notifications are not yet implemented. The full E01 Epic remains in progress.
 
 ## Run the demo
 
@@ -50,6 +51,12 @@ docker compose up --build --wait
 
 # Stop the demo while preserving the MySQL volume.
 docker compose down
+```
+
+For development, `compose.dev.yaml` mounts your checkout into the container and runs Django's auto-reloading development server with `DJANGO_DEBUG=1`, so code, template and static-file changes show up without rebuilding. Use it only on your own machine:
+
+```sh
+docker compose -f compose.yaml -f compose.dev.yaml up --build --wait
 ```
 
 ## Data and provenance
@@ -116,6 +123,8 @@ Public routes:
 | `/` | Interactive map and selected hotspot preview |
 | `/hotspots/<doitt_id>/` | Official profile and that hotspot's community feedback |
 | `/api/hotspots/` | Active hotspot records, profile URLs, and rating summaries as JSON |
+
+`/` and `/api/hotspots/` accept the same optional query parameters: `q` (location search), `borough`, `neighborhood`, `provider` and `type` (official access type). For example, `/api/hotspots/?q=library&borough=Brooklyn`.
 
 Jiahao can extend the active-hotspot queryset and map interface for search/filter stories. The data team can continue supplying compatible CSVs and refining the ERD without changing hotspot IDs. New review-writing workflows should reuse the `Review` model and shared summary service.
 
