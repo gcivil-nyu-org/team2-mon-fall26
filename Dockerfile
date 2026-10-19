@@ -9,6 +9,7 @@ RUN useradd --create-home app \
     && mkdir -p /app/staticfiles \
     && chown app:app /app/staticfiles
 COPY --chown=app:app . .
+RUN sed -i 's/\r$//' /app/docker-entrypoint.sh && chmod +x /app/docker-entrypoint.sh
 USER app
 EXPOSE 8000
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--access-logfile", "-"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
