@@ -1,6 +1,6 @@
 # Project progress
 
-Last updated: **October 18, 2026**.
+Last updated: **October 20, 2026**.
 
 This document records implementation progress, remaining work, and development history for Connect NYC. GitHub and ZenHub remain the sources for requirements, assignments, and workflow status. Update this record as work progresses; preserve the dated archive below.
 
@@ -19,7 +19,7 @@ Implementation statuses below describe the code, not automatic issue closure. At
 | Epic | Implementation status | Remaining scope |
 | --- | --- | --- |
 | [E01 — Finding a Wi-Fi Hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/1) | Partially implemented | Search/filters and rating checks awaiting review and merge; ERD and complete acceptance checks. |
-| [E02 — Account Registration & Access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) | Framework foundation only | Product sign-up, login/logout, contribution sign-in flow, and administrator access workflow. |
+| [E02 — Account Registration & Access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) | Implemented on branch `jiahao-E02-US06-10` (Jiahao); pending review and merge | Code review, merge, acceptance checks on the deployed site; E03 must plug its review form into the US09 entry point. |
 | [E03 — Rate & Review Hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/3) | Review model and rating read-side implemented | Create/edit/delete own contributions; owner verification of US12; helpful-review votes remain MLP. |
 | [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | CLI import foundation and source labels implemented | Administrator import/list/update/removal workflows and retirement policy. |
 | [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | Not implemented | Shared content flagging, moderation review, and removal. |
@@ -46,13 +46,15 @@ E01 also integrates US12 / #22 from E03 and US18 / #28 from E04. Their original 
 
 ### E02 — Account access
 
+Owner: Jiahao (Week 6). All five stories are implemented on branch `jiahao-E02-US06-10`, pending code review and merge.
+
 | Story | Status and remaining work |
 | --- | --- |
-| [US06 / #16 — Sign up](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/16) | Not implemented. Django's user model is available; public registration is absent. |
-| [US07 / #17 — Log in](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/17) | Not implemented as a product workflow. |
-| [US08 / #18 — Log out](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/18) | Not implemented as a product workflow. |
-| [US09 / #19 — Sign-in for contributions](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/19) | Partial foundation. Map/profile/review reading is anonymous; contribution authentication and return-to-action behavior are absent. |
-| [US10 / #20 — Administrator access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/20) | Framework foundation only. Django admin/auth is installed; the project's administrator workflow is not delivered. |
+| [US06 / #16 — Sign up](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/16) | Implemented (branch). `/accounts/signup/` asks for username, email and password. Clear errors for invalid input, weak passwords, and usernames/emails that already exist (case-insensitive). New accounts join `Contributors` and are signed in. |
+| [US07 / #17 — Log in](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/17) | Implemented (branch). `/accounts/login/` with a single generic error for wrong username, wrong password or inactive account. Header shows "Signed in as …" and a success message. |
+| [US08 / #18 — Log out](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/18) | Implemented (branch). Header Log out button (POST) ends the session, returns to the map with a message, and contribution views redirect to login afterwards. |
+| [US09 / #19 — Sign-in for contributions](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/19) | Implemented (branch) for the E02 side. Public pages stay anonymous. Profiles show a "Rate this hotspot" prompt that sends visitors to log in or sign up and returns them to `#contribute`. `contributor_required` gives any contribution view the same login-and-return behavior. Once E03 adds its form to `_contribute.html`, the sign-in-and-continue flow should be checked again. Report/flag actions belong to E05. |
+| [US10 / #20 — Administrator access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/20) | Implemented (branch). Visitor/contributor/administrator roles (superuser or `Administrators` group). `/manage/` and the Admin header link are administrator-only; contributors get 403 even by direct URL and cannot use Django admin. `set_administrator` command grants or revokes the role. E04/E05 tools should use `administrator_required`. |
 
 ### E03 — Hotspot ratings and reviews
 
@@ -113,6 +115,17 @@ Closed test issue #44 is excluded from product completion progress.
 CI/CD timing and AWS deployment remain to be confirmed against course requirements. Neither is configured in this demo.
 
 ## Development archive
+
+### October 20, 2026 — E02 account registration and access (US06–US10)
+
+- Added the `accounts` app. `roles.py` defines visitor/contributor/administrator on Django's user model and groups (no custom user model, so existing review data is unaffected). Migration `accounts/0001_role_groups` creates the `Contributors` and `Administrators` groups.
+- Added shared access checks in `accounts/permissions.py` (`contributor_required`, `administrator_required` and matching class-based mixins) and a `roles` context processor (`user_role`, `user_is_administrator`).
+- Added sign-up, login (generic error) and POST-only logout views and templates, safe `?next=` handling, flash messages, header account navigation, the `/manage/` administrator area, a project 403 page, and the `set_administrator` management command.
+- Added the US09 "Rate this hotspot" prompt to hotspot profiles (`hotspots/templates/hotspots/_contribute.html`) for E03 to extend.
+- Settings: `LOGIN_URL`, `LOGIN_REDIRECT_URL`, `LOGOUT_REDIRECT_URL`; optional `DJANGO_CSRF_TRUSTED_ORIGINS` and `DJANGO_BEHIND_HTTPS_PROXY` for HTTPS deployment (documented in `.env.example` and README).
+- Added 33 tests in `accounts/tests.py`, mapped to each story's acceptance criteria (stand-in contributor/administrator views test access rules ahead of E03/E04).
+- Verified: all 72 tests, `manage.py check` and `makemigrations --check` pass against a local MySQL-compatible server (MariaDB 10.11), not yet in the Compose MySQL 8.4 container. Checked sign-up, login (including a wrong password), return to `#contribute`, the 403 for contributors on `/manage/`, logout, and the admin area in a headless browser at 1280, 375 and 320 px widths, with no horizontal scroll.
+- Branch: `jiahao-E02-US06-10`.
 
 ### October 18, 2026 — E01 search and filters (US02–US05) and US12 checks
 

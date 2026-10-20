@@ -34,6 +34,7 @@
   <section class="community-section" aria-labelledby="community-title">
     <div class="section-heading"><h2 id="community-title">Hotspot Reviews</h2><span class="source-badge community-badge">Community feedback</span></div>
     <p class="section-description">Ratings and written reviews are separate from official location data.</p>
+    {% include "hotspots/_contribute.html" %}
     {% if rating_summary.has_demo_reviews %}<div class="demo-review-notice"><strong>Demo content</strong><span>Sample ratings and reviews illustrate this page. They are not verified reports from visitors.</span></div>{% endif %}
     <div class="community-layout">
       <aside class="rating-summary" aria-label="Average community rating">

@@ -1,0 +1,10 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Access denied · Connect NYC{% endblock %}
+{% block content %}
+  <section class="empty-state" aria-labelledby="denied-title">
+    <svg viewBox="0 0 42 42" fill="none" aria-hidden="true"><rect x="9" y="18" width="24" height="17" rx="3" stroke="currentColor" stroke-width="2.4"/><path d="M14 18v-5a7 7 0 0 1 14 0v5" stroke="currentColor" stroke-width="2.4"/></svg>
+    <h2 id="denied-title">You don't have access to this page</h2>
+    <p>This area is for Connect NYC administrators. You can keep browsing hotspots and reviews.</p>
+    <a class="button button-primary" href="{% url 'hotspots:map' %}">Back to the map</a>
+  </section>
+{% endblock %}
