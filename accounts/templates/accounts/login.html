@@ -1,0 +1,16 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Log in · Connect NYC{% endblock %}
+{% block content %}
+  <section class="auth-card" aria-labelledby="auth-title">
+    <h1 id="auth-title">Log in</h1>
+    <p class="auth-intro">{% if next %}Log in to continue. You'll return to where you left off.{% else %}Log in to rate and review hotspots under your own name.{% endif %}</p>
+    {% if form.non_field_errors %}<div class="form-alert" role="alert">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}
+    <form method="post" action="{% url 'accounts:login' %}" class="auth-form" novalidate>
+      {% csrf_token %}
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      {% for field in form %}{% include "accounts/_field.html" %}{% endfor %}
+      <button type="submit" class="button button-primary auth-submit">Log in</button>
+    </form>
+    <p class="auth-switch">New to Connect NYC? <a href="{% url 'accounts:signup' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Create an account</a></p>
+  </section>
+{% endblock %}

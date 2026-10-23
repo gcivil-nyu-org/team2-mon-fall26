@@ -20,12 +20,30 @@
         <span>Connect NYC</span>
       </a>
       <nav aria-label="Main navigation">
-        <a class="nav-link {% block map_nav_class %}{% endblock %}" href="{% url 'hotspots:map' %}" {% block map_nav_current %}{% endblock %}>Explore map</a>
+        <a class="nav-link map-nav-link {% block map_nav_class %}{% endblock %}" href="{% url 'hotspots:map' %}" {% block map_nav_current %}{% endblock %}>Explore map</a>
         <a class="nav-link data-link" href="https://data.cityofnewyork.us/City-Government/NYC-Wi-Fi-Hotspot-Locations/yjub-udmw">About the data <span aria-hidden="true">↗</span></a>
+        {% if user_is_administrator %}<a class="nav-link {% block admin_nav_class %}{% endblock %}" href="{% url 'accounts:admin_home' %}" {% block admin_nav_current %}{% endblock %}>Admin</a>{% endif %}
       </nav>
+      <div class="account-nav">
+        {% if user.is_authenticated %}
+          <span class="account-name" title="Signed in as {{ user.username }} ({{ user_role_label }})"><span class="account-avatar" aria-hidden="true">{{ user.username|slice:":1"|upper }}</span><span><span class="account-prefix">Signed in as </span><strong>{{ user.username }}</strong></span></span>
+          <form method="post" action="{% url 'accounts:logout' %}" class="logout-form">{% csrf_token %}<button type="submit" class="nav-button">Log out</button></form>
+        {% else %}
+          {% if request.resolver_match.app_name == "accounts" %}
+            <a class="nav-link" href="{% url 'accounts:login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Log in</a>
+            <a class="button button-primary button-small" href="{% url 'accounts:signup' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Sign up</a>
+          {% else %}
+            <a class="nav-link" href="{% url 'accounts:login' %}?next={{ request.get_full_path|urlencode }}">Log in</a>
+            <a class="button button-primary button-small" href="{% url 'accounts:signup' %}?next={{ request.get_full_path|urlencode }}">Sign up</a>
+          {% endif %}
+        {% endif %}
+      </div>
     </div>
   </header>
-  <main id="main-content" class="page-shell">{% block content %}{% endblock %}</main>
+  <main id="main-content" class="page-shell">
+    {% if messages %}<ul class="flash-messages" role="status">{% for message in messages %}<li class="flash flash-{{ message.tags }}">{{ message }}</li>{% endfor %}</ul>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
   <footer class="site-footer">
     <span>Connect NYC</span>
     <p>Location records come from NYC Open Data. Listed locations do not confirm current Wi-Fi availability.</p>
