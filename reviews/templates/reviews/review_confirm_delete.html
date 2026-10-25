@@ -1,0 +1,13 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Delete your review · Connect NYC{% endblock %}
+{% block content %}
+  <section class="auth-card" aria-labelledby="delete-title">
+    <h1 id="delete-title">Delete your rating and review?</h1>
+    <p class="auth-intro">This permanently removes your {{ review.rating }} / 5 rating{% if review.body %} and written review{% endif %} for {{ hotspot.display_name }}. The hotspot's average rating will update.</p>
+    <form method="post" class="auth-form">
+      {% csrf_token %}
+      <button type="submit" class="button button-danger auth-submit">Yes, delete</button>
+      <a class="button button-secondary auth-submit" href="{{ hotspot.get_absolute_url }}#reviews">Keep my review</a>
+    </form>
+  </section>
+{% endblock %}

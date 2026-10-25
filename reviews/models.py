@@ -22,8 +22,24 @@ class Review(models.Model):
             models.CheckConstraint(
                 condition=models.Q(rating__gte=1, rating__lte=5),
                 name="review_rating_between_one_and_five",
-            )
+            ),
+            models.UniqueConstraint(
+                fields=["hotspot", "author"], name="one_review_per_author_per_hotspot"
+            ),
         ]
 
     def __str__(self):
         return f"{self.rating}/5 for {self.hotspot_id} by {self.author_id}"
+
+
+class ReviewVote(models.Model):
+    """US15: one helpful upvote per user per review. There are no downvotes."""
+
+    review = models.ForeignKey(Review, on_delete=models.CASCADE, related_name="votes")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["review", "user"], name="one_vote_per_user_per_review")
+        ]

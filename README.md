@@ -22,7 +22,7 @@ The current E01 demo includes Boqing's map/profile stories and the shared E04 so
 | [US02–US05 / #9–#12](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/9) | Search by location, address or landmark, and filter by borough/neighborhood, provider and access type. Filters combine, can be removed one at a time, and show a message when nothing matches. |
 | [US06–US10 / #16–#20](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) (E02, branch `jiahao-E02-US06-10`) | Sign up, log in and log out. Visitors keep public browsing and are asked to sign in only to contribute, then returned to the hotspot they started from. Administrators get an admin-only area that contributors and visitors cannot open, even by direct URL. |
 
-The profile includes a small rating aggregation service for its dependency on US12 / #22 under E03; that story remains owned by Jiahao. US18 / #28 retains its E04 parent and is integrated into the E01 interface. Contribution forms (E03), availability reporting, reliability scores, and notifications are not yet implemented. The full E01 Epic remains in progress.
+The profile includes a small rating aggregation service for its dependency on US12 / #22 under E03; that story remains owned by Jiahao. US18 / #28 retains its E04 parent and is integrated into the E01 interface. Rating and review contributions (E03: create, edit, delete, helpful upvotes) are implemented on this branch. Availability reporting, reliability scores, and notifications are not yet implemented. The full E01 Epic remains in progress.
 
 ## Run the demo
 

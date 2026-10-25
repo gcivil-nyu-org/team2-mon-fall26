@@ -20,7 +20,7 @@ Implementation statuses below describe the code, not automatic issue closure. At
 | --- | --- | --- |
 | [E01 — Finding a Wi-Fi Hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/1) | Partially implemented | Search/filters and rating checks awaiting review and merge; ERD and complete acceptance checks. |
 | [E02 — Account Registration & Access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) | Implemented on branch `jiahao-E02-US06-10` (Jiahao); pending review and merge | Code review, merge, acceptance checks on the deployed site; E03 must plug its review form into the US09 entry point. |
-| [E03 — Rate & Review Hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/3) | Review model and rating read-side implemented | Create/edit/delete own contributions; owner verification of US12; helpful-review votes remain MLP. |
+| [E03 — Rate & Review Hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/3) | Create, edit, delete and helpful-vote code implemented (branch work, unreviewed) | Code review, merge, manual browser acceptance check; owner verification of US12. US15 remains MLP scope. |
 | [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | CLI import foundation and source labels implemented | Administrator import/list/update/removal workflows and retirement policy. |
 | [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | Not implemented | Shared content flagging, moderation review, and removal. |
 | [E06 — Report Availability & Assess Reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) | Planned MLP; not implemented | Working/Unavailable reports, reliability/recency, rating/reliability sorting, and seating/accessibility tags (not yet decomposed into a Story). |
@@ -60,11 +60,11 @@ Owner: Jiahao (Week 6). All five stories are implemented on branch `jiahao-E02-U
 
 | Story | Status and remaining work |
 | --- | --- |
-| [US11 / #21 — Rate/review a hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/21) | Partial foundation. Review model, author/hotspot links, optional body, and 1–5 rating constraint exist. No submission interface. |
+| [US11 / #21 — Rate/review a hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/21) | Implemented (code + automated tests). Signed-in contributors choose 1–5 stars and an optional review (max 2,000 characters) at `/hotspots/<id>/review/`; saved against the hotspot and the user. One review per user per hotspot (database constraint); a second attempt goes to edit. Visitors are redirected to log in. |
 | [US12 / #22 — Average rating](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/22) | Read-side implemented; Jiahao retains ownership. Owner acceptance test added (branch): 1 and 3 → 2.0; add 5 → 3.0; edit 1 to 4 → 4.0; delete 5 → 3.5; unrated hotspot shows "No ratings yet" and a null API average. Contribution UI remains E03 work. |
-| [US13 / #23 — Edit own rating/review](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/23) | Not implemented. Add authenticated ownership enforcement and editing. |
-| [US14 / #24 — Delete own rating/review](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/24) | Not implemented. Add authenticated ownership enforcement and deletion confirmation. |
-| [US15 / #25 — Helpful-review upvotes](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/25) | Planned MLP; not implemented. Votes must remain separate from star ratings. |
+| [US13 / #23 — Edit own rating/review](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/23) | Implemented (code + automated tests). Edit link only on the author's own entries; `/reviews/<id>/edit/` returns 404 for other users and for demo reviews. Averages update from the saved rating. |
+| [US14 / #24 — Delete own rating/review](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/24) | Implemented (code + automated tests). Delete link only on own entries; a confirmation page precedes a POST-only delete; other users get 404; averages update. |
+| [US15 / #25 — Helpful-review upvotes](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/25) | Implemented (code + automated tests, MLP). `ReviewVote` is unique per user and review; POST toggles add/remove; count shown on each written review; no downvotes; votes never affect star averages. Authors cannot upvote their own review (a choice not stated in the story; confirm with the team). |
 
 ### E04 — Official data
 
@@ -115,6 +115,14 @@ Closed test issue #44 is excluded from product completion progress.
 CI/CD timing and AWS deployment remain to be confirmed against course requirements. Neither is configured in this demo.
 
 ## Development archive
+
+### October 24, 2026 — E03 rate, edit, delete and upvote reviews (US11, US13, US14, US15)
+
+- Added `reviews` forms, views and URLs, templates (`review_form.html`, `review_confirm_delete.html`), the `ReviewVote` model, and migration `0002` (unique review per author per hotspot; unique vote per user per review). All views use `contributor_required`.
+- The profile's contribution panel now shows the rating form entry point, or the user's own rating with Edit/Delete; written reviews show an upvote control and count.
+- Updated one existing hotspot test that created several reviews by the same author for one hotspot, which the new constraint forbids.
+- Added tests for each acceptance criterion in `reviews/tests.py`. Verified: all 90 tests pass against the Docker Compose MySQL database (`scripts/test.sh`). Not yet checked manually in a browser.
+
 
 ### October 20, 2026 — E02 account registration and access (US06–US10)
 
