@@ -20,8 +20,9 @@ The current E01 demo includes Boqing's map/profile stories and the shared E04 so
 | [US31 / #41](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/41) | Open the selected hotspot's public profile and read its existing ratings and reviews. |
 | [US18 / #28](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/28) | See clearly separated, labeled official data and community feedback. |
 | [US02–US05 / #9–#12](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/9) | Search by location, address or landmark, and filter by borough/neighborhood, provider and access type. Filters combine, can be removed one at a time, and show a message when nothing matches. |
+| [US06–US10 / #16–#20](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) (E02, branch `jiahao-E02-US06-10`) | Sign up, log in and log out. Visitors keep public browsing and are asked to sign in only to contribute, then returned to the hotspot they started from. Administrators get an admin-only area that contributors and visitors cannot open, even by direct URL. |
 
-The profile includes a small rating aggregation service for its dependency on US12 / #22 under E03; that story remains owned by Jiahao. US18 / #28 retains its E04 parent and is integrated into the E01 interface. Contribution forms, authentication flows, availability reporting, reliability scores, and notifications are not yet implemented. The full E01 Epic remains in progress.
+The profile includes a small rating aggregation service for its dependency on US12 / #22 under E03; that story remains owned by Jiahao. US18 / #28 retains its E04 parent and is integrated into the E01 interface. Contribution forms (E03), availability reporting, reliability scores, and notifications are not yet implemented. The full E01 Epic remains in progress.
 
 ## Run the demo
 
@@ -108,6 +109,8 @@ hotspots/           Official location model, importer, public views and map API
   templates/        English map and profile pages
   static/hotspots/  Responsive styles and map selection logic
 reviews/            Review model, shared rating summary and demo seed command
+accounts/           E02 sign-up/login/logout, roles, shared access checks, admin area
+templates/          Project-wide templates (403 page)
 data/               Team-provided official CSV sample and data verification script
 scripts/            Local environment generation and MySQL test helper
 docs/PROGRESS.md     Epic/story status, next steps, and dated development archive
@@ -123,10 +126,41 @@ Public routes:
 | `/` | Interactive map and selected hotspot preview |
 | `/hotspots/<doitt_id>/` | Official profile and that hotspot's community feedback |
 | `/api/hotspots/` | Active hotspot records, profile URLs, and rating summaries as JSON |
+| `/accounts/signup/`, `/accounts/login/` | Account registration and login (both accept a safe `?next=` return path) |
+| `/accounts/logout/` | Log out (POST only, from the header button) |
+| `/manage/` | Administrator-only area; visitors are sent to log in, contributors get 403 |
 
 `/` and `/api/hotspots/` accept the same optional query parameters: `q` (location search), `borough`, `neighborhood`, `provider` and `type` (official access type). For example, `/api/hotspots/?q=library&borough=Brooklyn`.
 
 Jiahao can extend the active-hotspot queryset and map interface for search/filter stories. The data team can continue supplying compatible CSVs and refining the ERD without changing hotspot IDs. New review-writing workflows should reuse the `Review` model and shared summary service.
+
+## Accounts and roles (E02)
+
+Accounts use Django's built-in user model and session login. Passwords are stored only as salted PBKDF2-SHA256 hashes, and the existing password validators apply at sign-up. Usernames and emails are unique regardless of letter case.
+
+| Role | Who | Can |
+| --- | --- | --- |
+| Visitor | Not signed in | Browse the map, search, filter and read reviews |
+| Contributor | Any active account; sign-ups join the `Contributors` group | Contribution features (E03 and later) |
+| Administrator | Superusers and members of the `Administrators` group | Everything above, plus `/manage/` and Django admin |
+
+Create the first administrator with `python manage.py createsuperuser`, or promote an existing account with `python manage.py set_administrator <username>` (use `--revoke` to undo). In Docker, prefix these with `docker compose exec web`.
+
+New views should enforce roles with the shared helpers in `accounts/permissions.py` rather than ad hoc checks:
+
+```python
+from accounts.permissions import administrator_required, contributor_required
+
+@contributor_required        # E03 review create/edit/delete: visitors go to login and come back
+def create_review(request, pk): ...
+
+@administrator_required      # E04/E05 admin tools: contributors get 403, even by direct URL
+def import_records(request): ...
+```
+
+Class-based views can use `ContributorRequiredMixin` and `AdministratorRequiredMixin`. Templates receive `user_role` (`visitor`, `contributor` or `administrator`) and `user_is_administrator`. The hotspot profile's contribution prompt lives in `hotspots/templates/hotspots/_contribute.html`; E03 / US11 replaces its signed-in branch with the review form.
+
+Behind an HTTPS load balancer, set `DJANGO_CSRF_TRUSTED_ORIGINS` to the public `https://` origin and `DJANGO_BEHIND_HTTPS_PROXY=1`, together with `DJANGO_SECURE_COOKIES=1`, so sign-up and login forms pass CSRF checks over HTTPS.
 
 ## Runtime notes
 

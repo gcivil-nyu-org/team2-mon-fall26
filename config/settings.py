@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "hotspots.apps.HotspotsConfig",
     "reviews.apps.ReviewsConfig",
+    "accounts.apps.AccountsConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -44,6 +45,7 @@ TEMPLATES = [{
         "django.template.context_processors.request",
         "django.contrib.auth.context_processors.auth",
         "django.contrib.messages.context_processors.messages",
+        "accounts.context_processors.roles",
     ]},
 }]
 WSGI_APPLICATION = "config.wsgi.application"
@@ -65,6 +67,10 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
+# E02 account access. Django stores salted PBKDF2-SHA256 password hashes, never plain text.
+LOGIN_URL = "accounts:login"
+LOGIN_REDIRECT_URL = "hotspots:map"
+LOGOUT_REDIRECT_URL = "hotspots:map"
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "America/New_York"
 USE_I18N = True
@@ -85,3 +91,8 @@ SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 # Enable these behind HTTPS on AWS; the local demo uses HTTP on loopback only.
 SESSION_COOKIE_SECURE = os.environ.get("DJANGO_SECURE_COOKIES", "0") == "1"
 CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
+# Behind an HTTPS load balancer (e.g. AWS), list the public origin(s) so login and
+# sign-up forms pass CSRF checks, and trust the proxy's X-Forwarded-Proto header.
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if origin.strip()]
+if os.environ.get("DJANGO_BEHIND_HTTPS_PROXY", "0") == "1":
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

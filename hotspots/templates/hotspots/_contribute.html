@@ -1,0 +1,25 @@
+{% comment %}
+  US09 contribution entry point. Visitors are asked to sign in or sign up and are
+  returned here (#contribute) afterwards. E03 / US11 replaces the signed-in branch
+  with the rating and review form; protect its views with
+  accounts.permissions.contributor_required.
+{% endcomment %}
+<div class="contribute-panel" id="contribute">
+  {% if user_role == "visitor" %}
+    {% with next_url=request.path|add:"#contribute" %}
+    <div>
+      <h3>Rate this hotspot</h3>
+      <p>Sign in to rate or review this hotspot. Browsing the map and reading reviews stays open to everyone.</p>
+    </div>
+    <div class="contribute-actions">
+      <a class="button button-primary" href="{% url 'accounts:login' %}?next={{ next_url|urlencode }}">Log in to rate</a>
+      <a class="button button-secondary" href="{% url 'accounts:signup' %}?next={{ next_url|urlencode }}">Create an account</a>
+    </div>
+    {% endwith %}
+  {% else %}
+    <div>
+      <h3>Rate this hotspot</h3>
+      <p>You're signed in as <strong>{{ user.username }}</strong>. The rating and review form for this hotspot is coming soon.</p>
+    </div>
+  {% endif %}
+</div>

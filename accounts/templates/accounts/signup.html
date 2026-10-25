@@ -1,0 +1,16 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Sign up · Connect NYC{% endblock %}
+{% block content %}
+  <section class="auth-card" aria-labelledby="auth-title">
+    <h1 id="auth-title">Create an account</h1>
+    <p class="auth-intro">An account lets you rate and review hotspots. Browsing the map and reading reviews never requires one.</p>
+    {% if form.errors %}<div class="form-alert" role="alert"><p>Please fix the highlighted field{{ form.errors|length|pluralize }} below.</p>{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}
+    <form method="post" action="{% url 'accounts:signup' %}" class="auth-form" novalidate>
+      {% csrf_token %}
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      {% for field in form %}{% include "accounts/_field.html" %}{% endfor %}
+      <button type="submit" class="button button-primary auth-submit">Create account</button>
+    </form>
+    <p class="auth-switch">Already have an account? <a href="{% url 'accounts:login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Log in</a></p>
+  </section>
+{% endblock %}
