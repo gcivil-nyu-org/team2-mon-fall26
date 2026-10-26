@@ -5,6 +5,28 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def check_legacy_review_uniqueness(apps, schema_editor):
+    """Stop before MySQL DDL if existing reviews need an explicit data decision."""
+    Review = apps.get_model('reviews', 'Review')
+    duplicates = list(
+        Review.objects.using(schema_editor.connection.alias)
+        .order_by()
+        .values('hotspot_id', 'author_id')
+        .annotate(review_count=models.Count('pk'))
+        .filter(review_count__gt=1)[:5]
+    )
+    if duplicates:
+        examples = ', '.join(
+            f"hotspot {row['hotspot_id']}, author {row['author_id']} ({row['review_count']} reviews)"
+            for row in duplicates
+        )
+        raise RuntimeError(
+            'Cannot apply reviews.0002: multiple reviews exist for the same hotspot and author. '
+            'No review data was changed. Back up the records and explicitly resolve the '
+            'duplicates before running migrate again. Examples: ' + examples
+        )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -14,6 +36,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # MySQL cannot roll back DDL. Check before creating ReviewVote so a failed
+        # uniqueness check leaves both the old data and schema ready for a retry.
+        migrations.RunPython(check_legacy_review_uniqueness, migrations.RunPython.noop),
         migrations.CreateModel(
             name='ReviewVote',
             fields=[

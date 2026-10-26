@@ -1,26 +1,24 @@
 # Project progress
 
-Last updated: **October 20, 2026**.
+Last updated: **October 26, 2026**.
 
 This document records implementation progress, remaining work, and development history for Connect NYC. GitHub and ZenHub remain the sources for requirements, assignments, and workflow status. Update this record as work progresses; preserve the dated archive below.
 
 ## Current milestone
 
-The Django/MySQL foundation and Boqing's assigned E01 demo work are implemented: interactive map (US01), hotspot profiles with existing reviews (US31), and official/community source labels (US18, an E04 dependency). The profile section is titled **Hotspot Reviews**. The demo has been validated with 21 automated tests against MySQL and desktop/mobile browser checks.
+E01 discovery is integrated in `main` through PRs #47 and #48. The E01 Epic, source-label story #28, and data/acceptance support tasks #42 and #43 are closed. The production deployment was recorded in PR #50; this review does not verify which revision is currently deployed.
 
-Jiahao's location search and borough/neighborhood, provider and access-type filters (US02–US05) and the US12 average-rating checks are implemented on branch `jiahao-E01-US02-05`. All 39 tests pass against MySQL; they are pending code review and merge.
+E02 account registration and access (US06–US10) merged through [PR #52](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/52) on October 24 (New York time). E03 review creation, editing, deletion and helpful votes are implemented and locally validated in [PR #53](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/53); that PR is the source of truth for merge state. E02/E03 Epic and Story workflow closure and deployed acceptance remain separate from code implementation.
 
-**Full E01 is still in progress.** The remaining data-design deliverable (ERD) and full-journey acceptance checks are outstanding. Existing review display does not mean review creation, editing, or deletion has been implemented.
-
-Implementation statuses below describe the code, not automatic issue closure. At this snapshot, all eight active Epic issues and all 31 User Story issues are open. US01, US31, and US18 were moved to In Progress in ZenHub. Work is published on `boqing-E01-US01/31/18` through [PR #47](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/47), which records review and merge state.
+The October 26 review passed **92 automated tests against isolated MySQL 8.4**, Django system checks and migration consistency checks. Browser checks covered registration and return to the hotspot, review validation, creation, editing, rating updates, helpful vote add/remove, and deletion confirmation/cancellation. Actual deletion and ownership protections are covered by the automated tests.
 
 ## Epic overview
 
 | Epic | Implementation status | Remaining scope |
 | --- | --- | --- |
-| [E01 — Finding a Wi-Fi Hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/1) | Partially implemented | Search/filters and rating checks awaiting review and merge; ERD and complete acceptance checks. |
-| [E02 — Account Registration & Access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) | Implemented on branch `jiahao-E02-US06-10` (Jiahao); pending review and merge | Code review, merge, acceptance checks on the deployed site; E03 must plug its review form into the US09 entry point. |
-| [E03 — Rate & Review Hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/3) | Create, edit, delete and helpful-vote code implemented (branch work, unreviewed) | Code review, merge, manual browser acceptance check; owner verification of US12. US15 remains MLP scope. |
+| [E01 — Finding a Wi-Fi Hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/1) | Merged; Epic closed | Preserve discovery behavior while integrating new contributions. |
+| [E02 — Account Registration & Access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) | Merged in PR #52 (Jiahao) | Deployed acceptance of account access and the integrated E03 journey; synchronize Story workflow states. |
+| [E03 — Rate & Review Hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/3) | Implemented and locally validated in PR #53 (Suvan) | Production release and deployed acceptance; synchronize Story workflow states. US15 remains MLP scope. |
 | [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | CLI import foundation and source labels implemented | Administrator import/list/update/removal workflows and retirement policy. |
 | [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | Not implemented | Shared content flagging, moderation review, and removal. |
 | [E06 — Report Availability & Assess Reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) | Planned MLP; not implemented | Working/Unavailable reports, reliability/recency, rating/reliability sorting, and seating/accessibility tags (not yet decomposed into a Story). |
@@ -36,32 +34,32 @@ Implementation statuses below describe the code, not automatic issue closure. At
 | Story | Owner | Status and remaining work |
 | --- | --- | --- |
 | [US01 / #8 — Interactive map](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/8) | Boqing | Implemented. Official markers, matching preview/profile links, and distinct selection for records sharing coordinates. |
-| [US02 / #9 — Location search](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/9) | Jiahao | Implemented (branch `jiahao-E01-US02-05`). Free-text `q` search over name, address/description, neighborhood, borough and ZIP; every word must match. Matching markers only, "X of Y hotspots match" count, and a separate no-match message. |
-| [US03 / #10 — Borough/neighborhood filters](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/10) | Jiahao | Implemented (branch). `borough` and `neighborhood` (2010 NTA name, grouped by borough) filters; each can be selected, changed, or removed with its chip or "Clear all". |
-| [US04 / #11 — Provider filter](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/11) | Jiahao | Implemented (branch). `provider` filter using the same select/change/remove behavior. |
-| [US05 / #12 — Hotspot-type filter](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/12) | Jiahao | Implemented (branch) against the official `type` field (`access_type`: Free, Limited Free, Partner Site), labelled "Access type". Team to confirm whether a grouped `location_type` filter is also wanted. |
+| [US02 / #9 — Location search](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/9) | Jiahao | Merged in PR #48. Free-text `q` search over name, address/description, neighborhood, borough and ZIP; every word must match. Matching markers only, "X of Y hotspots match" count, and a separate no-match message. |
+| [US03 / #10 — Borough/neighborhood filters](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/10) | Jiahao | Merged in PR #48. `borough` and `neighborhood` (2010 NTA name, grouped by borough) filters; each can be selected, changed, or removed with its chip or "Clear all". |
+| [US04 / #11 — Provider filter](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/11) | Jiahao | Merged in PR #48. `provider` filter using the same select/change/remove behavior. |
+| [US05 / #12 — Hotspot-type filter](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/12) | Jiahao | Merged in PR #48 against the official `type` field (`access_type`: Free, Limited Free, Partner Site), labelled "Access type". Team to confirm whether a grouped `location_type` filter is also wanted. |
 | [US31 / #41 — Profile and existing reviews](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/41) | Boqing | Implemented. Public official profile, hotspot-specific reviews, average/no-rating state, and explicit demo labels. |
 
 E01 also integrates US12 / #22 from E03 and US18 / #28 from E04. Their original Epic parents and owners remain unchanged.
 
 ### E02 — Account access
 
-Owner: Jiahao (Week 6). All five stories are implemented on branch `jiahao-E02-US06-10`, pending code review and merge.
+Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #52.
 
 | Story | Status and remaining work |
 | --- | --- |
-| [US06 / #16 — Sign up](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/16) | Implemented (branch). `/accounts/signup/` asks for username, email and password. Clear errors for invalid input, weak passwords, and usernames/emails that already exist (case-insensitive). New accounts join `Contributors` and are signed in. |
-| [US07 / #17 — Log in](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/17) | Implemented (branch). `/accounts/login/` with a single generic error for wrong username, wrong password or inactive account. Header shows "Signed in as …" and a success message. |
-| [US08 / #18 — Log out](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/18) | Implemented (branch). Header Log out button (POST) ends the session, returns to the map with a message, and contribution views redirect to login afterwards. |
-| [US09 / #19 — Sign-in for contributions](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/19) | Implemented (branch) for the E02 side. Public pages stay anonymous. Profiles show a "Rate this hotspot" prompt that sends visitors to log in or sign up and returns them to `#contribute`. `contributor_required` gives any contribution view the same login-and-return behavior. Once E03 adds its form to `_contribute.html`, the sign-in-and-continue flow should be checked again. Report/flag actions belong to E05. |
-| [US10 / #20 — Administrator access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/20) | Implemented (branch). Visitor/contributor/administrator roles (superuser or `Administrators` group). `/manage/` and the Admin header link are administrator-only; contributors get 403 even by direct URL and cannot use Django admin. `set_administrator` command grants or revokes the role. E04/E05 tools should use `administrator_required`. |
+| [US06 / #16 — Sign up](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/16) | Merged in PR #52. `/accounts/signup/` asks for username, email and password. Clear errors for invalid input, weak passwords, and usernames/emails that already exist (case-insensitive). New accounts join `Contributors` and are signed in. |
+| [US07 / #17 — Log in](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/17) | Merged in PR #52. `/accounts/login/` with a single generic error for wrong username, wrong password or inactive account. Header shows "Signed in as …" and a success message. |
+| [US08 / #18 — Log out](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/18) | Merged in PR #52. Header Log out button (POST) ends the session, returns to the map with a message, and contribution views redirect to login afterwards. |
+| [US09 / #19 — Sign-in for contributions](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/19) | Merged in PR #52 for the E02 side. Public pages stay anonymous. Profiles show a "Rate this hotspot" prompt that sends visitors to log in or sign up and returns them to `#contribute`. `contributor_required` gives any contribution view the same login-and-return behavior. PR #53 integrates the E03 form entry point; registration and return to the hotspot were checked locally on October 26. Report/flag actions belong to E05. |
+| [US10 / #20 — Administrator access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/20) | Merged in PR #52. Visitor/contributor/administrator roles (superuser or `Administrators` group). `/manage/` and the Admin header link are administrator-only; contributors get 403 even by direct URL and cannot use Django admin. `set_administrator` command grants or revokes the role. E04/E05 tools should use `administrator_required`. |
 
 ### E03 — Hotspot ratings and reviews
 
 | Story | Status and remaining work |
 | --- | --- |
 | [US11 / #21 — Rate/review a hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/21) | Implemented (code + automated tests). Signed-in contributors choose 1–5 stars and an optional review (max 2,000 characters) at `/hotspots/<id>/review/`; saved against the hotspot and the user. One review per user per hotspot (database constraint); a second attempt goes to edit. Visitors are redirected to log in. |
-| [US12 / #22 — Average rating](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/22) | Read-side implemented; Jiahao retains ownership. Owner acceptance test added (branch): 1 and 3 → 2.0; add 5 → 3.0; edit 1 to 4 → 4.0; delete 5 → 3.5; unrated hotspot shows "No ratings yet" and a null API average. Contribution UI remains E03 work. |
+| [US12 / #22 — Average rating](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/22) | Read-side implemented; Jiahao retains ownership. Owner acceptance test merged in PR #48 and rechecked with E03: 1 and 3 → 2.0; add 5 → 3.0; edit 1 to 4 → 4.0; delete 5 → 3.5; unrated hotspot shows "No ratings yet" and a null API average. Contribution UI is implemented in PR #53. |
 | [US13 / #23 — Edit own rating/review](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/23) | Implemented (code + automated tests). Edit link only on the author's own entries; `/reviews/<id>/edit/` returns 404 for other users and for demo reviews. Averages update from the saved rating. |
 | [US14 / #24 — Delete own rating/review](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/24) | Implemented (code + automated tests). Delete link only on own entries; a confirmation page precedes a POST-only delete; other users get 404; averages update. |
 | [US15 / #25 — Helpful-review upvotes](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/25) | Implemented (code + automated tests, MLP). `ReviewVote` is unique per user and review; POST toggles add/remove; count shown on each written review; no downvotes; votes never affect star averages. Authors cannot upvote their own review (a choice not stated in the story; confirm with the team). |
@@ -95,9 +93,9 @@ Owner: Jiahao (Week 6). All five stories are implemented on branch `jiahao-E02-U
 
 | Item | Current record |
 | --- | --- |
-| [#42 — Data, mapping and ERD](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/42) | Kavya and Suvan. Four deliverables are checked: sample/provenance, field mapping, identity/nullability/review links, and handoff instructions. The black-and-white ERD remains unchecked. |
-| [#43 — Acceptance checks and demo verification](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/43) | Xiaoqi. The task remains open with its deliverables unchecked. Developer tests do not complete the full search/filter-to-profile QA workflow. |
-| [#45 — Week 4 design and backlog goal](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/45) | Seven planning/design deliverables are checked. The sprint presentation/demo checkbox remains unchecked in the current issue. |
+| [#42 — Data, mapping and ERD](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/42) | Kavya and Suvan. Issue closed; the data Wiki includes the ERD added October 19. Some original checklist text remains stale. |
+| [#43 — Acceptance checks and demo verification](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/43) | Xiaoqi. Issue closed October 19 for the E01 increment. E02/E03 deployed acceptance is a separate follow-up. |
+| [#45 — Week 4 design and backlog goal](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/45) | Closed Week 4 planning/design issue; retained as historical sprint work. |
 | [#13 — Previous requirements sprint goal](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/13) | Closed planning issue. |
 | [#14 — Superseded E08 entry](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/14) | Closed duplicate; active E08 is #15. This is not evidence of an implemented forum. |
 
@@ -105,14 +103,12 @@ Closed test issue #44 is excluded from product completion progress.
 
 ## Next development steps
 
-1. **Jiahao:** open the PR for `jiahao-E01-US02-05` and get review from Boqing. Confirm the US05 type mapping with the team.
-2. **Jiahao and Boqing:** review the US12 (#22) acceptance test on the branch and move #9–#12 and #22 in ZenHub once merged.
-3. **Kavya and Suvan:** finish the ERD in #42 and confirm the data handoff. The running demo currently uses 36 official sample records, not the full citywide dataset.
-4. **Xiaoqi, with Boqing/Jiahao fixing defects:** complete #43 across the signed-out map → search/filter → profile → existing reviews/ratings journey.
-5. **Boqing:** check the full E01 scope and required dependencies against the shared Definition of Done before marking the Epic complete.
-6. **Subsequent feature work:** prioritize E02 identity flows and E03 review creation/edit/deletion. Continue E04 administration and E05 shared moderation under their existing stories. Keep E08 discussions separate; E06/E07 and helpful-review voting remain MLP.
+1. Include the reviewed PR #53 implementation in the next production release and verify the deployed registration/login → hotspot → create/edit/delete review → helpful vote journey. Check the PR for the current merge state.
+2. Synchronize E02/E03 Story and Epic workflow states after acceptance; implementation does not automatically close their issues.
+3. Introduce GitHub Actions test automation and keep deployment/version information current. The PR has no automated GitHub check results at this review.
+4. Continue E04 data administration and E05 moderation under their existing stories. Keep E08 discussions separate; availability/reliability and following remain E06/E07 work.
 
-CI/CD timing and AWS deployment remain to be confirmed against course requirements. Neither is configured in this demo.
+Docker Compose was used for this local review only. No production deployment or production database modification was performed.
 
 ## Development archive
 
@@ -160,3 +156,12 @@ CI/CD timing and AWS deployment remain to be confirmed against course requiremen
 - Created `boqing-E01-US01/31/18` from the implementation branch and pulled the latest main; no incoming changes or conflicts were found.
 - Rebuilt the updated demo and reran all 21 MySQL tests, Django system checks, and migration consistency checks successfully before publication.
 - Published the consolidated implementation and documentation in [PR #47](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/47), superseding the earlier draft #46.
+
+### October 26, 2026 — PR #53 review and migration safeguard
+
+- Reviewed E03 against US11, US13, US14 and US15, including authentication, ownership, CSRF, rating aggregates and helpful-vote isolation.
+- Added a duplicate-review preflight before any MySQL DDL in migration 0002. Legacy duplicate hotspot/author pairs now stop with an actionable error; the migration never chooses or deletes user content automatically.
+- Added two migration regression tests: unchanged unique/demo records upgrade successfully; duplicate records leave data/schema untouched and can be retried after an explicit data decision.
+- Verified all 92 tests against a separate MySQL 8.4 Compose project, plus `manage.py check`, `makemigrations --check --dry-run`, and `git diff --check`.
+- Verified the browser flows listed in the current milestone on the isolated localhost:8001 instance. Deletion was confirmed by automated tests; the browser check exercised confirmation and cancellation.
+- Reconciled stale E01/E02 progress text with merged PRs and closed E01 issues. This records local review results, not new production acceptance or Story closure.

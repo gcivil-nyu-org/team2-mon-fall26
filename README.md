@@ -4,7 +4,7 @@ Connect NYC is an English-language web application that helps New York City resi
 
 ## Project description
 
-The core user journey is to browse a map, search or filter locations, and open a hotspot profile to see its provider, access information, ratings, and reviews. Public browsing does not require an account. The planned contribution features let signed-in users share hotspot reviews, while a separate discussion area supports Wi-Fi questions and conversations. Availability reporting, reliability indicators, and following hotspots are planned extensions.
+The core user journey is to browse a map, search or filter locations, and open a hotspot profile to see its provider, access information, ratings, and reviews. Public browsing does not require an account. Signed-in users can share and manage hotspot reviews. A separate discussion area for Wi-Fi questions and conversations is planned. Availability reporting, reliability indicators, and following hotspots are planned extensions.
 
 The application uses **Python 3.13, Django 5.2, and MySQL 8.4**. The frontend is built with Django templates, HTML, CSS, and JavaScript; Leaflet and OpenStreetMap provide the map. The current local demo runs as one web application and one database through Docker Compose.
 
@@ -12,7 +12,7 @@ For current implementation status, remaining work, and dated development history
 
 ## Implemented demo
 
-The current E01 demo includes Boqing's map/profile stories and the shared E04 source-label story:
+The demo includes hotspot discovery, account access and hotspot review contributions:
 
 | Story | Demo behavior |
 | --- | --- |
@@ -20,9 +20,13 @@ The current E01 demo includes Boqing's map/profile stories and the shared E04 so
 | [US31 / #41](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/41) | Open the selected hotspot's public profile and read its existing ratings and reviews. |
 | [US18 / #28](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/28) | See clearly separated, labeled official data and community feedback. |
 | [US02–US05 / #9–#12](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/9) | Search by location, address or landmark, and filter by borough/neighborhood, provider and access type. Filters combine, can be removed one at a time, and show a message when nothing matches. |
-| [US06–US10 / #16–#20](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) (E02, branch `jiahao-E02-US06-10`) | Sign up, log in and log out. Visitors keep public browsing and are asked to sign in only to contribute, then returned to the hotspot they started from. Administrators get an admin-only area that contributors and visitors cannot open, even by direct URL. |
+| [US06–US10 / #16–#20](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) (E02) | Sign up, log in and log out. Visitors keep public browsing and are asked to sign in only to contribute, then returned to the hotspot they started from. Administrators get an admin-only area that contributors and visitors cannot open, even by direct URL. |
 
-The profile includes a small rating aggregation service for its dependency on US12 / #22 under E03; that story remains owned by Jiahao. US18 / #28 retains its E04 parent and is integrated into the E01 interface. Rating and review contributions (E03: create, edit, delete, helpful upvotes) are implemented on this branch. Availability reporting, reliability scores, and notifications are not yet implemented. The full E01 Epic remains in progress.
+The profile includes a small rating aggregation service for its dependency on US12 / #22 under E03; that story remains owned by Jiahao. US18 / #28 retains its E04 parent and is integrated into the E01 interface. Rating and review contributions (E03: create, edit, delete, helpful upvotes) are implemented. Availability reporting, reliability scores, and notifications are not yet implemented.
+
+## Upgrading existing review data
+
+Migration `reviews.0002` adds one-review-per-user-per-hotspot and helpful-vote constraints. It checks for legacy duplicate review pairs before changing the schema. If the check fails, back up and explicitly resolve those records before retrying `migrate`; the migration does not delete or combine user content automatically.
 
 ## Run the demo
 
