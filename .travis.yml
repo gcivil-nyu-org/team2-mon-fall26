@@ -1,0 +1,25 @@
+language: minimal
+
+services:
+  - docker
+
+env:
+  global:
+    - DJANGO_SECRET_KEY=ci-only-test-secret
+    - DJANGO_DEBUG=0
+    - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+    - DEMO_MODE=0
+    - MYSQL_DATABASE=connectnyc
+    - MYSQL_USER=connectnyc
+    - MYSQL_PASSWORD=ci-test-password
+    - MYSQL_ROOT_PASSWORD=ci-test-root-password
+    - MYSQL_HOST=db
+    - MYSQL_PORT=3306
+    - WEB_PORT=8000
+
+script:
+  - docker compose up --build --wait
+  - docker compose exec -T web python manage.py test
+
+after_script:
+  - docker compose down -v
