@@ -1,0 +1,21 @@
+{% extends "hotspots/base.html" %}
+{% block title %}{% if editing %}Edit your review{% else %}Rate this hotspot{% endif %} · Connect NYC{% endblock %}
+{% block content %}
+  <section class="auth-card review-form-card" aria-labelledby="review-form-title">
+    <h1 id="review-form-title">{% if editing %}Edit your review{% else %}Rate this hotspot{% endif %}</h1>
+    <p class="auth-intro">{{ hotspot.display_name }}{% if hotspot.location_description %} · {{ hotspot.location_description }}{% endif %}</p>
+    <form method="post" class="auth-form" novalidate>
+      {% csrf_token %}
+      <fieldset class="form-field rating-field{% if form.rating.errors %} has-error{% endif %}">
+        <legend>{{ form.rating.label }}</legend>
+        <div class="rating-options">
+          {% for radio in form.rating %}<label class="rating-option" for="{{ radio.id_for_label }}">{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>{% endfor %}
+        </div>
+        {% if form.rating.errors %}<ul class="field-errors">{% for error in form.rating.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+      </fieldset>
+      {% include "accounts/_field.html" with field=form.body %}
+      <button type="submit" class="button button-primary auth-submit">{% if editing %}Save changes{% else %}Submit rating{% endif %}</button>
+    </form>
+    <p class="auth-switch"><a href="{{ hotspot.get_absolute_url }}#reviews">Cancel and go back to the hotspot</a></p>
+  </section>
+{% endblock %}

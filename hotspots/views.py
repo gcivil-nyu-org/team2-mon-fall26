@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_GET
 
+from reviews.models import Review, ReviewVote
 from reviews.services import rating_summary, visible_reviews
 
 from .filters import active_filter_chips, apply_filters, filter_options, read_params
@@ -98,10 +99,26 @@ def detail(request, pk):
     hotspot = get_object_or_404(Hotspot, pk=pk, is_active=True)
     all_reviews = visible_reviews().filter(hotspot=hotspot)
     summary = rating_summary(all_reviews)
+    written = (
+        all_reviews.exclude(body="")
+        .select_related("author")
+        .annotate(upvote_count=Count("votes"))
+    )
+    voted_ids = set()
+    user_review = None
+    if request.user.is_authenticated:
+        voted_ids = set(
+            ReviewVote.objects.filter(user=request.user, review__hotspot=hotspot).values_list(
+                "review_id", flat=True
+            )
+        )
+        user_review = Review.objects.filter(hotspot=hotspot, author=request.user, is_demo=False).first()
     context = {
         **_map_settings(),
         "hotspot": hotspot,
-        "reviews": all_reviews.exclude(body="").select_related("author"),
+        "reviews": written,
+        "voted_ids": voted_ids,
+        "user_review": user_review,
         "rating_summary": summary,
         "profile_map_data": _serialize_hotspot(hotspot, summary),
     }

@@ -1,8 +1,7 @@
 {% comment %}
-  US09 contribution entry point. Visitors are asked to sign in or sign up and are
-  returned here (#contribute) afterwards. E03 / US11 replaces the signed-in branch
-  with the rating and review form; protect its views with
-  accounts.permissions.contributor_required.
+  Contribution entry point. Visitors are asked to sign in or sign up (US09) and are
+  returned here (#contribute) afterwards. Signed-in users rate/review (US11), or
+  edit/delete their own rating (US14). Views use accounts.permissions.contributor_required.
 {% endcomment %}
 <div class="contribute-panel" id="contribute">
   {% if user_role == "visitor" %}
@@ -16,10 +15,22 @@
       <a class="button button-secondary" href="{% url 'accounts:signup' %}?next={{ next_url|urlencode }}">Create an account</a>
     </div>
     {% endwith %}
+  {% elif user_review %}
+    <div>
+      <h3>Your rating</h3>
+      <p><span class="review-rating"><span aria-hidden="true">★</span> {{ user_review.rating }} / 5</span>{% if user_review.body %} · {{ user_review.body|truncatechars:140 }}{% else %} · No written review{% endif %}</p>
+    </div>
+    <div class="contribute-actions">
+      <a class="button button-secondary" href="{% url 'reviews:edit' user_review.pk %}">Edit</a>
+      <a class="button button-secondary" href="{% url 'reviews:delete' user_review.pk %}">Delete</a>
+    </div>
   {% else %}
     <div>
       <h3>Rate this hotspot</h3>
-      <p>You're signed in as <strong>{{ user.username }}</strong>. The rating and review form for this hotspot is coming soon.</p>
+      <p>You're signed in as <strong>{{ user.username }}</strong>. Share a 1 to 5 star rating and, if you like, a written review of your own experience.</p>
+    </div>
+    <div class="contribute-actions">
+      <a class="button button-primary" href="{% url 'reviews:create' hotspot.pk %}">Rate or review</a>
     </div>
   {% endif %}
 </div>

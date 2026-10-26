@@ -166,8 +166,9 @@ class HotspotReadExperienceTests(TestCase):
         self.assertEqual(response.context["rating_summary"]["count"], 0)
 
     def test_profile_includes_rating_only_entries_and_excludes_other_hotspots(self):
-        for rating, body in [(2, "First visit"), (5, ""), (5, "Another visit")]:
-            Review.objects.create(hotspot=self.hotspot, author=self.author, rating=rating, body=body)
+        for index, (rating, body) in enumerate([(2, "First visit"), (5, ""), (5, "Another visit")]):
+            author = self.author if index == 0 else get_user_model().objects.create_user(username=f"visitor{index}")
+            Review.objects.create(hotspot=self.hotspot, author=author, rating=rating, body=body)
         Review.objects.create(hotspot=self.other, author=self.author, rating=1, body="Another location")
         response = self.client.get(self.hotspot.get_absolute_url())
         self.assertEqual(response.context["rating_summary"], {
