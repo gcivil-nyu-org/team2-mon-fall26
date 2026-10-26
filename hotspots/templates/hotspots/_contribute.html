@@ -1,0 +1,36 @@
+{% comment %}
+  Contribution entry point. Visitors are asked to sign in or sign up (US09) and are
+  returned here (#contribute) afterwards. Signed-in users rate/review (US11), or
+  edit/delete their own rating (US14). Views use accounts.permissions.contributor_required.
+{% endcomment %}
+<div class="contribute-panel" id="contribute">
+  {% if user_role == "visitor" %}
+    {% with next_url=request.path|add:"#contribute" %}
+    <div>
+      <h3>Rate this hotspot</h3>
+      <p>Sign in to rate or review this hotspot. Browsing the map and reading reviews stays open to everyone.</p>
+    </div>
+    <div class="contribute-actions">
+      <a class="button button-primary" href="{% url 'accounts:login' %}?next={{ next_url|urlencode }}">Log in to rate</a>
+      <a class="button button-secondary" href="{% url 'accounts:signup' %}?next={{ next_url|urlencode }}">Create an account</a>
+    </div>
+    {% endwith %}
+  {% elif user_review %}
+    <div>
+      <h3>Your rating</h3>
+      <p><span class="review-rating"><span aria-hidden="true">★</span> {{ user_review.rating }} / 5</span>{% if user_review.body %} · {{ user_review.body|truncatechars:140 }}{% else %} · No written review{% endif %}</p>
+    </div>
+    <div class="contribute-actions">
+      <a class="button button-secondary" href="{% url 'reviews:edit' user_review.pk %}">Edit</a>
+      <a class="button button-secondary" href="{% url 'reviews:delete' user_review.pk %}">Delete</a>
+    </div>
+  {% else %}
+    <div>
+      <h3>Rate this hotspot</h3>
+      <p>You're signed in as <strong>{{ user.username }}</strong>. Share a 1 to 5 star rating and, if you like, a written review of your own experience.</p>
+    </div>
+    <div class="contribute-actions">
+      <a class="button button-primary" href="{% url 'reviews:create' hotspot.pk %}">Rate or review</a>
+    </div>
+  {% endif %}
+</div>

@@ -1,0 +1,49 @@
+language: minimal
+
+services:
+  - docker
+
+env:
+  global:
+    - DJANGO_SECRET_KEY=ci-only-test-secret
+    - DJANGO_DEBUG=0
+    - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+    - DEMO_MODE=0
+    - MYSQL_DATABASE=connectnyc
+    - MYSQL_USER=connectnyc
+    - MYSQL_PASSWORD=ci-test-password
+    - MYSQL_ROOT_PASSWORD=ci-test-root-password
+    - MYSQL_HOST=db
+    - MYSQL_PORT=3306
+    - WEB_PORT=8000
+
+script:
+  - docker compose up --build --wait
+  - docker compose exec -T db sh -c "mysql -uroot -p\"$MYSQL_ROOT_PASSWORD\" -e \"GRANT ALL PRIVILEGES ON *.* TO 'connectnyc'@'%'; FLUSH PRIVILEGES;\""
+  - docker compose exec -T web python manage.py test
+
+after_script:
+  - docker compose down -v
+
+deploy:
+  - provider: elasticbeanstalk
+    access_key_id: $AWS_ACCESS_KEY_ID
+    secret_access_key: $AWS_SECRET_ACCESS_KEY
+    region: us-east-2
+    app: connectnyc
+    env: connectnyc-integration
+    bucket: elasticbeanstalk-us-east-2-961394077833
+    edge: true
+    on:
+      branch: develop
+
+  - provider: elasticbeanstalk
+    access_key_id: $AWS_ACCESS_KEY_ID
+    secret_access_key: $AWS_SECRET_ACCESS_KEY
+    region: us-east-2
+    app: connectnyc
+    env: connectnyc-production
+    bucket: elasticbeanstalk-us-east-2-961394077833
+    edge: true
+    on:
+      branch: main

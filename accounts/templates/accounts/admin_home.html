@@ -1,0 +1,41 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Administration · Connect NYC{% endblock %}
+{% block admin_nav_class %}is-current{% endblock %}
+{% block admin_nav_current %}aria-current="page"{% endblock %}
+{% block content %}
+  <section class="page-intro" aria-labelledby="admin-title">
+    <div><h1 id="admin-title">Administration</h1><p>Only administrators can see this area. Contributors and visitors are refused, even by direct URL.</p></div>
+    <span class="role-badge role-administrator">Administrator</span>
+  </section>
+
+  <div class="admin-grid">
+    <section class="admin-panel" aria-labelledby="accounts-title">
+      <h2 id="accounts-title">Accounts</h2>
+      <dl class="admin-stats">
+        <div><dt>Contributors</dt><dd>{{ contributor_count }}</dd></div>
+        <div><dt>Administrators</dt><dd>{{ administrator_count }}</dd></div>
+      </dl>
+      <table class="admin-table">
+        <caption class="visually-hidden">Most recent active accounts and their roles</caption>
+        <thead><tr><th scope="col">Username</th><th scope="col">Role</th><th scope="col">Joined</th></tr></thead>
+        <tbody>
+          {% for row in accounts %}
+          <tr><td>{{ row.user.username }}</td><td><span class="role-badge role-{{ row.role|lower }}">{{ row.role }}</span></td><td><time datetime="{{ row.user.date_joined|date:'c' }}">{{ row.user.date_joined|date:"M j, Y" }}</time></td></tr>
+          {% empty %}<tr><td colspan="3">No active accounts yet.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+      <p class="admin-note">Grant or remove administrator access with <code>python manage.py set_administrator &lt;username&gt; [--revoke]</code>.</p>
+    </section>
+
+    <section class="admin-panel" aria-labelledby="data-title">
+      <h2 id="data-title">Official hotspot data</h2>
+      <dl class="admin-stats">
+        <div><dt>Active records</dt><dd>{{ hotspot_counts.active }}</dd></div>
+        <div><dt>Inactive records</dt><dd>{{ hotspot_counts.inactive }}</dd></div>
+        <div><dt>Community ratings</dt><dd>{{ review_count }}</dd></div>
+      </dl>
+      <p class="admin-note">Import, update and removal tools for official records (E04) and moderation tools (E05) will be added to this area.</p>
+      <a class="button button-secondary" href="{% url 'admin:index' %}">Open Django admin</a>
+    </section>
+  </div>
+{% endblock %}
