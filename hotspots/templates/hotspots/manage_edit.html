@@ -1,0 +1,24 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Edit hotspot record · Connect NYC{% endblock %}
+{% block admin_nav_class %}is-current{% endblock %}
+{% block admin_nav_current %}aria-current="page"{% endblock %}
+{% block content %}
+  <a class="back-link" href="{% url 'hotspots:manage_list' %}">← Official hotspot data</a>
+  <section class="admin-panel manage-form-card manage-edit-card data-management" aria-labelledby="edit-title">
+    <h1 id="edit-title">Edit hotspot record</h1>
+    <p class="auth-intro">{{ hotspot.display_name }}</p>
+    <dl class="manage-source-facts">
+      <div><dt>NYC source ID</dt><dd>{{ hotspot.pk }}</dd></div>
+      <div><dt>Source object ID</dt><dd>{{ hotspot.source_object_id }}</dd></div>
+      <div><dt>Source acquired</dt><dd><time datetime="{{ hotspot.source_acquired_on|date:'Y-m-d' }}">{{ hotspot.source_acquired_on|date:"M j, Y" }}</time></dd></div>
+      <div><dt>Status</dt><dd>{% if hotspot.is_active %}Active{% else %}Retired{% endif %}</dd></div>
+    </dl>
+    <p class="admin-note">Editing preserves the source identity, acquisition date, reviews and helpful votes. A future import can replace these fields with the official source values.{% if not hotspot.is_active %} Saving this record will not reactivate it.{% endif %}</p>
+    {% if form.non_field_errors %}<div class="form-alert" role="alert">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}
+    <form method="post" class="auth-form">
+      {% csrf_token %}
+      <div class="manage-fields">{% for field in form %}{% include "accounts/_field.html" %}{% endfor %}</div>
+      <div class="manage-form-actions"><button type="submit" class="button button-primary">Save changes</button><a class="button button-secondary" href="{% url 'hotspots:manage_list' %}">Cancel</a></div>
+    </form>
+  </section>
+{% endblock %}

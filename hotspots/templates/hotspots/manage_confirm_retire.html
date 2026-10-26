@@ -1,0 +1,20 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Remove hotspot from discovery · Connect NYC{% endblock %}
+{% block admin_nav_class %}is-current{% endblock %}
+{% block admin_nav_current %}aria-current="page"{% endblock %}
+{% block content %}
+  <a class="back-link" href="{% url 'hotspots:manage_list' %}">← Official hotspot data</a>
+  <section class="admin-panel manage-form-card data-management" aria-labelledby="retire-title">
+    <h1 id="retire-title">Remove from public discovery?</h1>
+    <p class="auth-intro"><strong>{{ hotspot.display_name }}</strong> (NYC ID {{ hotspot.pk }}) will no longer appear on the map, in search or filter results, or at its public profile.</p>
+    <div class="manage-retention-note">
+      <h2>The record will be retained</h2>
+      <p>Its {{ review_count }} rating{{ review_count|pluralize }}/review{{ review_count|pluralize }} and {{ vote_count }} helpful vote{{ vote_count|pluralize }} will be preserved. The record remains visible to administrators with a Retired status.</p>
+      <p>Reimporting the same hotspot will not reactivate it.</p>
+    </div>
+    <form method="post" class="auth-form">
+      {% csrf_token %}
+      <div class="manage-form-actions"><button type="submit" name="confirm" value="yes" class="button button-danger">Remove from public discovery</button><a class="button button-secondary" href="{% url 'hotspots:manage_list' %}">Cancel</a></div>
+    </form>
+  </section>
+{% endblock %}

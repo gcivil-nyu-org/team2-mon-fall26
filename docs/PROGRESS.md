@@ -8,9 +8,11 @@ This document records implementation progress, remaining work, and development h
 
 E01 discovery is integrated in `main` through PRs #47 and #48. The E01 Epic, source-label story #28, and data/acceptance support tasks #42 and #43 are closed. The production deployment was recorded in PR #50; this review does not verify which revision is currently deployed.
 
-E02 account registration and access (US06–US10) merged through [PR #52](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/52) on October 24 (New York time). E03 review creation, editing, deletion and helpful votes are implemented and locally validated in [PR #53](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/53); that PR is the source of truth for merge state. E02/E03 Epic and Story workflow closure and deployed acceptance remain separate from code implementation.
+E02 account registration and access (US06–US10) merged through [PR #52](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/52) on October 24 (New York time). E03 review creation, editing, deletion and helpful votes merged through [PR #53](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/53) on October 26. E02/E03 Epic and Story workflow closure and deployed acceptance remain separate from code implementation.
 
 The October 26 review passed **92 automated tests against isolated MySQL 8.4**, Django system checks and migration consistency checks. Browser checks covered registration and return to the hotspot, review validation, creation, editing, rating updates, helpful vote add/remove, and deletion confirmation/cancellation. Actual deletion and ownership protections are covered by the automated tests.
+
+E04 administrator import/list/edit/retirement (US16–US17, Boqing) is implemented in [PR #54](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/54) on `boqing-E04-US16-17`. The integrated suite passed **114 tests on isolated MySQL 8.4**; Django system and migration consistency checks passed. The author self-review and independent code-review pass found no remaining blockers. GitHub requires an approval from another account before merge, and automatic merge is disabled; production deployment and acceptance are also pending. The original Week 6 forecast remains 19 points for nine E02/E03 stories; the two E04 stories were added on October 26 without retrospective point estimates.
 
 ## Epic overview
 
@@ -19,7 +21,7 @@ The October 26 review passed **92 automated tests against isolated MySQL 8.4**, 
 | [E01 — Finding a Wi-Fi Hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/1) | Merged; Epic closed | Preserve discovery behavior while integrating new contributions. |
 | [E02 — Account Registration & Access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) | Merged in PR #52 (Jiahao) | Deployed acceptance of account access and the integrated E03 journey; synchronize Story workflow states. |
 | [E03 — Rate & Review Hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/3) | Implemented and locally validated in PR #53 (Suvan) | Production release and deployed acceptance; synchronize Story workflow states. US15 remains MLP scope. |
-| [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | CLI import foundation and source labels implemented | Administrator import/list/update/removal workflows and retirement policy. |
+| [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | Administrator import/list/edit/retirement implemented and locally validated (Boqing) | PR merge and production acceptance; US18 remains previously closed. |
 | [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | Not implemented | Shared content flagging, moderation review, and removal. |
 | [E06 — Report Availability & Assess Reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) | Planned MLP; not implemented | Working/Unavailable reports, reliability/recency, rating/reliability sorting, and seating/accessibility tags (not yet decomposed into a Story). |
 | [E07 — Follow Hotspots & Receive Updates](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) | Planned MLP; not implemented | Follow/unfollow, personal list, and notifications. |
@@ -68,8 +70,8 @@ Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #
 
 | Story | Status and remaining work |
 | --- | --- |
-| [US16 / #26 — Import/view official records](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/26) | Partial. Validated, atomic CLI upsert preserves stable IDs and review links. Administrator-triggered import and the restricted stored-record list are not implemented. |
-| [US17 / #27 — Update/remove records](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/27) | Partial foundation. CLI reimport updates fields and public views exclude inactive records. No administrator edit/removal workflow; agree how retired hotspots retain reviews before implementing it. |
+| [US16 / #26 — Import/view official records](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/26) | Implemented locally (Boqing). Administrator CSV upload and paginated/searchable Active/Retired list; shared atomic importer validates the whole file, preserves IDs and contribution links, and reports created/updated counts. PR merge and production acceptance pending. |
+| [US17 / #27 — Update/remove records](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/27) | Implemented locally (Boqing). Allowlisted editing preserves identity/acquisition date; confirmed POST retires the record, hiding public discovery and contribution routes while retaining reviews/votes. Reimport and edits never reactivate retired records. PR merge and production acceptance pending. |
 | [US18 / #28 — Official/community labels](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/28) | Implemented by Boqing and integrated into E01. Official fields, source dates, community feedback, and fictional demo contributions are visibly distinguished. |
 
 ### E05–E08 — Remaining community features
@@ -103,10 +105,10 @@ Closed test issue #44 is excluded from product completion progress.
 
 ## Next development steps
 
-1. Include the reviewed PR #53 implementation in the next production release and verify the deployed registration/login → hotspot → create/edit/delete review → helpful vote journey. Check the PR for the current merge state.
-2. Synchronize E02/E03 Story and Epic workflow states after acceptance; implementation does not automatically close their issues.
+1. Complete E04 PR review/merge, then have the deployment owner release the reviewed revision and verify account → hotspot review → administrator import/edit/retirement on the production instance.
+2. Synchronize E02/E03/E04 Story and Epic workflow states after deployed acceptance; implementation does not automatically close their issues.
 3. Introduce GitHub Actions test automation and keep deployment/version information current. The PR has no automated GitHub check results at this review.
-4. Continue E04 data administration and E05 moderation under their existing stories. Keep E08 discussions separate; availability/reliability and following remain E06/E07 work.
+4. Plan E05 moderation under its existing stories; E04 scheduled refresh and restoration remain outside the current scope. Keep E08 discussions separate; availability/reliability and following remain E06/E07 work.
 
 Docker Compose was used for this local review only. No production deployment or production database modification was performed.
 
@@ -165,3 +167,12 @@ Docker Compose was used for this local review only. No production deployment or 
 - Verified all 92 tests against a separate MySQL 8.4 Compose project, plus `manage.py check`, `makemigrations --check --dry-run`, and `git diff --check`.
 - Verified the browser flows listed in the current milestone on the isolated localhost:8001 instance. Deletion was confirmed by automated tests; the browser check exercised confirmation and cancellation.
 - Reconciled stale E01/E02 progress text with merged PRs and closed E01 issues. This records local review results, not new production acceptance or Story closure.
+
+### October 26, 2026 — E04 administrator data maintenance (US16–US17)
+
+- Assigned E04 and US16/US17 to Boqing and recorded the manual-refresh/non-destructive-retirement policy on the Epic and US17. US18 remains previously implemented and closed.
+- Extracted the validated atomic CSV importer for web/CLI reuse; added administrator upload/list/search/status-filter/pagination, official-field editing and confirmed retirement.
+- Retired records stay out of discovery, profiles and contribution actions. Existing reviews and helpful votes remain stored. Reimport does not reactivate records; field-limited edits cannot undo concurrent retirement or change source identity/acquisition date.
+- Added 22 regression tests. The full **114-test suite passed on isolated MySQL 8.4**, plus Django system checks, migration consistency checks and diff whitespace validation. No schema migration is required.
+- Browser checks verified visitor login/return, stored-record search, editing reflected on the public profile, cancellation and confirmed retirement, and the Retired filter. CLI reimport and database/public-route checks verified the retired record retained four local review fixtures and one helpful vote without returning to public discovery. CSV upload validation/idempotence/rollback were tested through Django's HTTP test client.
+- Updated README and this progress archive. [PR #54](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/54) contains the implementation and author self-review. A normal merge attempt was blocked by the required external approval; automatic merge is disabled. No branch protections were changed. Deployment and production acceptance remain with the team; Docker is local validation only.
