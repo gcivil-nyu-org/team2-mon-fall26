@@ -19,6 +19,7 @@ env:
 
 script:
   - docker compose up --build --wait
+  - docker compose exec -T db sh -c "mysql -uroot -p\"$MYSQL_ROOT_PASSWORD\" -e \"GRANT ALL PRIVILEGES ON *.* TO 'connectnyc'@'%'; FLUSH PRIVILEGES;\""
   - docker compose exec -T web python manage.py test
 
 after_script:
