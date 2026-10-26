@@ -24,3 +24,26 @@ script:
 
 after_script:
   - docker compose down -v
+
+deploy:
+  - provider: elasticbeanstalk
+    access_key_id: $AWS_ACCESS_KEY_ID
+    secret_access_key: $AWS_SECRET_ACCESS_KEY
+    region: us-east-2
+    app: connectnyc
+    env: connectnyc-integration
+    bucket: elasticbeanstalk-us-east-2-961394077833
+    edge: true
+    on:
+      branch: develop
+
+  - provider: elasticbeanstalk
+    access_key_id: $AWS_ACCESS_KEY_ID
+    secret_access_key: $AWS_SECRET_ACCESS_KEY
+    region: us-east-2
+    app: connectnyc
+    env: connectnyc-production
+    bucket: elasticbeanstalk-us-east-2-961394077833
+    edge: true
+    on:
+      branch: main
