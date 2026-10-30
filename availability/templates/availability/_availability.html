@@ -1,0 +1,47 @@
+{% comment %}
+  E06 availability reports. US22 (reporting) and US23 (score and recency). Reports are
+  community observations, kept separate from overall experience ratings.
+{% endcomment %}
+<section class="availability-section" id="availability" aria-labelledby="availability-title">
+  <div class="section-heading"><h2 id="availability-title">Availability reports</h2><span class="source-badge community-badge">Community feedback</span></div>
+  <p class="section-description">Reports from the last {{ availability.window_days }} days. These are community observations, not a guarantee of live connectivity.</p>
+  <div class="availability-layout">
+    <div class="availability-summary">
+      {% if availability.has_enough %}
+        <div class="reliability-score"><strong>{{ availability.score }}%</strong><span>of recent reports say Working</span></div>
+        <p>Based on {{ availability.report_count }} report{{ availability.report_count|pluralize }} from different people. Latest report {{ availability.latest_report_at|date:"M j, Y" }}.</p>
+      {% else %}
+        <h3>Not enough reports yet</h3>
+        <p>{% if availability.report_count %}{{ availability.report_count }} report{{ availability.report_count|pluralize }} so far. {% endif %}A reliability score appears once {{ availability.min_reports }} different people have reported.</p>
+      {% endif %}
+    </div>
+    <div class="availability-reports">
+      {% if availability.reports %}
+      <ul>
+        {% for report in availability.reports %}
+        <li><span class="availability-status is-{{ report.status }}">{{ report.get_status_display }}</span><span>{{ report.reporter.get_full_name|default:report.reporter.username }}</span><time datetime="{{ report.created_at|date:'c' }}">{{ report.created_at|date:"M j, Y" }}</time></li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="availability-empty">No reports in the last {{ availability.window_days }} days.</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="contribute-panel">
+    {% if user_role == "visitor" %}
+      {% with next_url=request.path|add:"#availability" %}
+      <div><h3>Is this hotspot working?</h3><p>Sign in to report what you found. Reading reports stays open to everyone.</p></div>
+      <div class="contribute-actions"><a class="button button-primary" href="{% url 'accounts:login' %}?next={{ next_url|urlencode }}">Log in to report</a></div>
+      {% endwith %}
+    {% else %}
+      <div>
+        <h3>Is this hotspot working?</h3>
+        <p>Report what you found, including the last time you tried.{% if user_report %} Your latest report: <strong>{{ user_report.get_status_display }}</strong> on {{ user_report.created_at|date:"M j, Y" }}.{% endif %}</p>
+      </div>
+      <form class="contribute-actions" method="post" action="{% url 'availability:report' hotspot.pk %}">{% csrf_token %}
+        <button type="submit" name="status" value="working" class="button button-primary">Working</button>
+        <button type="submit" name="status" value="unavailable" class="button button-secondary">Unavailable</button>
+      </form>
+    {% endif %}
+  </div>
+</section>

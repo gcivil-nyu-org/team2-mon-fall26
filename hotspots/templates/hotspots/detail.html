@@ -31,6 +31,8 @@
     <div class="profile-map-wrap"><div id="hotspot-map" class="profile-map" role="region" aria-label="Map showing {{ hotspot.display_name }}" data-profile-only="true" data-tile-url="{{ tile_url }}" data-tile-attribution="{{ tile_attribution }}"></div><p id="map-notice" class="map-notice" role="status" hidden></p><noscript><p class="map-notice">Enable JavaScript to view the map. The official location information is shown beside it.</p></noscript><div class="map-caption"><span class="map-key"><span class="legend-pin" aria-hidden="true"></span>Official hotspot location</span></div></div>
   </section>
 
+  {% include "availability/_availability.html" %}
+
   <section class="community-section" id="reviews" aria-labelledby="community-title">
     <div class="section-heading"><h2 id="community-title">Hotspot Reviews</h2><span class="source-badge community-badge">Community feedback</span></div>
     <p class="section-description">Ratings and written reviews are separate from official location data.</p>

@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "hotspots.apps.HotspotsConfig",
     "reviews.apps.ReviewsConfig",
+    "availability.apps.AvailabilityConfig",
     "accounts.apps.AccountsConfig",
 ]
 MIDDLEWARE = [

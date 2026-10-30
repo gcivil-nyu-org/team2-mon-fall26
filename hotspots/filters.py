@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 from django.db.models import Q
 
 from .models import Hotspot
+from .sorting import SORTS
 
 # Fields matched by the free-text location search (US02): landmark/site name,
 # street address or description, neighborhood, borough and ZIP code.
@@ -42,6 +43,9 @@ def read_params(params):
         value = params.get(name, "").strip()
         if value:
             values[name] = value
+    sort = params.get("sort", "").strip()
+    if sort in SORTS:
+        values["sort"] = sort  # US24; not a filter, so it never narrows results
     return values
 
 

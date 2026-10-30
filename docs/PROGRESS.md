@@ -21,7 +21,7 @@ The October 26 review passed **92 automated tests against isolated MySQL 8.4**, 
 | [E03 — Rate & Review Hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/3) | Implemented and locally validated in PR #53 (Suvan) | Production release and deployed acceptance; synchronize Story workflow states. US15 remains MLP scope. |
 | [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | CLI import foundation and source labels implemented | Administrator import/list/update/removal workflows and retirement policy. |
 | [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | Not implemented | Shared content flagging, moderation review, and removal. |
-| [E06 — Report Availability & Assess Reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) | Planned MLP; not implemented | Working/Unavailable reports, reliability/recency, rating/reliability sorting, and seating/accessibility tags (not yet decomposed into a Story). |
+| [E06 — Report Availability & Assess Reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) | US22–US24 implemented and locally validated (E06 branch); seating/accessibility tags not started | Team review of the reliability rules below, MySQL/CI run, deployed acceptance, and the seating/accessibility tags story. |
 | [E07 — Follow Hotspots & Receive Updates](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) | Planned MLP; not implemented | Follow/unfollow, personal list, and notifications. |
 | [E08 — Discussion Forum & Community Interaction](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) | Not implemented | Topic-based posts, comments/replies, and forum votes; separate from hotspot reviews. |
 
@@ -79,9 +79,9 @@ Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #
 | E05 | [US19 / #29 — Review content and flags](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/29) | Not implemented. |
 | E05 | [US20 / #30 — Remove violations](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/30) | Not implemented. |
 | E05 | [US21 / #31 — Flag inappropriate content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/31) | Not implemented; shared by hotspot reviews and discussions. |
-| E06 | [US22 / #32 — Report Working/Unavailable](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/32) | Planned MLP; not implemented. |
-| E06 | [US23 / #33 — Reliability and report recency](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/33) | Planned MLP; not implemented. |
-| E06 | [US24 / #34 — Sort by rating/reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/34) | Planned MLP; not implemented. |
+| E06 | [US22 / #32 — Report Working/Unavailable](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/32) | Implemented; locally validated, pending review and deployed acceptance. |
+| E06 | [US23 / #33 — Reliability and report recency](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/33) | Implemented; locally validated, pending review and deployed acceptance. Rules proposed in the archive entry below. |
+| E06 | [US24 / #34 — Sort by rating/reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/34) | Implemented; locally validated, pending review and deployed acceptance. |
 | E07 | [US25 / #35 — Follow/unfollow](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/35) | Planned MLP; not implemented. |
 | E07 | [US26 / #36 — My followed hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/36) | Planned MLP; not implemented. |
 | E07 | [US27 / #37 — Notifications](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/37) | Planned MLP; not implemented. |
@@ -111,6 +111,14 @@ Closed test issue #44 is excluded from product completion progress.
 Docker Compose was used for this local review only. No production deployment or production database modification was performed.
 
 ## Development archive
+
+### October 30, 2026 — E06 availability reports, reliability score and sorting (US22, US23, US24)
+
+- Added the `availability` app: `AvailabilityReport` (hotspot, reporter, Working/Unavailable, timestamp) with migration `0001`, a POST-only `contributor_required` report view, and an "Availability reports" section on the hotspot profile. Reports are stored separately from `reviews.Review`, so ratings and averages are unchanged.
+- Proposed reliability rules, kept as constants in `availability/services.py` for the team to adjust: a report counts for 30 days; each person's newest report per hotspot is the only one counted; the score is the share of those reports that say Working; no score is shown until 3 different people have reported ("Not enough reports yet"). The profile labels reports as community observations, not a guarantee of live connectivity, and shows each report's source and date.
+- Added a "Sort by" control to the map page and `sort=rating|reliability` to the JSON API. Hotspots without a rating or enough reports come after those with data, ties keep the default order, and sorting combines with the existing filters. Sorting is not counted as a filter. The API records now include `reliability_score` and `availability_report_count`.
+- Open decisions for the team: conflicting-report handling beyond "newest per person", seating/accessibility tags (not started), and whether reports need a cooldown against repeat submissions.
+- Verified: all 112 tests pass (92 existing and 20 new in `availability/tests.py`) with Django's SQLite backend, `makemigrations --check`, and a manual browser check of the profile section and the reliability sort against the 36-hotspot sample. Not yet run against MySQL or in CI, not yet deployed.
 
 ### October 24, 2026 — E03 rate, edit, delete and upvote reviews (US11, US13, US14, US15)
 
