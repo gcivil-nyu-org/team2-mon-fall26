@@ -5,6 +5,10 @@ from . import views
 app_name = "hotspots"
 
 urlpatterns = [
+    path("manage/hotspots/", management_views.manage_list, name="manage_list"),
+    path("manage/hotspots/import/", management_views.manage_import, name="manage_import"),
+    path("manage/hotspots/<int:pk>/edit/", management_views.manage_edit, name="manage_edit"),
+    path("manage/hotspots/<int:pk>/remove/", management_views.manage_retire, name="manage_retire"),
     path("hotspots/<int:pk>/follow/", views.follow, name="follow"),
     path("hotspots/<int:pk>/unfollow/", views.unfollow, name="unfollow"),
     path("", views.map_view, name="map"),
