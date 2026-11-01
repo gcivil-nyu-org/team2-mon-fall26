@@ -75,13 +75,28 @@ def edit_review(request, pk):
     review = _own_review_or_404(request, pk)
     form = ReviewForm(request.POST or None, instance=review)
     if request.method == "POST" and form.is_valid():
-        review = form.save()
-        # A held review stays held after an edit; an admin decides.
-        if _check_and_hold(review, is_new=False):
+        # E05: a moderator or community flags may act between the lookup above and
+        # this save. Lock the current row and write only the author's fields, so a
+        # concurrent hold is never cleared and a removed review is never recreated.
+        with transaction.atomic():
+            current = (
+                Review.objects.select_for_update()
+                .filter(pk=review.pk, author=request.user, is_demo=False, hotspot__is_active=True)
+                .first()
+            )
+            if current is None:
+                messages.info(request, "This review is no longer available. It may have been removed by a moderator.")
+                return redirect(_hotspot_url(review.hotspot))
+            current.rating = form.cleaned_data["rating"]
+            current.body = form.cleaned_data["body"]
+            current.save(update_fields=["rating", "body", "updated_at"])
+            # A held review stays held after an edit; an admin decides.
+            held = _check_and_hold(current, is_new=False)
+        if held:
             messages.info(request, HELD_MESSAGE)
         else:
             messages.success(request, "Your changes have been saved.")
-        return redirect(_hotspot_url(review.hotspot))
+        return redirect(_hotspot_url(current.hotspot))
     return render(
         request,
         "reviews/review_form.html",

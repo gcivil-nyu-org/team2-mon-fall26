@@ -106,14 +106,16 @@ def remove_content(request, kind, pk):
     info = flaggable.describe(obj)
     form = RemovalForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
-        services.remove_content(
+        destination = f"{reverse('moderation:queue')}?tab={'held' if info['is_held'] else 'flagged'}"
+        record = services.remove_content(
             flaggable, obj, request.user, form.cleaned_data["reason"], form.cleaned_data["note"]
         )
-        messages.success(request, f"Removed the {flaggable.label.lower()} by {info['author']}. The decision was logged.")
-        return redirect(f"{reverse('moderation:queue')}?tab={'held' if info['is_held'] else 'flagged'}")
-    open_flags = services.flags_for(flaggable, obj.pk).filter(
-        status=ContentFlag.Status.OPEN
-    ).select_related("flagged_by")
+        if record is None:
+            messages.info(request, "This item no longer exists; its author may have deleted it.")
+        else:
+            messages.success(request, f"Removed the {flaggable.label.lower()} by {info['author']}. The decision was logged.")
+        return redirect(destination)
+    open_flags = services.open_flags_for(flaggable, obj.pk).select_related("flagged_by")
     return render(request, "moderation/confirm_remove.html", {
         "form": form, "flaggable": flaggable, "info": info, "pk": obj.pk, "open_flags": open_flags,
     })
@@ -125,43 +127,65 @@ def dismiss_flags(request, kind, pk):
     """Close the open flags on an item an administrator judged acceptable."""
     flaggable = get_type(kind)
     obj = get_object_or_404(flaggable.admin_queryset(), pk=pk)
-    if not services.flags_for(flaggable, obj.pk).filter(status=ContentFlag.Status.OPEN).exists():
+    if not services.open_flags_for(flaggable, obj.pk).exists():
         messages.info(request, "There are no open flags on this item.")
+    elif services.dismiss_flags(flaggable, obj, request.user) is None:
+        messages.info(request, "This item no longer exists; its author may have deleted it.")
     else:
-        services.dismiss_flags(flaggable, obj, request.user)
         messages.success(request, "Flags dismissed. The content was left unchanged.")
     return redirect(f"{reverse('moderation:queue')}?tab=flagged")
+
+
+STALE_APPROVAL = (
+    "Not published: the author edited this review after you opened the queue, or it was "
+    "already handled. Check the current text before approving."
+)
 
 
 @administrator_required
 @require_POST
 def approve_content(request, kind, pk):
-    """Publish an item that was held for review."""
+    """Publish an item that was held for review, exactly as the administrator saw it."""
     flaggable = get_type(kind)
     obj = get_object_or_404(flaggable.held_queryset(), pk=pk)
-    services.approve(flaggable, obj, request.user)
-    messages.success(request, f"Approved and published the {flaggable.label.lower()}.")
+    if services.approve(flaggable, obj, request.user, version=request.POST.get("version", "")) is None:
+        messages.error(request, STALE_APPROVAL)
+    else:
+        messages.success(request, f"Approved and published the {flaggable.label.lower()}.")
     return redirect(f"{reverse('moderation:queue')}?tab=held")
 
 
 def _selected(values):
-    """Parse ``kind:pk`` checkbox values into ``(type, object)`` pairs, skipping stale ones."""
+    """Parse ``kind:pk|version`` checkbox values into ``(type, object, version)``.
+
+    Items that no longer exist are skipped.
+    """
     selected = []
     for value in values:
-        kind, _, raw_pk = value.partition(":")
+        key, _, version = value.partition("|")
+        kind, _, raw_pk = key.partition(":")
         if not raw_pk.isdigit():
             continue
         flaggable = get_type(kind)
         obj = flaggable.admin_queryset().filter(pk=int(raw_pk)).first()
         if obj is not None:
-            selected.append((flaggable, obj))
+            selected.append((flaggable, obj, version))
     return selected
+
+
+def _plural(count, word="item"):
+    return f"{count} {word}{'' if count == 1 else 's'}"
 
 
 @administrator_required
 @require_POST
 def bulk_action(request):
-    """Approve or remove several items at once, so spam waves don't need one click each."""
+    """Approve or remove several items at once, so spam waves don't need one click each.
+
+    Removal is two steps (US20 requires confirmation): the queue's button opens a
+    confirmation page listing the selected items, and only its confirmed
+    submission deletes anything.
+    """
     tab = request.POST.get("tab") if request.POST.get("tab") in TABS else "held"
     destination = f"{reverse('moderation:queue')}?tab={tab}"
     action = request.POST.get("action")
@@ -169,21 +193,40 @@ def bulk_action(request):
     if not selected:
         messages.info(request, "Select at least one item first.")
         return redirect(destination)
+
     if action == "approve":
-        held = [(flaggable, obj) for flaggable, obj in selected if flaggable.describe(obj)["is_held"]]
-        for flaggable, obj in held:
-            services.approve(flaggable, obj, request.user)
-        messages.success(request, f"Approved and published {len(held)} item{'s' if len(held) != 1 else ''}.")
-    elif action == "remove":
-        form = RemovalForm(request.POST)
-        if not form.is_valid():
-            messages.error(request, "Choose a moderation reason (and a note for \u201cSomething else\u201d) before removing.")
-            return redirect(destination)
-        for flaggable, obj in selected:
+        approved = sum(
+            services.approve(flaggable, obj, request.user, version=version) is not None
+            for flaggable, obj, version in selected
+        )
+        skipped = len(selected) - approved
+        messages.success(request, f"Approved and published {_plural(approved)}.")
+        if skipped:
+            messages.info(request, f"{_plural(skipped)} not published: edited since you opened the queue, not held, or already handled.")
+        return redirect(destination)
+
+    if action != "remove":
+        messages.error(request, "Choose an action.")
+        return redirect(destination)
+
+    form = RemovalForm(request.POST if request.POST.get("confirm") == "yes" else None,
+                       initial={"reason": request.POST.get("reason") or Reason.SPAM})
+    if request.POST.get("confirm") == "yes" and form.is_valid():
+        removed = sum(
             services.remove_content(
                 flaggable, obj, request.user, form.cleaned_data["reason"], form.cleaned_data["note"]
-            )
-        messages.success(request, f"Removed {len(selected)} item{'s' if len(selected) != 1 else ''}. Each removal was logged.")
-    else:
-        messages.error(request, "Choose an action.")
-    return redirect(destination)
+            ) is not None
+            for flaggable, obj, _ in selected
+        )
+        messages.success(request, f"Removed {_plural(removed)}. Each removal was logged.")
+        return redirect(destination)
+    # First step, or a confirmation with errors: show what will be removed. Nothing is deleted.
+    items = [
+        {"type": flaggable, "pk": obj.pk, "info": flaggable.describe(obj),
+         "value": f"{flaggable.key}:{obj.pk}|{version}"}
+        for flaggable, obj, version in selected
+    ]
+    return render(request, "moderation/confirm_bulk_remove.html", {
+        "form": form, "items": items, "tab": tab, "destination": destination,
+        "affects_rating": any(item["type"].affects_rating for item in items),
+    })

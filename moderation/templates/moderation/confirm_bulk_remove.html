@@ -1,0 +1,32 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Remove selected content · Connect NYC{% endblock %}
+{% block admin_nav_class %}is-current{% endblock %}
+{% block admin_nav_current %}aria-current="page"{% endblock %}
+{% block content %}
+  <a class="back-link" href="{{ destination }}">← Community moderation</a>
+  <section class="admin-panel manage-form-card manage-edit-card data-management" aria-labelledby="bulk-remove-title">
+    <h1 id="bulk-remove-title">Remove {{ items|length }} selected item{{ items|length|pluralize }}?</h1>
+    <div class="manage-retention-note">
+      <h2>What happens</h2>
+      <p>Each item below is permanently removed from public pages{% if affects_rating %}, its rating no longer counts toward the hotspot's average, and its helpful votes are deleted{% endif %}.</p>
+      <p>A copy of each text, the reason and your username are kept in the moderation log, and their open flags are closed. Nothing has been removed yet.</p>
+    </div>
+    <ol class="moderation-bulk-list">
+      {% for item in items %}
+      <li>
+        <p class="moderation-excerpt-meta">{{ item.type.label }} · {{ item.info.reference }} · {{ item.info.author }}{% if item.info.rating %} · {{ item.info.rating }} / 5{% endif %}{% if item.info.is_held %} · <span class="held-text">Hidden from public</span>{% endif %}</p>
+        <p>{{ item.info.text|default:"(Rating only — no written review)"|truncatechars:220 }}</p>
+      </li>
+      {% endfor %}
+    </ol>
+    <form method="post" action="{% url 'moderation:bulk' %}" class="auth-form" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="remove">
+      <input type="hidden" name="tab" value="{{ tab }}">
+      {% for item in items %}<input type="hidden" name="items" value="{{ item.value }}">{% endfor %}
+      {% include "accounts/_field.html" with field=form.reason %}
+      {% include "accounts/_field.html" with field=form.note %}
+      <div class="manage-form-actions"><button type="submit" name="confirm" value="yes" class="button button-danger">Remove {{ items|length }} item{{ items|length|pluralize }}</button><a class="button button-secondary" href="{{ destination }}">Cancel</a></div>
+    </form>
+  </section>
+{% endblock %}

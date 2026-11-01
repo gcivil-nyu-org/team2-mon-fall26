@@ -27,7 +27,7 @@
   {% if item.notes %}<ul class="moderation-notes">{% for note in item.notes %}<li><strong>{{ note.user }}:</strong> {{ note.text }}</li>{% endfor %}</ul>{% endif %}
   <div class="manage-form-actions moderation-actions">
     {% if item.info.is_held %}
-      <form method="post" action="{% url 'moderation:approve' item.type.key item.pk %}">{% csrf_token %}<button type="submit" class="button button-primary">Approve</button></form>
+      <form method="post" action="{% url 'moderation:approve' item.type.key item.pk %}">{% csrf_token %}<input type="hidden" name="version" value="{{ item.info.version }}"><button type="submit" class="button button-primary">Approve</button></form>
     {% endif %}
     <a class="button button-danger" href="{% url 'moderation:remove' item.type.key item.pk %}">Remove…</a>
     {% if not item.info.is_held %}

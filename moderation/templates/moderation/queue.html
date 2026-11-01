@@ -31,8 +31,7 @@
         <div class="moderation-bulk-remove">
           <label for="bulk-reason" class="visually-hidden">Moderation reason for removing selected items</label>
           <select name="reason" id="bulk-reason">{% for value, label in removal_form.fields.reason.choices %}{% if value %}<option value="{{ value }}"{% if value == "spam" %} selected{% endif %}>{{ label }}</option>{% endif %}{% endfor %}</select>
-          <input type="hidden" name="note" value="Bulk removal">
-          <button type="submit" name="action" value="remove" class="button button-danger">Remove selected</button>
+          <button type="submit" name="action" value="remove" class="button button-danger">Remove selected…</button>
         </div>
       </form>
       {% endif %}

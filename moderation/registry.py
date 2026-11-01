@@ -59,6 +59,8 @@ def _describe_review(review):
         "is_demo": review.is_demo,
         "is_held": review.is_held,
         "is_public": hotspot.is_active and not review.is_held,
+        # Changes whenever the author edits; approvals check it (see services.approve).
+        "version": review.updated_at.isoformat(),
     }
 
 

@@ -459,3 +459,5 @@ dd { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; overflow-wr
 .moderation-auto { margin: 0 0 10px; padding: 10px 12px; background: #fff8ec; border: 1px solid #f3dcb0; border-radius: 5px; color: #6b4200; font-size: 13px; line-height: 1.55; }
 .moderation-auto ul { margin: 4px 0 0; padding-left: 18px; }
 @media (max-width: 640px) { .moderation-bulk-remove { margin-left: 0; width: 100%; } .moderation-bulk select { width: 100%; } }
+.moderation-bulk-list { margin: 20px 0; padding-left: 22px; display: grid; gap: 12px; font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.moderation-bulk-list li p + p { margin-top: 2px; }

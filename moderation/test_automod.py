@@ -163,7 +163,7 @@ class SubmitAndHoldFlowTests(TestCase):
         self.assertEqual([item["pk"] for item in queue.context["items"]], [review.pk])
         self.assertContains(queue, "Automated check:")
         self.assertContains(queue, "Promotional wording")
-        self.client.post(reverse("moderation:approve", args=["review", review.pk]))
+        self.client.post(reverse("moderation:approve", args=["review", review.pk]), {"version": REVIEW.describe(review)["version"]})
         review.refresh_from_db()
         self.assertFalse(review.is_held)
         self.assertEqual(ContentFlag.objects.get(object_id=review.pk).status, ContentFlag.Status.DISMISSED)
@@ -243,10 +243,10 @@ class BulkActionTests(TestCase):
         self.client.force_login(self.admin)
 
     def keys(self, reviews):
-        return [f"review:{review.pk}" for review in reviews]
+        return [f"review:{review.pk}|{REVIEW.describe(review)['version']}" for review in reviews]
 
     def test_bulk_remove_logs_each_item(self):
-        response = self.client.post(self.bulk, {"action": "remove", "reason": Reason.SPAM, "note": "Bulk removal", "items": self.keys(self.held[:2])}, follow=True)
+        response = self.client.post(self.bulk, {"action": "remove", "confirm": "yes", "reason": Reason.SPAM, "note": "Spam wave", "items": self.keys(self.held[:2])}, follow=True)
         self.assertContains(response, "Removed 2 items")
         self.assertEqual(Review.objects.count(), 1)
         self.assertEqual(ModerationRecord.objects.filter(action=ModerationRecord.Action.REMOVED).count(), 2)
@@ -258,12 +258,14 @@ class BulkActionTests(TestCase):
 
     def test_bulk_requires_a_selection_and_a_valid_reason(self):
         self.assertContains(self.client.post(self.bulk, {"action": "remove", "reason": Reason.SPAM}, follow=True), "Select at least one item")
-        self.assertContains(self.client.post(self.bulk, {"action": "remove", "reason": "", "items": self.keys(self.held)}, follow=True), "Choose a moderation reason")
+        response = self.client.post(self.bulk, {"action": "remove", "confirm": "yes", "reason": "", "items": self.keys(self.held)})
+        self.assertContains(response, "Choose a moderation reason.")
+        self.assertTemplateUsed(response, "moderation/confirm_bulk_remove.html")
         self.assertEqual(Review.objects.count(), 3)
 
     def test_contributors_cannot_approve_or_bulk_act(self):
         self.client.force_login(make_user("contributor"))
-        self.assertEqual(self.client.post(reverse("moderation:approve", args=["review", self.held[0].pk])).status_code, 403)
+        self.assertEqual(self.client.post(reverse("moderation:approve", args=["review", self.held[0].pk]), {"version": REVIEW.describe(self.held[0])["version"]}).status_code, 403)
         self.assertEqual(self.client.post(self.bulk, {"action": "approve", "items": self.keys(self.held)}).status_code, 403)
         self.assertEqual(Review.objects.filter(is_held=True).count(), 3)
 

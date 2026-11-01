@@ -130,10 +130,10 @@ One shared reporting and moderation workflow for community content. Hotspot revi
 | Trust | 3+ published reviews at least 24 hours old, none ever removed | Skips the caps, repetition and posting-speed rules. Spam, profanity and duplicate checks still apply. |
 | Community auto-hide | 3 different users flag a visible review | Hidden until an administrator decides. |
 
-Rating-only entries have no text and are only held for repeat offenders. Thresholds are settings in `config/settings.py`; add blocked terms as a comma-separated `MODERATION_BLOCKED_TERMS` environment value (empty by default).
+The full policy and the acceptance criteria for these extensions are in [docs/E05-MODERATION-POLICY.md](docs/E05-MODERATION-POLICY.md) (proposed, pending team agreement). Rating-only entries have no text and are only held for repeat offenders. Thresholds are settings in `config/settings.py`; add blocked terms as a comma-separated `MODERATION_BLOCKED_TERMS` environment value (empty by default).
 
 - **Flag (contributors):** On a hotspot profile, signed-in users see **Flag** on other people's written reviews, choose a reason and optionally add details. Each user can flag an item once; authors cannot flag their own content; visitors are sent to log in.
-- **Inspect (administrators):** **Admin → Open moderation** or `/manage/moderation/` opens on **Held for review** (why each item was held, Approve/Remove, select-all and bulk approve/remove). The other tabs are flagged public content (type, link to the original, flag count, reasons, notes), recent ratings and reviews, and the moderation log. Contributors get 403.
+- **Inspect (administrators):** **Admin → Open moderation** or `/manage/moderation/` opens on **Held for review** (why each item was held, Approve/Remove, select-all, bulk approve, and bulk remove with a confirmation step). The other tabs are flagged public content (type, link to the original, flag count, reasons, notes), recent ratings and reviews, and the moderation log. Contributors get 403.
 - **Remove (administrators):** Confirm and choose a moderation reason. The review is deleted from public pages and the hotspot average updates; the log keeps a snapshot of the text, the reason, the note and the administrator. Administrators never edit text. **Dismiss flags** closes flags without changing the content.
 
 ## Project structure and integration points

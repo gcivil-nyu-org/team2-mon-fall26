@@ -117,7 +117,7 @@ def _item(flaggable, obj, reasons, notes, automated, latest):
     return {
         "type": flaggable,
         "pk": obj.pk,
-        "key": f"{flaggable.key}:{obj.pk}",
+        "key": f"{flaggable.key}:{obj.pk}|{flaggable.describe(obj)['version']}",
         "info": flaggable.describe(obj),
         "flag_count": sum(user_reasons.values()),
         "reasons": user_reasons.most_common(),
@@ -186,15 +186,27 @@ def _record(flaggable, obj, action, moderator, reason="", note="", new_status=No
     return record
 
 
+def _lock(flaggable, obj):
+    """Re-read the item under a row lock, so decisions and author edits serialize.
+
+    Returns None when the item no longer exists (for example, the author deleted it).
+    """
+    return flaggable.admin_queryset().select_for_update().filter(pk=obj.pk).first()
+
+
 def remove_content(flaggable, obj, moderator, reason, note=""):
     """US20: log the decision, close the item's flags, then delete the item.
 
     Deleting a review removes it from every public page and its rating from the
     hotspot's average, exactly as when an author deletes their own review.
+    Returns None, and changes nothing, when the item is already gone.
     """
     if reason not in Reason.values:
         raise ValueError("A moderation reason is required.")
     with transaction.atomic():
+        obj = _lock(flaggable, obj)
+        if obj is None:
+            return None
         record = _record(
             flaggable, obj, ModerationRecord.Action.REMOVED, moderator, reason, note,
             ContentFlag.Status.REMOVED,
@@ -206,15 +218,28 @@ def remove_content(flaggable, obj, moderator, reason, note=""):
 def dismiss_flags(flaggable, obj, moderator):
     """Close an item's open flags without changing the content."""
     with transaction.atomic():
+        obj = _lock(flaggable, obj)
+        if obj is None:
+            return None
         return _record(
             flaggable, obj, ModerationRecord.Action.DISMISSED, moderator,
             new_status=ContentFlag.Status.DISMISSED,
         )
 
 
-def approve(flaggable, obj, moderator):
-    """Publish a held item and close its flags."""
+def approve(flaggable, obj, moderator, version=None):
+    """Publish a held item and close its flags.
+
+    ``version`` is the item's version when the administrator looked at it. If the
+    author edited it since, nothing is published: the administrator must review
+    the new text first. Returns None when nothing was approved.
+    """
     with transaction.atomic():
+        obj = _lock(flaggable, obj)
+        if obj is None or not flaggable.describe(obj)["is_held"]:
+            return None
+        if version is not None and flaggable.describe(obj)["version"] != version:
+            return None
         record = _record(
             flaggable, obj, ModerationRecord.Action.APPROVED, moderator,
             new_status=ContentFlag.Status.DISMISSED,
