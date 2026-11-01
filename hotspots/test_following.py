@@ -68,3 +68,40 @@ class FollowHotspotTests(TestCase):
                 hotspot=self.hotspot,
             ).exists()
         )
+
+class FollowedHotspotListTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="alex")
+        self.followed = make_hotspot(1344, name="Followed Park")
+        self.unfollowed = make_hotspot(53, name="Other Park")
+        self.inactive = make_hotspot(
+            70,
+            name="Retired Park",
+            is_active=False,
+        )
+        self.followed_url = reverse("hotspots:followed")
+
+        HotspotFollow.objects.create(
+            user=self.user,
+            hotspot=self.followed,
+        )
+        HotspotFollow.objects.create(
+            user=self.user,
+            hotspot=self.inactive,
+        )
+
+    def test_visitor_must_sign_in_to_view_followed_hotspots(self):
+        response = self.client.get(self.followed_url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response["Location"])
+
+    def test_user_sees_only_active_hotspots_they_follow(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(self.followed_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Followed Park")
+        self.assertNotContains(response, "Other Park")
+        self.assertNotContains(response, "Retired Park")

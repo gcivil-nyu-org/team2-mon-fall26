@@ -150,3 +150,21 @@ def unfollow(request, pk):
         hotspot=hotspot,
     ).delete()
     return redirect(hotspot.get_absolute_url())
+
+@login_required
+@require_GET
+def followed(request):
+    hotspots = (
+        Hotspot.objects.filter(
+            followers__user=request.user,
+            is_active=True,
+        )
+        .distinct()
+        .order_by("borough", "name", "hotspot_id")
+    )
+
+    return render(
+        request,
+        "hotspots/followed.html",
+        {"hotspots": hotspots},
+    )
