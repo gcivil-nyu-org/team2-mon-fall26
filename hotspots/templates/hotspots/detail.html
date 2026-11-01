@@ -9,6 +9,15 @@
   <a class="back-link" href="{% url 'hotspots:map' %}"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16 10H4m5-5-5 5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Back to map</a>
   <section class="profile-intro" aria-labelledby="profile-title">
     <div><div class="location-kicker">{{ hotspot.borough }}{% if hotspot.neighborhood %} / {{ hotspot.neighborhood }}{% endif %}</div><h1 id="profile-title">{{ hotspot.display_name }}</h1><p>{{ hotspot.location|default:"Location details not provided" }}</p></div>
+    {% if user.is_authenticated %}
+  <form method="post"
+        action="{% if is_following %}{% url 'hotspots:unfollow' hotspot.pk %}{% else %}{% url 'hotspots:follow' hotspot.pk %}{% endif %}">
+    {% csrf_token %}
+    <button type="submit" class="button button-primary">
+      {% if is_following %}Unfollow hotspot{% else %}Follow hotspot{% endif %}
+    </button>
+  </form>
+{% endif %}
     {% if demo_mode %}<span class="demo-badge"><span class="status-dot" aria-hidden="true"></span>Demo dataset</span>{% endif %}
   </section>
 
