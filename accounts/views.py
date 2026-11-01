@@ -9,7 +9,7 @@ from django.views.generic import FormView
 
 from hotspots.models import Hotspot
 from moderation.models import ModerationRecord
-from moderation.services import open_item_count
+from moderation.services import held_count, open_item_count
 from reviews.models import Review
 
 from .forms import LoginForm, SignUpForm
@@ -98,6 +98,7 @@ def admin_home(request):
         "hotspot_counts": hotspot_counts,
         "review_count": Review.objects.filter(is_demo=False).count(),
         "open_flag_items": open_item_count(),
+        "held_count": held_count(),
         "removed_count": ModerationRecord.objects.filter(action=ModerationRecord.Action.REMOVED).count(),
     }
     return render(request, "accounts/admin_home.html", context)

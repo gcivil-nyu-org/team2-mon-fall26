@@ -6,6 +6,9 @@ from django.views.decorators.http import require_POST
 from accounts.permissions import contributor_required
 from accounts.views import safe_next_url
 from hotspots.models import Hotspot
+from moderation import automod
+from moderation import services as moderation
+from moderation.registry import REVIEW
 
 from .forms import ReviewForm
 from .models import Review, ReviewVote
@@ -14,6 +17,20 @@ from .services import visible_reviews
 
 def _hotspot_url(hotspot):
     return f"{hotspot.get_absolute_url()}#reviews"
+
+
+HELD_MESSAGE = (
+    "Thanks. Your review was saved and is waiting for a moderator before it appears "
+    "publicly. Only you can see it until then."
+)
+
+
+def _check_and_hold(review, is_new):
+    """E05 tier 2: hold suspicious text for an administrator. Returns True if held."""
+    reasons = automod.hold_reasons(review, is_new)
+    if reasons:
+        moderation.hold(REVIEW, review, reasons)
+    return review.is_held
 
 
 def _own_review_or_404(request, pk):
@@ -45,7 +62,10 @@ def create_review(request, hotspot_pk):
         except IntegrityError:
             messages.info(request, "You already reviewed this hotspot.")
         else:
-            messages.success(request, "Thanks. Your rating has been saved.")
+            if _check_and_hold(review, is_new=True):
+                messages.info(request, HELD_MESSAGE)
+            else:
+                messages.success(request, "Thanks. Your rating has been saved.")
         return redirect(_hotspot_url(hotspot))
     return render(request, "reviews/review_form.html", {"form": form, "hotspot": hotspot, "editing": False})
 
@@ -55,8 +75,12 @@ def edit_review(request, pk):
     review = _own_review_or_404(request, pk)
     form = ReviewForm(request.POST or None, instance=review)
     if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "Your changes have been saved.")
+        review = form.save()
+        # A held review stays held after an edit; an admin decides.
+        if _check_and_hold(review, is_new=False):
+            messages.info(request, HELD_MESSAGE)
+        else:
+            messages.success(request, "Your changes have been saved.")
         return redirect(_hotspot_url(review.hotspot))
     return render(
         request,

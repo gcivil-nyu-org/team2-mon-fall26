@@ -35,7 +35,12 @@ class ContentFlag(models.Model):
     object_id = models.PositiveBigIntegerField()
     content_object = GenericForeignKey("content_type", "object_id")
     flagged_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="content_flags"
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="content_flags",
+        help_text="Empty for flags raised by the automated checks.",
     )
     reason = models.CharField(max_length=20, choices=Reason.choices)
     note = models.CharField(max_length=500, blank=True)
@@ -49,12 +54,17 @@ class ContentFlag(models.Model):
     class Meta:
         ordering = ["-created_at", "-pk"]
         constraints = [
+            # NULL (automated) flags are not limited by this; services keep one open each.
             models.UniqueConstraint(
                 fields=["content_type", "object_id", "flagged_by"],
                 name="one_flag_per_user_per_item",
             )
         ]
         indexes = [models.Index(fields=["status", "content_type", "object_id"])]
+
+    @property
+    def is_automated(self):
+        return self.flagged_by_id is None
 
     def __str__(self):
         return f"{self.get_reason_display()} flag on {self.content_type.model} {self.object_id}"
@@ -70,12 +80,16 @@ class ModerationRecord(models.Model):
     class Action(models.TextChoices):
         REMOVED = "removed", "Removed"
         DISMISSED = "dismissed", "Flags dismissed"
+        APPROVED = "approved", "Approved and published"
 
     action = models.CharField(max_length=12, choices=Action.choices)
     content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
     object_id = models.PositiveBigIntegerField()
     content_label = models.CharField(max_length=60)
     content_reference = models.CharField(max_length=300)
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+"
+    )
     author_username = models.CharField(max_length=150)
     rating = models.PositiveSmallIntegerField(null=True, blank=True)
     content_text = models.TextField(blank=True)

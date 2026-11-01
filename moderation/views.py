@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from accounts.permissions import administrator_required, contributor_required
@@ -9,10 +10,15 @@ from reviews.models import Review
 
 from . import services
 from .forms import FlagForm, RemovalForm
-from .models import ContentFlag, ModerationRecord
+from .models import ContentFlag, ModerationRecord, Reason
 from .registry import REVIEW, get_type
 
-TABS = {"flagged": "Flagged content", "recent": "Recent ratings and reviews", "log": "Moderation log"}
+TABS = {
+    "held": "Held for review",
+    "flagged": "Flagged content",
+    "recent": "Recent ratings and reviews",
+    "log": "Moderation log",
+}
 
 
 def _back_to(info):
@@ -46,6 +52,8 @@ def flag_content(request, kind, pk):
         except IntegrityError:
             messages.info(request, "You already flagged this. An administrator will review it.")
         else:
+            # Community auto-hide: enough separate flags hide the item until an admin decides.
+            services.auto_hide_if_widely_flagged(flaggable, obj)
             messages.success(request, "Thanks for flagging this. An administrator will review it.")
         return redirect(_back_to(info))
     return render(request, "moderation/flag_form.html", {
@@ -57,17 +65,21 @@ def flag_content(request, kind, pk):
 @require_GET
 def moderation_queue(request):
     """US19: administrators inspect flagged content, recent ratings/reviews and past decisions."""
-    tab = request.GET.get("tab", "flagged")
+    tab = request.GET.get("tab", "held")
     if tab not in TABS:
-        tab = "flagged"
+        tab = "held"
     context = {
         "tab": tab,
         "tabs": TABS,
         "tab_label": TABS[tab],
+        "held_count": services.held_count(),
         "open_item_count": services.open_item_count(),
         "removed_count": ModerationRecord.objects.filter(action=ModerationRecord.Action.REMOVED).count(),
+        "removal_form": RemovalForm(initial={"reason": Reason.SPAM}),
     }
-    if tab == "flagged":
+    if tab == "held":
+        context["items"] = services.held_items()
+    elif tab == "flagged":
         context["items"] = services.flagged_items()
     elif tab == "recent":
         page = Paginator(
@@ -98,7 +110,7 @@ def remove_content(request, kind, pk):
             flaggable, obj, request.user, form.cleaned_data["reason"], form.cleaned_data["note"]
         )
         messages.success(request, f"Removed the {flaggable.label.lower()} by {info['author']}. The decision was logged.")
-        return redirect("moderation:queue")
+        return redirect(f"{reverse('moderation:queue')}?tab={'held' if info['is_held'] else 'flagged'}")
     open_flags = services.flags_for(flaggable, obj.pk).filter(
         status=ContentFlag.Status.OPEN
     ).select_related("flagged_by")
@@ -118,4 +130,60 @@ def dismiss_flags(request, kind, pk):
     else:
         services.dismiss_flags(flaggable, obj, request.user)
         messages.success(request, "Flags dismissed. The content was left unchanged.")
-    return redirect("moderation:queue")
+    return redirect(f"{reverse('moderation:queue')}?tab=flagged")
+
+
+@administrator_required
+@require_POST
+def approve_content(request, kind, pk):
+    """Publish an item that was held for review."""
+    flaggable = get_type(kind)
+    obj = get_object_or_404(flaggable.held_queryset(), pk=pk)
+    services.approve(flaggable, obj, request.user)
+    messages.success(request, f"Approved and published the {flaggable.label.lower()}.")
+    return redirect(f"{reverse('moderation:queue')}?tab=held")
+
+
+def _selected(values):
+    """Parse ``kind:pk`` checkbox values into ``(type, object)`` pairs, skipping stale ones."""
+    selected = []
+    for value in values:
+        kind, _, raw_pk = value.partition(":")
+        if not raw_pk.isdigit():
+            continue
+        flaggable = get_type(kind)
+        obj = flaggable.admin_queryset().filter(pk=int(raw_pk)).first()
+        if obj is not None:
+            selected.append((flaggable, obj))
+    return selected
+
+
+@administrator_required
+@require_POST
+def bulk_action(request):
+    """Approve or remove several items at once, so spam waves don't need one click each."""
+    tab = request.POST.get("tab") if request.POST.get("tab") in TABS else "held"
+    destination = f"{reverse('moderation:queue')}?tab={tab}"
+    action = request.POST.get("action")
+    selected = _selected(request.POST.getlist("items"))
+    if not selected:
+        messages.info(request, "Select at least one item first.")
+        return redirect(destination)
+    if action == "approve":
+        held = [(flaggable, obj) for flaggable, obj in selected if flaggable.describe(obj)["is_held"]]
+        for flaggable, obj in held:
+            services.approve(flaggable, obj, request.user)
+        messages.success(request, f"Approved and published {len(held)} item{'s' if len(held) != 1 else ''}.")
+    elif action == "remove":
+        form = RemovalForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Choose a moderation reason (and a note for \u201cSomething else\u201d) before removing.")
+            return redirect(destination)
+        for flaggable, obj in selected:
+            services.remove_content(
+                flaggable, obj, request.user, form.cleaned_data["reason"], form.cleaned_data["note"]
+            )
+        messages.success(request, f"Removed {len(selected)} item{'s' if len(selected) != 1 else ''}. Each removal was logged.")
+    else:
+        messages.error(request, "Choose an action.")
+    return redirect(destination)

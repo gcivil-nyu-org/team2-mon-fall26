@@ -25,6 +25,10 @@ class FlaggableType:
     """Items a contributor can currently see and flag."""
     describe: Callable
     """Returns a dict describing one item for administrators (see ``_describe_review``)."""
+    set_held: Callable = None
+    """``set_held(obj, held)`` hides or publishes the item (E05 hold-for-review)."""
+    held_queryset: Callable = None
+    """Items currently hidden while they wait for an administrator."""
     affects_rating: bool = False
 
     @property
@@ -50,11 +54,25 @@ def _describe_review(review):
         "text": review.body,
         "rating": review.rating,
         "reference": f"{hotspot.display_name} (NYC ID {hotspot.pk})",
-        "url": f"{hotspot.get_absolute_url()}#review-{review.pk}" if hotspot.is_active else "",
+        "url": f"{hotspot.get_absolute_url()}#review-{review.pk}" if hotspot.is_active and not review.is_held else "",
         "created_at": review.created_at,
         "is_demo": review.is_demo,
-        "is_public": hotspot.is_active,
+        "is_held": review.is_held,
+        "is_public": hotspot.is_active and not review.is_held,
     }
+
+
+def _held_reviews():
+    from reviews.models import Review
+
+    return Review.objects.filter(is_held=True)
+
+
+def _set_review_held(review, held):
+    from reviews.models import Review
+
+    Review.objects.filter(pk=review.pk).update(is_held=held)
+    review.is_held = held
 
 
 REVIEW = FlaggableType(
@@ -63,6 +81,8 @@ REVIEW = FlaggableType(
     model_label="reviews.Review",
     public_queryset=_public_reviews,
     describe=_describe_review,
+    set_held=_set_review_held,
+    held_queryset=_held_reviews,
     affects_rating=True,
 )
 

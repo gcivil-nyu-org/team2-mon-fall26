@@ -445,3 +445,17 @@ dd { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; overflow-wr
 .moderation-actions form { margin: 0; }
 .moderation-review-cell { max-width: 320px; }
 .manage-status.is-removed { background: #fdf1f1; color: #9b2c2c; }
+.held-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; background: #fff4e0; color: #8a5300; font-size: 11px; font-weight: 700; vertical-align: middle; }
+.held-note { margin-top: 6px; color: #8a5300; font-size: 12px; }
+.held-text { color: #8a5300; }
+.moderation-help { margin: -4px 0 16px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.moderation-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 14px; padding: 12px 14px; background: var(--canvas); border: 1px solid var(--line); border-radius: 6px; }
+.moderation-bulk .button { margin: 0; }
+.moderation-bulk-remove { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.moderation-bulk select { width: 260px; max-width: 100%; min-width: 0; height: 40px; padding: 0 10px; border: 1px solid #c8d7ea; border-radius: 5px; color: var(--ink); background: var(--white); font-size: 13px; }
+.moderation-bulk select:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.moderation-select-all, .moderation-select { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.moderation-select-all input, .moderation-select input { width: auto; height: auto; margin: 0; }
+.moderation-auto { margin: 0 0 10px; padding: 10px 12px; background: #fff8ec; border: 1px solid #f3dcb0; border-radius: 5px; color: #6b4200; font-size: 13px; line-height: 1.55; }
+.moderation-auto ul { margin: 4px 0 0; padding-left: 18px; }
+@media (max-width: 640px) { .moderation-bulk-remove { margin-left: 0; width: 100%; } .moderation-bulk select { width: 100%; } }

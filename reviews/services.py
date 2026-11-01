@@ -5,7 +5,8 @@ from .models import Review
 
 
 def visible_reviews():
-    reviews = Review.objects.all()
+    """Reviews the public may see: never held for moderation (E05); demo rows only in demo mode."""
+    reviews = Review.objects.filter(is_held=False)
     return reviews if settings.DEMO_MODE else reviews.filter(is_demo=False)
 
 

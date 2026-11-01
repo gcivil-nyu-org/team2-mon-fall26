@@ -9,4 +9,6 @@ urlpatterns = [
     path("manage/moderation/", views.moderation_queue, name="queue"),
     path("manage/moderation/<slug:kind>/<int:pk>/remove/", views.remove_content, name="remove"),
     path("manage/moderation/<slug:kind>/<int:pk>/dismiss/", views.dismiss_flags, name="dismiss"),
+    path("manage/moderation/<slug:kind>/<int:pk>/approve/", views.approve_content, name="approve"),
+    path("manage/moderation/bulk/", views.bulk_action, name="bulk"),
 ]

@@ -1,0 +1,37 @@
+<article class="moderation-item" aria-label="{{ item.type.label }} by {{ item.info.author }}">
+  <header class="moderation-item-header">
+    <label class="moderation-select"><input type="checkbox" name="items" value="{{ item.key }}" form="bulk-form"><span class="visually-hidden">Select {{ item.type.label|lower }} by {{ item.info.author }}</span></label>
+    <span class="moderation-type">{{ item.type.label }}</span>
+    {% if item.info.is_held %}<span class="held-badge">Hidden from public</span>{% endif %}
+    {% if item.flag_count %}<span class="moderation-flag-count">{{ item.flag_count }} user flag{{ item.flag_count|pluralize }}</span>{% endif %}
+    {% if item.info.is_demo %}<span class="review-demo-badge">Demo review</span>{% endif %}
+  </header>
+  <p class="moderation-reference">
+    {% if item.info.url %}<a href="{{ item.info.url }}">{{ item.info.reference }}</a>{% else %}{{ item.info.reference }}{% endif %}
+  </p>
+  <blockquote class="moderation-excerpt">
+    <p class="moderation-excerpt-meta">{{ item.info.author }}{% if item.info.rating %} · {{ item.info.rating }} / 5{% endif %} · <time datetime="{{ item.info.created_at|date:'c' }}">{{ item.info.created_at|date:"M j, Y" }}</time></p>
+    <p>{{ item.info.text|default:"(Rating only — no written review)"|truncatechars:600|linebreaksbr }}</p>
+  </blockquote>
+  {% if item.automated %}
+  <div class="moderation-auto"><strong>Automated check:</strong>
+    <ul>{% for reason in item.automated %}<li>{{ reason }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  {% if item.info.is_held and item.flag_count and not item.automated %}<p class="moderation-auto"><strong>Hidden automatically</strong> after several users flagged it.</p>{% endif %}
+  {% if item.reasons %}
+  <ul class="moderation-reasons" aria-label="User flag reasons">
+    {% for reason, count in item.reasons %}<li>{{ reason }}{% if count > 1 %} ×{{ count }}{% endif %}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  {% if item.notes %}<ul class="moderation-notes">{% for note in item.notes %}<li><strong>{{ note.user }}:</strong> {{ note.text }}</li>{% endfor %}</ul>{% endif %}
+  <div class="manage-form-actions moderation-actions">
+    {% if item.info.is_held %}
+      <form method="post" action="{% url 'moderation:approve' item.type.key item.pk %}">{% csrf_token %}<button type="submit" class="button button-primary">Approve</button></form>
+    {% endif %}
+    <a class="button button-danger" href="{% url 'moderation:remove' item.type.key item.pk %}">Remove…</a>
+    {% if not item.info.is_held %}
+      <form method="post" action="{% url 'moderation:dismiss' item.type.key item.pk %}">{% csrf_token %}<button type="submit" class="button button-secondary">Dismiss flags</button></form>
+    {% endif %}
+  </div>
+</article>

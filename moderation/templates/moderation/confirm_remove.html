@@ -4,9 +4,9 @@
 {% block admin_nav_current %}aria-current="page"{% endblock %}
 {% block content %}
   <a class="back-link" href="{% url 'moderation:queue' %}">← Community moderation</a>
-  <section class="admin-panel manage-form-card" aria-labelledby="remove-title">
+  <section class="admin-panel manage-form-card data-management" aria-labelledby="remove-title">
     <h1 id="remove-title">Remove this {{ flaggable.label|lower }}?</h1>
-    <p class="auth-intro">{% if info.url %}<a href="{{ info.url }}">{{ info.reference }}</a>{% else %}{{ info.reference }}{% endif %}</p>
+    <p class="auth-intro">{% if info.url %}<a href="{{ info.url }}">{{ info.reference }}</a>{% else %}{{ info.reference }}{% endif %}{% if info.is_held %} <span class="held-badge">Hidden from public</span>{% endif %}</p>
     <blockquote class="moderation-excerpt">
       <p class="moderation-excerpt-meta">{{ info.author }}{% if info.rating %} · {{ info.rating }} / 5{% endif %} · <time datetime="{{ info.created_at|date:'c' }}">{{ info.created_at|date:"M j, Y" }}</time></p>
       <p>{{ info.text|default:"(Rating only — no written review)"|linebreaksbr }}</p>
@@ -14,11 +14,11 @@
     <div class="manage-retention-note">
       <h2>What happens</h2>
       <p>The {{ flaggable.label|lower }} is permanently removed from public pages{% if flaggable.affects_rating %} and its rating no longer counts toward the hotspot's average{% endif %}.</p>
-      <p>A copy of the text, the reason and your username are kept in the moderation log. {% if open_flags %}Its {{ open_flags|length }} open flag{{ open_flags|length|pluralize }} will be closed.{% endif %}</p>
+      <p>A copy of the text, the reason and your username are kept in the moderation log. {% if open_flags %}Its open flags will be closed.{% endif %}</p>
     </div>
     {% if open_flags %}
     <h2 class="moderation-subtitle">Open flags</h2>
-    <ul class="moderation-notes">{% for flag in open_flags %}<li><strong>{{ flag.flagged_by.username }}</strong> · {{ flag.get_reason_display }}{% if flag.note %} — {{ flag.note }}{% endif %}</li>{% endfor %}</ul>
+    <ul class="moderation-notes">{% for flag in open_flags %}<li><strong>{% if flag.is_automated %}Automated check{% else %}{{ flag.flagged_by.username }}{% endif %}</strong> · {{ flag.get_reason_display }}{% if flag.note %} — {{ flag.note }}{% endif %}</li>{% endfor %}</ul>
     {% endif %}
     <form method="post" class="auth-form" novalidate>
       {% csrf_token %}

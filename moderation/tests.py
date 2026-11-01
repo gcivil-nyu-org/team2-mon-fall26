@@ -154,9 +154,9 @@ class ModerationViewTests(ModerationTestCase):
         make_flag(self.review, make_user("second"), Reason.SPAM)
         make_flag(self.review, make_user("third"), Reason.OFFENSIVE)
         self.client.force_login(self.admin)
-        response = self.client.get(self.queue)
+        response = self.client.get(self.queue, {"tab": "flagged"})
         self.assertContains(response, "Hotspot review")
-        self.assertContains(response, "3 flags")
+        self.assertContains(response, "3 user flags")
         self.assertContains(response, f'href="{self.hotspot.get_absolute_url()}#review-{self.review.pk}"')
         self.assertContains(response, "Bryant Park (NYC ID 1344)")
         self.assertContains(response, "Spam or advertising ×2")
@@ -170,7 +170,7 @@ class ModerationViewTests(ModerationTestCase):
         flag.status = ContentFlag.Status.DISMISSED
         flag.save()
         self.client.force_login(self.admin)
-        response = self.client.get(self.queue)
+        response = self.client.get(self.queue, {"tab": "flagged"})
         self.assertEqual(response.context["items"], [])
         self.assertContains(response, "No flagged content")
 
@@ -191,7 +191,7 @@ class ModerationViewTests(ModerationTestCase):
         self.client.post(reverse("reviews:delete", args=[self.review.pk]))
         self.assertEqual(ContentFlag.objects.get().status, ContentFlag.Status.WITHDRAWN)
         self.client.force_login(self.admin)
-        self.assertEqual(self.client.get(self.queue).context["items"], [])
+        self.assertEqual(self.client.get(self.queue, {"tab": "flagged"}).context["items"], [])
 
     def test_administration_page_links_to_moderation_with_counts(self):
         make_flag(self.review, self.reporter)
@@ -200,9 +200,10 @@ class ModerationViewTests(ModerationTestCase):
         self.assertContains(response, self.queue)
         self.assertEqual(response.context["open_flag_items"], 1)
 
-    def test_unknown_tab_falls_back_to_flagged(self):
+    def test_held_tab_is_the_default_and_unknown_tabs_fall_back_to_it(self):
         self.client.force_login(self.admin)
-        self.assertEqual(self.client.get(self.queue, {"tab": "nope"}).context["tab"], "flagged")
+        self.assertEqual(self.client.get(self.queue).context["tab"], "held")
+        self.assertEqual(self.client.get(self.queue, {"tab": "nope"}).context["tab"], "held")
 
 
 class RemoveContentTests(ModerationTestCase):
@@ -220,7 +221,7 @@ class RemoveContentTests(ModerationTestCase):
         response = self.client.get(remove_url(self.review))
         self.assertContains(response, "Remove this hotspot review?")
         self.assertContains(response, "Buy cheap watches")
-        self.assertContains(response, "2 open flags")
+        self.assertContains(response, "Its open flags will be closed.")
         response = self.client.post(remove_url(self.review), {})
         self.assertContains(response, "Choose a moderation reason.")
         response = self.client.post(remove_url(self.review), {"reason": Reason.OTHER})
@@ -231,7 +232,7 @@ class RemoveContentTests(ModerationTestCase):
     def test_removed_review_disappears_publicly_and_average_updates(self):
         self.assertEqual(self.client.get(self.hotspot.get_absolute_url()).context["rating_summary"]["average"], 3.0)
         response = self.client.post(remove_url(self.review), {"reason": Reason.SPAM, "note": "Repeat advertiser"}, follow=True)
-        self.assertRedirects(response, reverse("moderation:queue"))
+        self.assertRedirects(response, f"{reverse('moderation:queue')}?tab=flagged")
         self.assertContains(response, "Removed the hotspot review by author")
         self.assertFalse(Review.objects.filter(pk=self.review.pk).exists())
         self.assertFalse(ReviewVote.objects.exists())
