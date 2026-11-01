@@ -105,6 +105,7 @@ def detail(request, pk):
     )
     voted_ids = set()
     user_review = None
+    is_following = False
     if request.user.is_authenticated:
         voted_ids = set(
             ReviewVote.objects.filter(user=request.user, review__hotspot=hotspot).values_list(
@@ -112,17 +113,18 @@ def detail(request, pk):
             )
         )
         user_review = Review.objects.filter(hotspot=hotspot, author=request.user, is_demo=False).first()
+        is_following = HotspotFollow.objects.filter(user=request.user, hotspot=hotspot,).exists()
     context = {
         **_map_settings(),
         "hotspot": hotspot,
         "reviews": written,
         "voted_ids": voted_ids,
         "user_review": user_review,
+        "is_following": is_following,
         "rating_summary": summary,
         "profile_map_data": _serialize_hotspot(hotspot, summary),
     }
     return render(request, "hotspots/detail.html", context)
-
 
 @require_GET
 def hotspot_data(request):

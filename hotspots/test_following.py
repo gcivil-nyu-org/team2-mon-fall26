@@ -105,3 +105,48 @@ class FollowedHotspotListTests(TestCase):
         self.assertContains(response, "Followed Park")
         self.assertNotContains(response, "Other Park")
         self.assertNotContains(response, "Retired Park")
+
+class FollowHotspotUiTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="alex")
+        self.hotspot = make_hotspot()
+
+    def test_profile_shows_follow_button_when_user_is_not_following(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(self.hotspot.get_absolute_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Follow hotspot")
+        self.assertContains(
+            response,
+            reverse("hotspots:follow", args=[self.hotspot.pk]),
+        )
+
+    def test_profile_shows_unfollow_button_when_user_is_following(self):
+        HotspotFollow.objects.create(
+            user=self.user,
+            hotspot=self.hotspot,
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(self.hotspot.get_absolute_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Unfollow hotspot")
+        self.assertContains(
+            response,
+            reverse("hotspots:unfollow", args=[self.hotspot.pk]),
+        )
+
+    def test_signed_in_user_can_reach_followed_hotspots_from_map(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("hotspots:map"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            reverse("hotspots:followed"),
+        )
+        self.assertContains(response, "My followed hotspots")
