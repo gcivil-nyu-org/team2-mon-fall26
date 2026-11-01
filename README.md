@@ -117,6 +117,14 @@ docker compose up --build --wait
 
 Tests cover stable imports and review relationships, invalid-file rollback, shared coordinates, missing-source normalization, public read routes, hotspot-specific ratings/reviews, rating-only submissions, demo isolation, escaped review content, and database rating bounds.
 
+## Community moderation (E05)
+
+One shared reporting and moderation workflow for community content. Hotspot reviews are supported today; E08 forum posts, comments and replies plug in by adding a `FlaggableType` entry in `moderation/registry.py`.
+
+- **Flag (contributors):** On a hotspot profile, signed-in users see **Flag** on other people's written reviews, choose a reason and optionally add details. Each user can flag an item once; authors cannot flag their own content; visitors are sent to log in.
+- **Inspect (administrators):** **Admin → Open moderation** or `/manage/moderation/` lists flagged content (type, link to the original, flag count, reasons, notes), recent ratings and reviews, and the moderation log. Contributors get 403.
+- **Remove (administrators):** Confirm and choose a moderation reason. The review is deleted from public pages and the hotspot average updates; the log keeps a snapshot of the text, the reason, the note and the administrator. Administrators never edit text. **Dismiss flags** closes flags without changing the content.
+
 ## Project structure and integration points
 
 ```text
@@ -126,6 +134,7 @@ hotspots/           Official location model, importer, public views and map API
   static/hotspots/  Responsive styles and map selection logic
 reviews/            Review model, shared rating summary and demo seed command
 accounts/           E02 sign-up/login/logout, roles, shared access checks, admin area
+moderation/         E05 content flags, administrator moderation view, removal log
 templates/          Project-wide templates (403 page)
 data/               Team-provided official CSV sample and data verification script
 scripts/            Local environment generation and MySQL test helper
@@ -149,6 +158,10 @@ Public routes:
 | `/manage/hotspots/import/` | Administrator CSV upload/import |
 | `/manage/hotspots/<doitt_id>/edit/` | Administrator official-field editing |
 | `/manage/hotspots/<doitt_id>/remove/` | Confirmation and POST-only retirement |
+| `/content/review/<id>/flag/` | Contributor flag form for a written review |
+| `/manage/moderation/` | Administrator moderation view (`?tab=flagged`, `recent`, `log`) |
+| `/manage/moderation/review/<id>/remove/` | Confirmation and removal with a moderation reason |
+| `/manage/moderation/review/<id>/dismiss/` | POST-only flag dismissal |
 
 `/` and `/api/hotspots/` accept the same optional query parameters: `q` (location search), `borough`, `neighborhood`, `provider` and `type` (official access type). For example, `/api/hotspots/?q=library&borough=Brooklyn`.
 

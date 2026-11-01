@@ -1,0 +1,25 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Flag content · Connect NYC{% endblock %}
+{% block content %}
+  <section class="auth-card flag-form-card" aria-labelledby="flag-title">
+    <h1 id="flag-title">Flag this {{ flaggable.label|lower }}</h1>
+    <p class="auth-intro">Flag content that breaks the community guidelines or is misleading. An administrator will review it. The author is not told who flagged it.</p>
+    <blockquote class="moderation-excerpt">
+      <p class="moderation-excerpt-meta">{{ info.author }}{% if info.rating %} · {{ info.rating }} / 5{% endif %} · {{ info.reference }}</p>
+      <p>{{ info.text|truncatechars:400|linebreaksbr }}</p>
+    </blockquote>
+    <form method="post" class="auth-form" novalidate>
+      {% csrf_token %}
+      <fieldset class="form-field flag-reason-field{% if form.reason.errors %} has-error{% endif %}">
+        <legend>{{ form.reason.label }}</legend>
+        <div class="flag-reason-options">
+          {% for radio in form.reason %}<label class="flag-reason-option" for="{{ radio.id_for_label }}">{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>{% endfor %}
+        </div>
+        {% if form.reason.errors %}<ul class="field-errors">{% for error in form.reason.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+      </fieldset>
+      {% include "accounts/_field.html" with field=form.note %}
+      <button type="submit" class="button button-danger auth-submit">Submit flag</button>
+    </form>
+    <p class="auth-switch"><a href="{{ info.url }}">Cancel and go back</a></p>
+  </section>
+{% endblock %}

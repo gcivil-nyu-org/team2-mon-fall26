@@ -1,6 +1,6 @@
 # Project progress
 
-Last updated: **October 26, 2026**.
+Last updated: **November 1, 2026**.
 
 This document records implementation progress, remaining work, and development history for Connect NYC. GitHub and ZenHub remain the sources for requirements, assignments, and workflow status. Update this record as work progresses; preserve the dated archive below.
 
@@ -22,7 +22,7 @@ E04 administrator import/list/edit/retirement (US16–US17, Boqing) is implement
 | [E02 — Account Registration & Access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) | Merged in PR #52 (Jiahao) | Deployed acceptance of account access and the integrated E03 journey; synchronize Story workflow states. |
 | [E03 — Rate & Review Hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/3) | Implemented and locally validated in PR #53 (Suvan) | Production release and deployed acceptance; synchronize Story workflow states. US15 remains MLP scope. |
 | [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | Administrator import/list/edit/retirement implemented and locally validated (Boqing) | PR merge and production acceptance; US18 remains previously closed. |
-| [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | Not implemented | Shared content flagging, moderation review, and removal. |
+| [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | Implemented on branch `jiahao-E05-US19-21` (Jiahao); PR review, merge and acceptance pending | Shared content flagging, moderation review, and removal. Reviews are registered today; E08 forum content registers in `moderation/registry.py`. |
 | [E06 — Report Availability & Assess Reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) | Planned MLP; not implemented | Working/Unavailable reports, reliability/recency, rating/reliability sorting, and seating/accessibility tags (not yet decomposed into a Story). |
 | [E07 — Follow Hotspots & Receive Updates](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) | Planned MLP; not implemented | Follow/unfollow, personal list, and notifications. |
 | [E08 — Discussion Forum & Community Interaction](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) | Not implemented | Topic-based posts, comments/replies, and forum votes; separate from hotspot reviews. |
@@ -78,9 +78,9 @@ Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #
 
 | Epic | Story | Status |
 | --- | --- | --- |
-| E05 | [US19 / #29 — Review content and flags](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/29) | Not implemented. |
-| E05 | [US20 / #30 — Remove violations](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/30) | Not implemented. |
-| E05 | [US21 / #31 — Flag inappropriate content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/31) | Not implemented; shared by hotspot reviews and discussions. |
+| E05 | [US19 / #29 — Review content and flags](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/29) | Implemented on `jiahao-E05-US19-21`. `/manage/moderation/` (administrators only; contributors get 403) has three views: flagged content (type, link to the original, flag count, reasons, notes), recent ratings and reviews (newest 50 per page, including rating-only entries, with open-flag counts), and the moderation log. Linked from `/manage/`. |
+| E05 | [US20 / #30 — Remove violations](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/30) | Implemented on `jiahao-E05-US19-21`. Removal requires a confirmation page and a moderation reason (proposed list in `moderation.models.Reason`; team to confirm). The review is deleted, so it leaves public pages and the average recalculates; a `ModerationRecord` keeps a text snapshot, reason, note, flag count and administrator. Administrators cannot edit text. "Dismiss flags" closes flags without changing content and is logged. |
+| E05 | [US21 / #31 — Flag inappropriate content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/31) | Implemented on `jiahao-E05-US19-21` for hotspot reviews. Signed-in contributors see a Flag link on other users' written reviews and choose a reason ("Something else" requires details). One flag per user per item, enforced by a database constraint; authors cannot flag their own reviews; visitors are sent to log in. Flags close automatically if the author deletes the review. E08 forum content uses the same flow once registered. |
 | E06 | [US22 / #32 — Report Working/Unavailable](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/32) | Planned MLP; not implemented. |
 | E06 | [US23 / #33 — Reliability and report recency](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/33) | Planned MLP; not implemented. |
 | E06 | [US24 / #34 — Sort by rating/reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/34) | Planned MLP; not implemented. |
@@ -108,11 +108,21 @@ Closed test issue #44 is excluded from product completion progress.
 1. Complete E04 PR review/merge, then have the deployment owner release the reviewed revision and verify account → hotspot review → administrator import/edit/retirement on the production instance.
 2. Synchronize E02/E03/E04 Story and Epic workflow states after deployed acceptance; implementation does not automatically close their issues.
 3. Introduce GitHub Actions test automation and keep deployment/version information current. The PR has no automated GitHub check results at this review.
-4. Plan E05 moderation under its existing stories; E04 scheduled refresh and restoration remain outside the current scope. Keep E08 discussions separate; availability/reliability and following remain E06/E07 work.
+4. Review and merge E05 (`jiahao-E05-US19-21`, which also brings E04 from `main` into `develop`); the team should confirm the moderation reason list for #30. E04 scheduled refresh and restoration remain outside the current scope; E04 scheduled refresh and restoration remain outside the current scope. Keep E08 discussions separate; availability/reliability and following remain E06/E07 work.
 
 Docker Compose was used for this local review only. No production deployment or production database modification was performed.
 
 ## Development archive
+
+### November 1, 2026 — E05 content flags and moderation (US19, US20, US21)
+
+- Branched `jiahao-E05-US19-21` from `develop` and merged `main` to bring E04 (PR #54) into the E07 line. The only conflict was `hotspots/urls.py`, resolved by keeping both the E07 follow routes and the E04 `/manage/hotspots/` routes. E07 follow views already exclude retired hotspots.
+- Added the `moderation` app: `ContentFlag` (generic reference to the flagged item, unique per user per item, status open/removed/dismissed/withdrawn) and `ModerationRecord` (append-only log with a content snapshot), migration `moderation/0001`. A registry of flaggable types keeps one workflow for E03 reviews and future E08 content.
+- Added the flag form, administrator moderation view (flagged / recent / log), removal confirmation with required reason, flag dismissal, an Administration-page panel, Flag links on the hotspot profile, and Django admin registrations (log is read-only).
+- Design decision: removal deletes the review (as author deletion does) and keeps a snapshot in the log rather than soft-hiding it, so no existing review query changes. The author can post a new review afterwards.
+- Added 26 tests in `moderation/tests.py`. The full **149-test suite passed** locally on MariaDB 10.11 with both `DEMO_MODE=1` and the CI settings (`DEMO_MODE=0`, `DJANGO_DEBUG=0`); Django system and migration consistency checks passed. CI on MySQL 8.4 has not run yet.
+- Browser checks (Chromium): visitors see no Flag link; contributor flag with empty-reason error, success message and "Flagged for review" state; administrator panel counts, flagged view, recent view, removal confirmation and log; review gone from the public profile with the average updated; contributor gets 403 on `/manage/moderation/`.
+- Noted, not changed: on a 390 px viewport the signed-in header is wider than the screen because of the E07 "My followed hotspots" link.
 
 ### October 24, 2026 — E03 rate, edit, delete and upvote reviews (US11, US13, US14, US15)
 
