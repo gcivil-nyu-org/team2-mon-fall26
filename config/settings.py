@@ -15,6 +15,18 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
 ALLOWED_HOSTS = [host.strip() for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host.strip()]
 DEMO_MODE = os.environ.get("DEMO_MODE", "0") == "1"
 
+# E05 automated moderation (moderation/automod.py). Blocked terms are rejected
+# outright; add them as a comma-separated MODERATION_BLOCKED_TERMS environment value.
+MODERATION_BLOCKED_TERMS = [
+    term for term in os.environ.get("MODERATION_BLOCKED_TERMS", "").split(",") if term.strip()
+]
+MODERATION_AUTO_HIDE_FLAGS = 3  # distinct user flags that hide a review until an admin decides
+MODERATION_TRUSTED_MIN_REVIEWS = 3  # published reviews, with none removed, to skip soft rules
+MODERATION_TRUSTED_MIN_AGE_HOURS = 24  # ...counting only reviews at least this old
+MODERATION_REPEAT_OFFENDER_REMOVALS = 2  # removals after which every new review is held
+MODERATION_BURST_LIMIT = 3  # earlier reviews within the window before the next one is held
+MODERATION_BURST_MINUTES = 10
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -25,6 +37,7 @@ INSTALLED_APPS = [
     "hotspots.apps.HotspotsConfig",
     "reviews.apps.ReviewsConfig",
     "accounts.apps.AccountsConfig",
+    "moderation.apps.ModerationConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

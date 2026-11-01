@@ -1,0 +1,23 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Import official hotspots · Connect NYC{% endblock %}
+{% block admin_nav_class %}is-current{% endblock %}
+{% block admin_nav_current %}aria-current="page"{% endblock %}
+{% block content %}
+  <a class="back-link" href="{% url 'hotspots:manage_list' %}">← Official hotspot data</a>
+  <section class="admin-panel manage-form-card data-management" aria-labelledby="import-title">
+    <h1 id="import-title">Import official hotspots</h1>
+    <p class="auth-intro">Upload a CSV from <a href="{{ source_url }}">NYC Wi-Fi Hotspot Locations</a> and enter the date the source file was acquired.</p>
+    <ul class="manage-guidance">
+      <li>New source IDs add hotspots; existing source IDs update the same records.</li>
+      <li>Every row must pass validation before any changes are saved.</li>
+      <li>Existing reviews and helpful votes are preserved. Missing rows are not removed, and retired hotspots stay retired.</li>
+    </ul>
+    {% if form.non_field_errors %}<div class="form-alert" role="alert">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}
+    <form method="post" enctype="multipart/form-data" class="auth-form">
+      {% csrf_token %}
+      {% for field in form %}{% include "accounts/_field.html" %}{% endfor %}
+      <div class="manage-form-actions"><button type="submit" class="button button-primary">Import CSV</button><a class="button button-secondary" href="{% url 'hotspots:manage_list' %}">Cancel</a></div>
+    </form>
+    <p class="admin-note">Imports are run manually by an administrator. If validation fails, correct the file and select it again to retry.</p>
+  </section>
+{% endblock %}

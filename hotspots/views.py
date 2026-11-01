@@ -5,6 +5,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET, require_POST
 from reviews.models import Review, ReviewVote
+from moderation.registry import REVIEW
+from moderation.services import flagged_ids
 from reviews.services import rating_summary, visible_reviews
 
 from .filters import active_filter_chips, apply_filters, filter_options, read_params
@@ -119,6 +121,7 @@ def detail(request, pk):
         "hotspot": hotspot,
         "reviews": written,
         "voted_ids": voted_ids,
+        "flagged_ids": flagged_ids(request.user, REVIEW),
         "user_review": user_review,
         "is_following": is_following,
         "rating_summary": summary,
