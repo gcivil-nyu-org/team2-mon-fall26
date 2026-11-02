@@ -1,0 +1,101 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Community moderation · Connect NYC{% endblock %}
+{% block admin_nav_class %}is-current{% endblock %}
+{% block admin_nav_current %}aria-current="page"{% endblock %}
+{% block content %}
+  <a class="back-link" href="{% url 'accounts:admin_home' %}">← Administration</a>
+  <section class="page-intro" aria-labelledby="moderation-title">
+    <div><h1 id="moderation-title">Community moderation</h1><p>Approve or remove reviews held by the automated checks, handle content flagged by contributors, and inspect recent ratings and reviews. Every decision is logged.</p></div>
+    <span class="role-badge role-administrator">Administrator</span>
+  </section>
+
+  <section class="admin-panel moderation-panel" aria-labelledby="moderation-tab-title">
+    <dl class="admin-stats">
+      <div><dt>Held for review</dt><dd>{{ held_count }}</dd></div>
+      <div><dt>Flagged items</dt><dd>{{ open_item_count }}</dd></div>
+      <div><dt>Removed items</dt><dd>{{ removed_count }}</dd></div>
+    </dl>
+    <nav class="moderation-tabs" aria-label="Moderation views">
+      {% for key, label in tabs.items %}<a href="?tab={{ key }}" class="moderation-tab{% if key == tab %} is-current{% endif %}"{% if key == tab %} aria-current="page"{% endif %}>{{ label }}{% if key == "held" %} <span class="moderation-count">{{ held_count }}</span>{% elif key == "flagged" %} <span class="moderation-count">{{ open_item_count }}</span>{% endif %}</a>{% endfor %}
+    </nav>
+    <h2 id="moderation-tab-title" class="visually-hidden">{{ tab_label }}</h2>
+
+    {% if tab == "held" or tab == "flagged" %}
+      <p class="moderation-help">{% if tab == "held" %}These reviews are hidden from the public and from average ratings until you approve or remove them. They were held by the automated checks, or hidden after several users flagged them.{% else %}These reviews are still public. Contributors flagged them; remove them or dismiss the flags.{% endif %}</p>
+      {% if items %}
+      <form method="post" action="{% url 'moderation:bulk' %}" id="bulk-form" class="moderation-bulk">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="{{ tab }}">
+        <label class="moderation-select-all"><input type="checkbox" id="select-all"> Select all</label>
+        {% if tab == "held" %}<button type="submit" name="action" value="approve" class="button button-secondary">Approve selected</button>{% endif %}
+        <div class="moderation-bulk-remove">
+          <label for="bulk-reason" class="visually-hidden">Moderation reason for removing selected items</label>
+          <select name="reason" id="bulk-reason">{% for value, label in removal_form.fields.reason.choices %}{% if value %}<option value="{{ value }}"{% if value == "spam" %} selected{% endif %}>{{ label }}</option>{% endif %}{% endfor %}</select>
+          <button type="submit" name="action" value="remove" class="button button-danger">Remove selected…</button>
+        </div>
+      </form>
+      {% endif %}
+      <div class="moderation-list">
+        {% for item in items %}
+          {% include "moderation/_item.html" %}
+        {% empty %}
+        <div class="no-reviews">{% if tab == "held" %}<h4>Nothing is waiting for approval</h4><p>Reviews held by the automated checks or hidden by community flags appear here.</p>{% else %}<h4>No flagged content</h4><p>Public content flagged by contributors will appear here.</p>{% endif %}</div>
+        {% endfor %}
+      </div>
+      <script>
+        (function () {
+          var all = document.getElementById("select-all");
+          if (!all) return;
+          all.addEventListener("change", function () {
+            document.querySelectorAll('input[name="items"][form="bulk-form"]').forEach(function (box) { box.checked = all.checked; });
+          });
+        })();
+      </script>
+
+    {% elif tab == "recent" %}
+      <div class="manage-table-scroll" role="region" aria-label="Recent ratings and reviews" tabindex="0">
+        <table class="admin-table manage-table">
+          <caption class="visually-hidden">Most recent ratings and reviews, newest first</caption>
+          <thead><tr><th scope="col">Hotspot</th><th scope="col">Author</th><th scope="col">Rating</th><th scope="col">Review</th><th scope="col">Posted</th><th scope="col">Open flags</th><th scope="col">Actions</th></tr></thead>
+          <tbody>
+            {% for row in reviews %}{% with review=row.review %}
+            <tr>
+              <th scope="row">{% if review.hotspot.is_active and not review.is_held %}<a href="{{ review.hotspot.get_absolute_url }}{% if review.body %}#review-{{ review.pk }}{% else %}#reviews{% endif %}">{{ review.hotspot.display_name }}</a>{% else %}{{ review.hotspot.display_name }}{% if not review.hotspot.is_active %}<span class="manage-secondary">Hotspot retired</span>{% endif %}{% endif %}<span class="manage-secondary">NYC ID {{ review.hotspot.pk }}</span></th>
+              <td>{{ review.author.username }}{% if review.is_demo %}<span class="manage-secondary">Demo review</span>{% endif %}{% if review.is_held %}<span class="manage-secondary held-text">Held for review</span>{% endif %}</td>
+              <td>{{ review.rating }} / 5</td>
+              <td class="moderation-review-cell">{% if review.body %}{{ review.body|truncatechars:160 }}{% else %}<span class="manage-secondary">Rating only</span>{% endif %}</td>
+              <td><time datetime="{{ review.created_at|date:'c' }}">{{ review.created_at|date:"M j, Y" }}</time></td>
+              <td>{% if row.open_flags %}<span class="moderation-flag-count">{{ row.open_flags }}</span>{% else %}0{% endif %}</td>
+              <td><div class="manage-row-actions"><a class="manage-remove-link" href="{% url 'moderation:remove' 'review' review.pk %}" aria-label="Remove {{ review.author.username }}'s rating for {{ review.hotspot.display_name }}">Remove</a></div></td>
+            </tr>
+            {% endwith %}{% empty %}<tr><td colspan="7">No ratings or reviews yet.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% include "moderation/_pagination.html" %}
+
+    {% else %}
+      <div class="manage-table-scroll" role="region" aria-label="Moderation log" tabindex="0">
+        <table class="admin-table manage-table">
+          <caption class="visually-hidden">Administrator moderation decisions, newest first</caption>
+          <thead><tr><th scope="col">When</th><th scope="col">Decision</th><th scope="col">Content</th><th scope="col">Author</th><th scope="col">Reason</th><th scope="col">Flags</th><th scope="col">Administrator</th></tr></thead>
+          <tbody>
+            {% for record in page_obj %}
+            <tr>
+              <td><time datetime="{{ record.created_at|date:'c' }}">{{ record.created_at|date:"M j, Y, g:i a" }}</time></td>
+              <td><span class="manage-status{% if record.action == 'dismissed' %} is-retired{% elif record.action == 'removed' %} is-removed{% endif %}">{{ record.get_action_display }}</span></td>
+              <th scope="row">{{ record.content_label }}<span class="manage-secondary">{{ record.content_reference }}</span>{% if record.content_text %}<span class="manage-secondary">“{{ record.content_text|truncatechars:120 }}”</span>{% endif %}</th>
+              <td>{{ record.author_username }}{% if record.rating %}<span class="manage-secondary">{{ record.rating }} / 5</span>{% endif %}</td>
+              <td>{{ record.get_reason_display|default:"—" }}{% if record.note %}<span class="manage-secondary">{{ record.note }}</span>{% endif %}</td>
+              <td>{{ record.flag_count }}</td>
+              <td>{{ record.moderator.username|default:"Deleted account" }}</td>
+            </tr>
+            {% empty %}<tr><td colspan="7">No moderation decisions yet.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% include "moderation/_pagination.html" %}
+    {% endif %}
+    <p class="admin-note">Administrators remove content; they never edit another user's words. Authors can still edit or delete their own reviews.</p>
+  </section>
+{% endblock %}

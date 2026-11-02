@@ -1,0 +1,52 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Manage hotspot data · Connect NYC{% endblock %}
+{% block admin_nav_class %}is-current{% endblock %}
+{% block admin_nav_current %}aria-current="page"{% endblock %}
+{% block content %}
+  <a class="back-link" href="{% url 'accounts:admin_home' %}">← Administration</a>
+  <section class="page-intro" aria-labelledby="manage-title">
+    <div><h1 id="manage-title">Official hotspot data</h1><p>Import and maintain the records used by public hotspot discovery.</p></div>
+    <a class="button button-primary" href="{% url 'hotspots:manage_import' %}">Import official CSV</a>
+  </section>
+
+  <section class="admin-panel data-management" aria-labelledby="records-title">
+    <h2 id="records-title">Stored records</h2>
+    <dl class="admin-stats">
+      <div><dt>Active hotspots</dt><dd>{{ active_count }}</dd></div>
+      <div><dt>Retired hotspots</dt><dd>{{ retired_count }}</dd></div>
+    </dl>
+    <form method="get" class="manage-search">
+      <div class="form-field"><label for="record-query">Search stored records</label><input id="record-query" type="search" name="q" value="{{ q }}" placeholder="Name, location, provider or ID"></div>
+      <div class="form-field"><label for="record-status">Status</label><select id="record-status" name="status"><option value="all"{% if status == "all" %} selected{% endif %}>All records</option><option value="active"{% if status == "active" %} selected{% endif %}>Active</option><option value="retired"{% if status == "retired" %} selected{% endif %}>Retired</option></select></div>
+      <button class="button button-primary" type="submit">Search</button>
+      <a class="button button-secondary" href="{% url 'hotspots:manage_list' %}">Clear</a>
+    </form>
+    <p class="manage-result-count">{{ page_obj.paginator.count }} matching record{{ page_obj.paginator.count|pluralize }}</p>
+    <div class="manage-table-scroll" role="region" aria-label="Stored hotspot records" tabindex="0">
+      <table class="admin-table manage-table">
+        <caption class="visually-hidden">Official hotspot records, source dates and administrator actions</caption>
+        <thead><tr><th scope="col">Hotspot / source ID</th><th scope="col">Location</th><th scope="col">Provider / access</th><th scope="col">Source acquired</th><th scope="col">Status</th><th scope="col">Actions</th></tr></thead>
+        <tbody>
+          {% for hotspot in page_obj %}
+          <tr>
+            <th scope="row"><a href="{% url 'hotspots:manage_edit' hotspot.pk %}">{{ hotspot.display_name }}</a><span class="manage-secondary">NYC ID {{ hotspot.pk }}</span></th>
+            <td>{{ hotspot.location_description }}<span class="manage-secondary">{{ hotspot.borough }}{% if hotspot.neighborhood_name %} · {{ hotspot.neighborhood_name }}{% endif %}</span></td>
+            <td>{{ hotspot.provider }}<span class="manage-secondary">{{ hotspot.access_type }}</span></td>
+            <td><time datetime="{{ hotspot.source_acquired_on|date:'Y-m-d' }}">{{ hotspot.source_acquired_on|date:"M j, Y" }}</time></td>
+            <td><span class="manage-status{% if not hotspot.is_active %} is-retired{% endif %}">{% if hotspot.is_active %}Active{% else %}Retired{% endif %}</span></td>
+            <td><div class="manage-row-actions"><a href="{% url 'hotspots:manage_edit' hotspot.pk %}" aria-label="Edit {{ hotspot.display_name }}">Edit</a>{% if hotspot.is_active %}<a href="{{ hotspot.get_absolute_url }}" aria-label="View profile for {{ hotspot.display_name }}">View profile</a><a class="manage-remove-link" href="{% url 'hotspots:manage_retire' hotspot.pk %}" aria-label="Remove {{ hotspot.display_name }} from public discovery">Remove</a>{% endif %}</div></td>
+          </tr>
+          {% empty %}<tr><td colspan="6">No records match your search. Clear the filters or import an official CSV to add records.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if page_obj.has_other_pages %}
+    <nav class="manage-pagination" aria-label="Hotspot record pages">
+      {% if page_obj.has_previous %}<a class="button button-secondary" href="?{{ query_string }}&amp;page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+      <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}<a class="button button-secondary" href="?{{ query_string }}&amp;page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+    </nav>
+    {% endif %}
+    <p class="admin-note">Retired hotspots are hidden from public discovery. Their records, reviews and helpful votes are retained; importing the same source ID does not reactivate them.</p>
+  </section>
+{% endblock %}

@@ -1,16 +1,19 @@
 from django.conf import settings
 from django.db.models import Avg, Count, Q
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, render
-from django.views.decorators.http import require_GET
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_GET, require_POST
 
 from availability.models import AvailabilityReport
 from availability.services import availability_by_hotspot, hotspot_availability
 from reviews.models import Review, ReviewVote
+from moderation.registry import REVIEW
+from moderation.services import flagged_ids
 from reviews.services import rating_summary, visible_reviews
 
 from .filters import active_filter_chips, apply_filters, filter_options, read_params
-from .models import Hotspot
+from .models import Hotspot, HotspotFollow
 from .sorting import SORTS, sort_hotspots
 
 
@@ -115,6 +118,7 @@ def detail(request, pk):
     voted_ids = set()
     user_review = None
     user_report = None
+    is_following = False
     if request.user.is_authenticated:
         voted_ids = set(
             ReviewVote.objects.filter(user=request.user, review__hotspot=hotspot).values_list(
@@ -123,19 +127,21 @@ def detail(request, pk):
         )
         user_review = Review.objects.filter(hotspot=hotspot, author=request.user, is_demo=False).first()
         user_report = AvailabilityReport.objects.filter(hotspot=hotspot, reporter=request.user).first()
+        is_following = HotspotFollow.objects.filter(user=request.user, hotspot=hotspot,).exists()
     context = {
         **_map_settings(),
         "hotspot": hotspot,
         "reviews": written,
         "voted_ids": voted_ids,
+        "flagged_ids": flagged_ids(request.user, REVIEW),
         "user_review": user_review,
         "user_report": user_report,
+        "is_following": is_following,
         "rating_summary": summary,
         "availability": availability,
         "profile_map_data": _serialize_hotspot(hotspot, summary, availability),
     }
     return render(request, "hotspots/detail.html", context)
-
 
 @require_GET
 def hotspot_data(request):
@@ -143,3 +149,42 @@ def hotspot_data(request):
     hotspots = sort_hotspots(apply_filters(Hotspot.objects.filter(is_active=True), filters), filters.get("sort"))
     records = _map_data(hotspots, filters.get("sort"))
     return JsonResponse({"count": len(records), "filters": filters, "hotspots": records})
+
+@login_required
+@require_POST
+def follow(request, pk):
+    hotspot = get_object_or_404(Hotspot, pk=pk, is_active=True)
+    HotspotFollow.objects.get_or_create(
+        user=request.user,
+        hotspot=hotspot,
+    )
+    return redirect(hotspot.get_absolute_url())
+
+
+@login_required
+@require_POST
+def unfollow(request, pk):
+    hotspot = get_object_or_404(Hotspot, pk=pk, is_active=True)
+    HotspotFollow.objects.filter(
+        user=request.user,
+        hotspot=hotspot,
+    ).delete()
+    return redirect(hotspot.get_absolute_url())
+
+@login_required
+@require_GET
+def followed(request):
+    hotspots = (
+        Hotspot.objects.filter(
+            followers__user=request.user,
+            is_active=True,
+        )
+        .distinct()
+        .order_by("borough", "name", "hotspot_id")
+    )
+
+    return render(
+        request,
+        "hotspots/followed.html",
+        {"hotspots": hotspots},
+    )

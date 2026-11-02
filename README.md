@@ -12,7 +12,7 @@ For current implementation status, remaining work, and dated development history
 
 ## Implemented demo
 
-The demo includes hotspot discovery, account access and hotspot review contributions:
+The demo includes hotspot discovery, account access, hotspot review contributions and administrator data maintenance:
 
 | Story | Demo behavior |
 | --- | --- |
@@ -21,6 +21,7 @@ The demo includes hotspot discovery, account access and hotspot review contribut
 | [US18 / #28](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/28) | See clearly separated, labeled official data and community feedback. |
 | [US02–US05 / #9–#12](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/9) | Search by location, address or landmark, and filter by borough/neighborhood, provider and access type. Filters combine, can be removed one at a time, and show a message when nothing matches. |
 | [US06–US10 / #16–#20](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) (E02) | Sign up, log in and log out. Visitors keep public browsing and are asked to sign in only to contribute, then returned to the hotspot they started from. Administrators get an admin-only area that contributors and visitors cannot open, even by direct URL. |
+| [US16–US17 / #26–#27](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) (E04) | Administrators import official CSV data, browse/search stored records, edit fields and confirm removal from public discovery while retaining reviews and votes. |
 
 The profile includes a small rating aggregation service for its dependency on US12 / #22 under E03; that story remains owned by Jiahao. US18 / #28 retains its E04 parent and is integrated into the E01 interface. Rating and review contributions (E03: create, edit, delete, helpful upvotes) are implemented. Availability reporting, reliability scores, and notifications are not yet implemented.
 
@@ -84,6 +85,17 @@ docker compose exec web python manage.py import_hotspots /tmp/hotspots.csv --sou
 
 `seed_demo_reviews` is optional and idempotent. It requires `DEMO_MODE=1`, creates inactive demonstration accounts with unusable passwords, and flags every sample contribution as fictional. Set `DEMO_MODE=0` and recreate the web service to hide those contributions from both pages and the JSON endpoint. The official CSV is never modified by seeding.
 
+## Official data administration (E04)
+
+Sign in with an administrator account, open **Admin → Manage hotspot data**, or visit `/manage/hotspots/`. Visitors are redirected to sign in; contributors cannot access management pages or submit management actions.
+
+- **Import:** Upload a compatible UTF-8 NYC source CSV (maximum 5 MB) and its acquisition date. The bundled `data/connectnyc_hotspots_sample.csv` is a working example. The existing source column names are required. Every row is validated before a single atomic upsert, so invalid files leave the catalog unchanged. The page reports created and updated counts.
+- **View:** Search the stored catalog by name, location, provider or NYC ID; filter Active/Retired records and browse pages of 50 rows.
+- **Edit:** Correct official fields while keeping `doitt_id`, source object/reference identity and acquisition date unchanged. Public map/profile data reflects saved changes. Reimport may overwrite these corrections with official source values.
+- **Remove:** Confirm removal to mark a record Retired (`is_active=False`). The map, search, filters, profile and contribution routes exclude it. Its ratings, reviews and helpful votes remain stored, and administrators can still view/edit the record.
+
+Refresh is manual. Reimport does not remove omitted rows or reactivate retired records. There is no scheduled synchronization or restore workflow in this increment. The web form and CLI share the same importer; no schema migration is needed for E04. Production deployment and acceptance remain separate from local validation.
+
 ## Development and validation
 
 ```sh
@@ -105,6 +117,25 @@ docker compose up --build --wait
 
 Tests cover stable imports and review relationships, invalid-file rollback, shared coordinates, missing-source normalization, public read routes, hotspot-specific ratings/reviews, rating-only submissions, demo isolation, escaped review content, and database rating bounds.
 
+## Community moderation (E05)
+
+One shared reporting and moderation workflow for community content. Hotspot reviews are supported today; E08 forum posts, comments and replies plug in by adding a `FlaggableType` entry in `moderation/registry.py`.
+
+**Automated checks** (`moderation/automod.py`, built-in rules, no external service) run on every new or edited written review, before any user flags. They are tiered so administrators only see the grey area:
+
+| Tier | What triggers it | Result |
+| --- | --- | --- |
+| Block | Links (except `.gov`/`.edu`-style official sites), email addresses, phone numbers, and terms in `MODERATION_BLOCKED_TERMS` | Form error; nothing saved. The author can fix and resubmit. |
+| Hold | Promotional wording, profanity, duplicate text, ALL-CAPS, heavy repetition, more than 3 reviews in 10 minutes, or an author with 2+ removed reviews | Saved but hidden from the public and the average until an administrator approves or removes it. The author sees "Awaiting moderator approval". Edits are re-checked, and a held review stays held after editing. |
+| Trust | 3+ published reviews at least 24 hours old, none ever removed | Skips the caps, repetition and posting-speed rules. Spam, profanity and duplicate checks still apply. |
+| Community auto-hide | 3 different users flag a visible review | Hidden until an administrator decides. |
+
+The full policy and the acceptance criteria for these extensions are in [docs/E05-MODERATION-POLICY.md](docs/E05-MODERATION-POLICY.md) (proposed, pending team agreement). Rating-only entries have no text and are only held for repeat offenders. Thresholds are settings in `config/settings.py`; add blocked terms as a comma-separated `MODERATION_BLOCKED_TERMS` environment value (empty by default).
+
+- **Flag (contributors):** On a hotspot profile, signed-in users see **Flag** on other people's written reviews, choose a reason and optionally add details. Each user can flag an item once; authors cannot flag their own content; visitors are sent to log in.
+- **Inspect (administrators):** **Admin → Open moderation** or `/manage/moderation/` opens on **Held for review** (why each item was held, Approve/Remove, select-all, bulk approve, and bulk remove with a confirmation step). The other tabs are flagged public content (type, link to the original, flag count, reasons, notes), recent ratings and reviews, and the moderation log. Contributors get 403.
+- **Remove (administrators):** Confirm and choose a moderation reason. The review is deleted from public pages and the hotspot average updates; the log keeps a snapshot of the text, the reason, the note and the administrator. Administrators never edit text. **Dismiss flags** closes flags without changing the content.
+
 ## Project structure and integration points
 
 ```text
@@ -114,6 +145,7 @@ hotspots/           Official location model, importer, public views and map API
   static/hotspots/  Responsive styles and map selection logic
 reviews/            Review model, shared rating summary and demo seed command
 accounts/           E02 sign-up/login/logout, roles, shared access checks, admin area
+moderation/         E05 content flags, administrator moderation view, removal log
 templates/          Project-wide templates (403 page)
 data/               Team-provided official CSV sample and data verification script
 scripts/            Local environment generation and MySQL test helper
@@ -133,6 +165,16 @@ Public routes:
 | `/accounts/signup/`, `/accounts/login/` | Account registration and login (both accept a safe `?next=` return path) |
 | `/accounts/logout/` | Log out (POST only, from the header button) |
 | `/manage/` | Administrator-only area; visitors are sent to log in, contributors get 403 |
+| `/manage/hotspots/` | Administrator stored-record list, search and status filter |
+| `/manage/hotspots/import/` | Administrator CSV upload/import |
+| `/manage/hotspots/<doitt_id>/edit/` | Administrator official-field editing |
+| `/manage/hotspots/<doitt_id>/remove/` | Confirmation and POST-only retirement |
+| `/content/review/<id>/flag/` | Contributor flag form for a written review |
+| `/manage/moderation/` | Administrator moderation view (`?tab=held` default, `flagged`, `recent`, `log`) |
+| `/manage/moderation/review/<id>/approve/` | POST-only: publish a held review |
+| `/manage/moderation/bulk/` | POST-only: approve or remove the selected items |
+| `/manage/moderation/review/<id>/remove/` | Confirmation and removal with a moderation reason |
+| `/manage/moderation/review/<id>/dismiss/` | POST-only flag dismissal |
 
 `/` and `/api/hotspots/` accept the same optional query parameters: `q` (location search), `borough`, `neighborhood`, `provider` and `type` (official access type). For example, `/api/hotspots/?q=library&borough=Brooklyn`.
 
@@ -162,7 +204,7 @@ def create_review(request, pk): ...
 def import_records(request): ...
 ```
 
-Class-based views can use `ContributorRequiredMixin` and `AdministratorRequiredMixin`. Templates receive `user_role` (`visitor`, `contributor` or `administrator`) and `user_is_administrator`. The hotspot profile's contribution prompt lives in `hotspots/templates/hotspots/_contribute.html`; E03 / US11 replaces its signed-in branch with the review form.
+Class-based views can use `ContributorRequiredMixin` and `AdministratorRequiredMixin`. Templates receive `user_role` (`visitor`, `contributor` or `administrator`) and `user_is_administrator`. The hotspot profile's contribution prompt lives in `hotspots/templates/hotspots/_contribute.html`; E03 / US11 connects its signed-in branch to the review form.
 
 Behind an HTTPS load balancer, set `DJANGO_CSRF_TRUSTED_ORIGINS` to the public `https://` origin and `DJANGO_BEHIND_HTTPS_PROXY=1`, together with `DJANGO_SECURE_COOKIES=1`, so sign-up and login forms pass CSRF checks over HTTPS.
 
@@ -170,4 +212,4 @@ Behind an HTTPS load balancer, set `DJANGO_CSRF_TRUSTED_ORIGINS` to the public `
 
 The local demo runs one Django web service with Gunicorn/WhiteNoise and one MySQL service. Leaflet 1.9.4 is vendored with its license; map tiles come from OpenStreetMap with visible attribution. Internet access is needed for the map background, not for the stored hotspot records.
 
-AWS deployment and CI/CD are not configured yet. A later AWS deployment needs an HTTPS endpoint, correct allowed hosts, secure cookies, managed secrets, a persistent MySQL database, and deployment-specific security review. Keep `DJANGO_DEBUG=0` and `DEMO_MODE=0` outside a clearly identified demo environment.
+The repository includes Elastic Beanstalk deployment configuration. A teammate manages production releases; local Docker validation does not confirm the deployed revision. CI test automation is not configured yet. Production needs HTTPS, correct allowed hosts, secure cookies, managed secrets and a persistent MySQL database. Keep `DJANGO_DEBUG=0` and `DEMO_MODE=0` outside a clearly identified demo environment.

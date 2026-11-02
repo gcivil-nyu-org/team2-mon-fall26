@@ -17,7 +17,8 @@
     {% endwith %}
   {% elif user_review %}
     <div>
-      <h3>Your rating</h3>
+      <h3>Your rating{% if user_review.is_held %} <span class="held-badge">Awaiting moderator approval</span>{% endif %}</h3>
+      {% if user_review.is_held %}<p class="held-note">Only you can see this review until a moderator approves it. It doesn't count toward the average yet.</p>{% endif %}
       <p><span class="review-rating"><span aria-hidden="true">★</span> {{ user_review.rating }} / 5</span>{% if user_review.body %} · {{ user_review.body|truncatechars:140 }}{% else %} · No written review{% endif %}</p>
     </div>
     <div class="contribute-actions">

@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.urls import reverse
+from django.conf import settings
 
 
 class Hotspot(models.Model):
@@ -71,3 +72,25 @@ class Hotspot(models.Model):
 
     def __str__(self):
         return self.display_name
+
+class HotspotFollow(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="hotspot_follows",
+    )
+    hotspot = models.ForeignKey(
+        Hotspot,
+        on_delete=models.CASCADE,
+        related_name="followers",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "hotspot"],
+                name="one_follow_per_user_per_hotspot",
+            )
+        ]
+        ordering = ["-created_at"]

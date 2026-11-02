@@ -1,6 +1,6 @@
 # Project progress
 
-Last updated: **October 26, 2026**.
+Last updated: **November 1, 2026**.
 
 This document records implementation progress, remaining work, and development history for Connect NYC. GitHub and ZenHub remain the sources for requirements, assignments, and workflow status. Update this record as work progresses; preserve the dated archive below.
 
@@ -8,9 +8,11 @@ This document records implementation progress, remaining work, and development h
 
 E01 discovery is integrated in `main` through PRs #47 and #48. The E01 Epic, source-label story #28, and data/acceptance support tasks #42 and #43 are closed. The production deployment was recorded in PR #50; this review does not verify which revision is currently deployed.
 
-E02 account registration and access (US06–US10) merged through [PR #52](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/52) on October 24 (New York time). E03 review creation, editing, deletion and helpful votes are implemented and locally validated in [PR #53](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/53); that PR is the source of truth for merge state. E02/E03 Epic and Story workflow closure and deployed acceptance remain separate from code implementation.
+E02 account registration and access (US06–US10) merged through [PR #52](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/52) on October 24 (New York time). E03 review creation, editing, deletion and helpful votes merged through [PR #53](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/53) on October 26. E02/E03 Epic and Story workflow closure and deployed acceptance remain separate from code implementation.
 
 The October 26 review passed **92 automated tests against isolated MySQL 8.4**, Django system checks and migration consistency checks. Browser checks covered registration and return to the hotspot, review validation, creation, editing, rating updates, helpful vote add/remove, and deletion confirmation/cancellation. Actual deletion and ownership protections are covered by the automated tests.
+
+E04 administrator import/list/edit/retirement (US16–US17, Boqing) is implemented in [PR #54](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/54) on `boqing-E04-US16-17`. The integrated suite passed **114 tests on isolated MySQL 8.4**; Django system and migration consistency checks passed. The author self-review and independent code-review pass found no remaining blockers. GitHub requires an approval from another account before merge, and automatic merge is disabled; production deployment and acceptance are also pending. The original Week 6 forecast remains 19 points for nine E02/E03 stories; the two E04 stories were added on October 26 without retrospective point estimates.
 
 ## Epic overview
 
@@ -19,8 +21,8 @@ The October 26 review passed **92 automated tests against isolated MySQL 8.4**, 
 | [E01 — Finding a Wi-Fi Hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/1) | Merged; Epic closed | Preserve discovery behavior while integrating new contributions. |
 | [E02 — Account Registration & Access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) | Merged in PR #52 (Jiahao) | Deployed acceptance of account access and the integrated E03 journey; synchronize Story workflow states. |
 | [E03 — Rate & Review Hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/3) | Implemented and locally validated in PR #53 (Suvan) | Production release and deployed acceptance; synchronize Story workflow states. US15 remains MLP scope. |
-| [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | CLI import foundation and source labels implemented | Administrator import/list/update/removal workflows and retirement policy. |
-| [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | Not implemented | Shared content flagging, moderation review, and removal. |
+| [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | Administrator import/list/edit/retirement implemented and locally validated (Boqing) | PR merge and production acceptance; US18 remains previously closed. |
+| [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | Implemented on branch `jiahao-E05-US19-21` (Jiahao); PR review, merge and acceptance pending | Shared content flagging, moderation review, and removal, plus rule-based automated checks that block or hold reviews before user flags. Reviews are registered today; E08 forum content registers in `moderation/registry.py`. |
 | [E06 — Report Availability & Assess Reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) | US22–US24 implemented and locally validated (E06 branch); seating/accessibility tags not started | Team review of the reliability rules below, MySQL/CI run, deployed acceptance, and the seating/accessibility tags story. |
 | [E07 — Follow Hotspots & Receive Updates](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) | Planned MLP; not implemented | Follow/unfollow, personal list, and notifications. |
 | [E08 — Discussion Forum & Community Interaction](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) | Not implemented | Topic-based posts, comments/replies, and forum votes; separate from hotspot reviews. |
@@ -68,17 +70,17 @@ Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #
 
 | Story | Status and remaining work |
 | --- | --- |
-| [US16 / #26 — Import/view official records](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/26) | Partial. Validated, atomic CLI upsert preserves stable IDs and review links. Administrator-triggered import and the restricted stored-record list are not implemented. |
-| [US17 / #27 — Update/remove records](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/27) | Partial foundation. CLI reimport updates fields and public views exclude inactive records. No administrator edit/removal workflow; agree how retired hotspots retain reviews before implementing it. |
+| [US16 / #26 — Import/view official records](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/26) | Implemented locally (Boqing). Administrator CSV upload and paginated/searchable Active/Retired list; shared atomic importer validates the whole file, preserves IDs and contribution links, and reports created/updated counts. PR merge and production acceptance pending. |
+| [US17 / #27 — Update/remove records](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/27) | Implemented locally (Boqing). Allowlisted editing preserves identity/acquisition date; confirmed POST retires the record, hiding public discovery and contribution routes while retaining reviews/votes. Reimport and edits never reactivate retired records. PR merge and production acceptance pending. |
 | [US18 / #28 — Official/community labels](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/28) | Implemented by Boqing and integrated into E01. Official fields, source dates, community feedback, and fictional demo contributions are visibly distinguished. |
 
 ### E05–E08 — Remaining community features
 
 | Epic | Story | Status |
 | --- | --- | --- |
-| E05 | [US19 / #29 — Review content and flags](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/29) | Not implemented. |
-| E05 | [US20 / #30 — Remove violations](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/30) | Not implemented. |
-| E05 | [US21 / #31 — Flag inappropriate content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/31) | Not implemented; shared by hotspot reviews and discussions. |
+| E05 | [US19 / #29 — Review content and flags](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/29) | Implemented on `jiahao-E05-US19-21`. `/manage/moderation/` (administrators only; contributors get 403) opens on **Held for review** (automated holds and community auto-hides, with Approve/Remove and bulk actions) and also has flagged content (type, link to the original, flag count, reasons, notes), recent ratings and reviews (newest 50 per page, including rating-only entries, with open-flag counts), and the moderation log. Linked from `/manage/`. |
+| E05 | [US20 / #30 — Remove violations](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/30) | Implemented on `jiahao-E05-US19-21`. Removal requires a confirmation page and a moderation reason (proposed list in `moderation.models.Reason`; team to confirm). The review is deleted, so it leaves public pages and the average recalculates; a `ModerationRecord` keeps a text snapshot, reason, note, flag count and administrator. Administrators cannot edit text. "Dismiss flags" closes flags without changing content and is logged. |
+| E05 | [US21 / #31 — Flag inappropriate content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/31) | Implemented on `jiahao-E05-US19-21` for hotspot reviews. Signed-in contributors see a Flag link on other users' written reviews and choose a reason ("Something else" requires details). One flag per user per item, enforced by a database constraint; authors cannot flag their own reviews; visitors are sent to log in. Flags close automatically if the author deletes the review. E08 forum content uses the same flow once registered. |
 | E06 | [US22 / #32 — Report Working/Unavailable](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/32) | Implemented; locally validated, pending review and deployed acceptance. |
 | E06 | [US23 / #33 — Reliability and report recency](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/33) | Implemented; locally validated, pending review and deployed acceptance. Rules proposed in the archive entry below. |
 | E06 | [US24 / #34 — Sort by rating/reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/34) | Implemented; locally validated, pending review and deployed acceptance. |
@@ -103,10 +105,10 @@ Closed test issue #44 is excluded from product completion progress.
 
 ## Next development steps
 
-1. Include the reviewed PR #53 implementation in the next production release and verify the deployed registration/login → hotspot → create/edit/delete review → helpful vote journey. Check the PR for the current merge state.
-2. Synchronize E02/E03 Story and Epic workflow states after acceptance; implementation does not automatically close their issues.
+1. Complete E04 PR review/merge, then have the deployment owner release the reviewed revision and verify account → hotspot review → administrator import/edit/retirement on the production instance.
+2. Synchronize E02/E03/E04 Story and Epic workflow states after deployed acceptance; implementation does not automatically close their issues.
 3. Introduce GitHub Actions test automation and keep deployment/version information current. The PR has no automated GitHub check results at this review.
-4. Continue E04 data administration and E05 moderation under their existing stories. Keep E08 discussions separate; availability/reliability and following remain E06/E07 work.
+4. Review and merge E05 (`jiahao-E05-US19-21`, which also brings E04 from `main` into `develop`); the team should confirm the moderation reason list for #30. E04 scheduled refresh and restoration remain outside the current scope; E04 scheduled refresh and restoration remain outside the current scope. Keep E08 discussions separate; availability/reliability and following remain E06/E07 work.
 
 Docker Compose was used for this local review only. No production deployment or production database modification was performed.
 
@@ -118,7 +120,20 @@ Docker Compose was used for this local review only. No production deployment or 
 - Proposed reliability rules, kept as constants in `availability/services.py` for the team to adjust: a report counts for 30 days; each person's newest report per hotspot is the only one counted; the score is the share of those reports that say Working; no score is shown until 3 different people have reported ("Not enough reports yet"). The profile labels reports as community observations, not a guarantee of live connectivity, and shows each report's source and date.
 - Added a "Sort by" control to the map page and `sort=rating|reliability` to the JSON API. Hotspots without a rating or enough reports come after those with data, ties keep the default order, and sorting combines with the existing filters. Sorting is not counted as a filter. The API records now include `reliability_score` and `availability_report_count`.
 - Open decisions for the team: conflicting-report handling beyond "newest per person", seating/accessibility tags (not started), and whether reports need a cooldown against repeat submissions.
-- Verified: all 112 tests pass (92 existing and 20 new in `availability/tests.py`) with Django's SQLite backend, `makemigrations --check`, and a manual browser check of the profile section and the reliability sort against the 36-hotspot sample. Not yet run against MySQL or in CI, not yet deployed.
+- Verified: 112 tests passed before merging `develop` (92 existing and 20 new in `availability/tests.py`), and all 204 pass after merging the E05 and E07 work from `develop` (Nov 1), with Django's SQLite backend, `makemigrations --check`, and a manual browser check of the profile section and the reliability sort against the 36-hotspot sample. Not yet run against MySQL or in CI, not yet deployed.
+
+### November 1, 2026 — E05 content flags and moderation (US19, US20, US21)
+
+- Branched `jiahao-E05-US19-21` from `develop` and merged `main` to bring E04 (PR #54) into the E07 line. The only conflict was `hotspots/urls.py`, resolved by keeping both the E07 follow routes and the E04 `/manage/hotspots/` routes. E07 follow views already exclude retired hotspots.
+- Added the `moderation` app: `ContentFlag` (generic reference to the flagged item, unique per user per item, status open/removed/dismissed/withdrawn) and `ModerationRecord` (append-only log with a content snapshot), migration `moderation/0001`. A registry of flaggable types keeps one workflow for E03 reviews and future E08 content.
+- Added the flag form, administrator moderation view (flagged / recent / log), removal confirmation with required reason, flag dismissal, an Administration-page panel, Flag links on the hotspot profile, and Django admin registrations (log is read-only).
+- Design decision: removal deletes the review (as author deletion does) and keeps a snapshot in the log rather than soft-hiding it, so no existing review query changes. The author can post a new review afterwards.
+- Added 26 tests in `moderation/tests.py`. The full **149-test suite passed** locally on MariaDB 10.11 with both `DEMO_MODE=1` and the CI settings (`DEMO_MODE=0`, `DJANGO_DEBUG=0`); Django system and migration consistency checks passed. CI on MySQL 8.4 has not run yet.
+- Browser checks (Chromium): visitors see no Flag link; contributor flag with empty-reason error, success message and "Flagged for review" state; administrator panel counts, flagged view, recent view, removal confirmation and log; review gone from the public profile with the average updated; contributor gets 403 on `/manage/moderation/`.
+- Added automated moderation the same day, before the branch was pushed (beyond the #29–#31 acceptance criteria, so the team may want a separate story or a note on E05): `moderation/automod.py` blocks links/emails/phone numbers and configured terms at submit; holds promotional wording, profanity, duplicates, ALL-CAPS, repetition, fast posting and repeat offenders; lets trusted authors skip the soft rules; and auto-hides a review after 3 distinct user flags. Held reviews (`Review.is_held`, migration `reviews/0003`) are excluded from public pages, the map API and averages via `visible_reviews()`; authors see an "Awaiting moderator approval" badge. Administrators get a default **Held for review** tab with per-item Approve/Remove and bulk approve/remove; approvals are logged. The unpushed `moderation/0001` migration was regenerated (automated flags have no user; the log records the author).
+- Re-verified: **171 tests pass** (22 new in `moderation/test_automod.py`) locally on MariaDB 10.11 with `DEMO_MODE=1` and with the CI settings; migration consistency checks passed. Browser checks: blocked link error with nothing saved, held message and author badge, held review absent from the public page and average, held tab with automated reasons, bulk remove of two items, single approve, and the phone-width layout of the bulk toolbar.
+- PR #60 review (Boqing, changes requested) fixes: (1) author edits now lock the review row and save only rating/text (`update_fields`), so a hold made during the edit is kept and a review removed during the edit is not recreated; moderator removals, dismissals and approvals lock the same row. Approvals also carry the version the administrator viewed and refuse to publish text edited after that. (2) Bulk removal is now two steps: the queue button opens a confirmation page listing the selected items and nothing is deleted until it is confirmed with a reason. (3) The policy and extended acceptance criteria are documented in `docs/E05-MODERATION-POLICY.md`, pending team agreement. Added `moderation/test_review_fixes.py` (13 tests), including deterministic interleavings that fail against the previous code. **184 tests pass** locally on MariaDB 10.11.
+- Noted, not changed: on a 390 px viewport the signed-in header is wider than the screen because of the E07 "My followed hotspots" link.
 
 ### October 24, 2026 — E03 rate, edit, delete and upvote reviews (US11, US13, US14, US15)
 
@@ -173,3 +188,12 @@ Docker Compose was used for this local review only. No production deployment or 
 - Verified all 92 tests against a separate MySQL 8.4 Compose project, plus `manage.py check`, `makemigrations --check --dry-run`, and `git diff --check`.
 - Verified the browser flows listed in the current milestone on the isolated localhost:8001 instance. Deletion was confirmed by automated tests; the browser check exercised confirmation and cancellation.
 - Reconciled stale E01/E02 progress text with merged PRs and closed E01 issues. This records local review results, not new production acceptance or Story closure.
+
+### October 26, 2026 — E04 administrator data maintenance (US16–US17)
+
+- Assigned E04 and US16/US17 to Boqing and recorded the manual-refresh/non-destructive-retirement policy on the Epic and US17. US18 remains previously implemented and closed.
+- Extracted the validated atomic CSV importer for web/CLI reuse; added administrator upload/list/search/status-filter/pagination, official-field editing and confirmed retirement.
+- Retired records stay out of discovery, profiles and contribution actions. Existing reviews and helpful votes remain stored. Reimport does not reactivate records; field-limited edits cannot undo concurrent retirement or change source identity/acquisition date.
+- Added 22 regression tests. The full **114-test suite passed on isolated MySQL 8.4**, plus Django system checks, migration consistency checks and diff whitespace validation. No schema migration is required.
+- Browser checks verified visitor login/return, stored-record search, editing reflected on the public profile, cancellation and confirmed retirement, and the Retired filter. CLI reimport and database/public-route checks verified the retired record retained four local review fixtures and one helpful vote without returning to public discovery. CSV upload validation/idempotence/rollback were tested through Django's HTTP test client.
+- Updated README and this progress archive. [PR #54](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/54) contains the implementation and author self-review. A normal merge attempt was blocked by the required external approval; automatic merge is disabled. No branch protections were changed. Deployment and production acceptance remain with the team; Docker is local validation only.

@@ -9,6 +9,15 @@
   <a class="back-link" href="{% url 'hotspots:map' %}"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16 10H4m5-5-5 5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Back to map</a>
   <section class="profile-intro" aria-labelledby="profile-title">
     <div><div class="location-kicker">{{ hotspot.borough }}{% if hotspot.neighborhood %} / {{ hotspot.neighborhood }}{% endif %}</div><h1 id="profile-title">{{ hotspot.display_name }}</h1><p>{{ hotspot.location|default:"Location details not provided" }}</p></div>
+    {% if user.is_authenticated %}
+  <form method="post"
+        action="{% if is_following %}{% url 'hotspots:unfollow' hotspot.pk %}{% else %}{% url 'hotspots:follow' hotspot.pk %}{% endif %}">
+    {% csrf_token %}
+    <button type="submit" class="button button-primary">
+      {% if is_following %}Unfollow hotspot{% else %}Follow hotspot{% endif %}
+    </button>
+  </form>
+{% endif %}
     {% if demo_mode %}<span class="demo-badge"><span class="status-dot" aria-hidden="true"></span>Demo dataset</span>{% endif %}
   </section>
 
@@ -46,7 +55,7 @@
       <div class="review-list">
         <h3>Reviews <span>{{ rating_summary.review_count }}</span></h3>
         {% for review in reviews %}
-        <article class="review" aria-label="Review by {{ review.author.username }}">
+        <article class="review" id="review-{{ review.pk }}" aria-label="Review by {{ review.author.username }}">
           <div class="review-header"><span class="review-avatar" aria-hidden="true">{{ review.author.first_name|default:review.author.username|slice:":1"|upper }}</span><div><h4>{{ review.author.get_full_name|default:review.author.username }}</h4><div class="review-meta"><span class="review-rating"><span aria-hidden="true">★</span> {{ review.rating }} / 5</span><time datetime="{{ review.created_at|date:'c' }}">{{ review.created_at|date:"M j, Y" }}</time></div></div>{% if review.is_demo %}<span class="review-demo-badge">Demo review</span>{% endif %}</div>
           <p class="review-body">{{ review.body|linebreaksbr }}</p>
           <div class="review-actions">
@@ -58,6 +67,9 @@
             {% if review.author_id == user.pk and not review.is_demo %}
               <a href="{% url 'reviews:edit' review.pk %}">Edit</a>
               <a href="{% url 'reviews:delete' review.pk %}">Delete</a>
+            {% endif %}
+            {% if user_role != "visitor" and review.author_id != user.pk %}
+              {% if review.pk in flagged_ids %}<span class="flag-state">Flagged for review</span>{% else %}<a class="flag-link" href="{% url 'moderation:flag' 'review' review.pk %}" aria-label="Flag review by {{ review.author.username }} as inappropriate">Flag</a>{% endif %}
             {% endif %}
           </div>
         </article>
