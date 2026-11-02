@@ -1,0 +1,38 @@
+{% extends "hotspots/base.html" %}
+
+{% block title %}My followed hotspots · Connect NYC{% endblock %}
+
+{% block content %}
+<section class="page-intro" aria-labelledby="page-title">
+  <div>
+    <h1 id="page-title">My followed hotspots</h1>
+    <p>Hotspots you want to keep track of.</p>
+  </div>
+</section>
+
+{% if hotspots %}
+  <section aria-label="Followed hotspots">
+    <ul class="hotspot-directory">
+      {% for hotspot in hotspots %}
+        <li>
+          <a href="{{ hotspot.get_absolute_url }}">
+            <span>{{ hotspot.display_name }}</span>
+            <span>
+              {{ hotspot.borough }} ·
+              {{ hotspot.provider|default:"Provider not provided" }}
+            </span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% else %}
+  <section class="empty-state" role="status">
+    <h2>No followed hotspots yet</h2>
+    <p>Follow a hotspot to see it listed here.</p>
+    <a href="{% url 'hotspots:map' %}" class="button button-primary">
+      Explore hotspots
+    </a>
+  </section>
+{% endif %}
+{% endblock %}
