@@ -1,8 +1,12 @@
 from django import forms
 
+from moderation.automod import blocking_problems
+
 from .models import Review
 
-RATING_CHOICES = [(value, f"{value} star{'s' if value > 1 else ''}") for value in range(5, 0, -1)]
+RATING_CHOICES = [
+    (value, f"{value} star{'s' if value > 1 else ''}") for value in range(5, 0, -1)
+]
 
 
 class ReviewForm(forms.ModelForm):
@@ -27,3 +31,11 @@ class ReviewForm(forms.ModelForm):
     class Meta:
         model = Review
         fields = ("rating", "body")
+
+    def clean_body(self):
+        # E05 tier 1: clear-cut problems are rejected here and nothing is saved.
+        body = self.cleaned_data["body"]
+        problems = blocking_problems(body)
+        if problems:
+            raise forms.ValidationError(problems)
+        return body

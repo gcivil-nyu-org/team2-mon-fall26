@@ -119,6 +119,25 @@ docker compose up --build --wait
 
 Tests cover stable imports and review relationships, invalid-file rollback, shared coordinates, missing-source normalization, public read routes, hotspot-specific ratings/reviews, rating-only submissions, demo isolation, escaped review content, and database rating bounds.
 
+## Community moderation (E05)
+
+One shared reporting and moderation workflow for community content. Hotspot reviews are supported today; E08 forum posts, comments and replies plug in by adding a `FlaggableType` entry in `moderation/registry.py`.
+
+**Automated checks** (`moderation/automod.py`, built-in rules, no external service) run on every new or edited written review, before any user flags. They are tiered so administrators only see the grey area:
+
+| Tier | What triggers it | Result |
+| --- | --- | --- |
+| Block | Links (except `.gov`/`.edu`-style official sites), email addresses, phone numbers, and terms in `MODERATION_BLOCKED_TERMS` | Form error; nothing saved. The author can fix and resubmit. |
+| Hold | Promotional wording, profanity, duplicate text, ALL-CAPS, heavy repetition, more than 3 reviews in 10 minutes, or an author with 2+ removed reviews | Saved but hidden from the public and the average until an administrator approves or removes it. The author sees "Awaiting moderator approval". Edits are re-checked, and a held review stays held after editing. |
+| Trust | 3+ published reviews at least 24 hours old, none ever removed | Skips the caps, repetition and posting-speed rules. Spam, profanity and duplicate checks still apply. |
+| Community auto-hide | 3 different users flag a visible review | Hidden until an administrator decides. |
+
+The full policy and the acceptance criteria for these extensions are in [docs/E05-MODERATION-POLICY.md](docs/E05-MODERATION-POLICY.md) (proposed, pending team agreement). Rating-only entries have no text and are only held for repeat offenders. Thresholds are settings in `config/settings.py`; add blocked terms as a comma-separated `MODERATION_BLOCKED_TERMS` environment value (empty by default).
+
+- **Flag (contributors):** On a hotspot profile, signed-in users see **Flag** on other people's written reviews, choose a reason and optionally add details. Each user can flag an item once; authors cannot flag their own content; visitors are sent to log in.
+- **Inspect (administrators):** **Admin → Open moderation** or `/manage/moderation/` opens on **Held for review** (why each item was held, Approve/Remove, select-all, bulk approve, and bulk remove with a confirmation step). The other tabs are flagged public content (type, link to the original, flag count, reasons, notes), recent ratings and reviews, and the moderation log. Contributors get 403.
+- **Remove (administrators):** Confirm and choose a moderation reason. The review is deleted from public pages and the hotspot average updates; the log keeps a snapshot of the text, the reason, the note and the administrator. Administrators never edit text. **Dismiss flags** closes flags without changing the content.
+
 ## Project structure and integration points
 
 ```text
@@ -128,6 +147,7 @@ hotspots/           Official location model, importer, public views and map API
   static/hotspots/  Responsive styles and map selection logic
 reviews/            Review model, shared rating summary and demo seed command
 accounts/           E02 sign-up/login/logout, roles, shared access checks, admin area
+moderation/         E05 content flags, administrator moderation view, removal log
 templates/          Project-wide templates (403 page)
 data/               Team-provided official CSV sample and data verification script
 scripts/            Local environment generation and MySQL test helper
@@ -151,6 +171,12 @@ Public routes:
 | `/manage/hotspots/import/` | Administrator CSV upload/import |
 | `/manage/hotspots/<doitt_id>/edit/` | Administrator official-field editing |
 | `/manage/hotspots/<doitt_id>/remove/` | Confirmation and POST-only retirement |
+| `/content/review/<id>/flag/` | Contributor flag form for a written review |
+| `/manage/moderation/` | Administrator moderation view (`?tab=held` default, `flagged`, `recent`, `log`) |
+| `/manage/moderation/review/<id>/approve/` | POST-only: publish a held review |
+| `/manage/moderation/bulk/` | POST-only: approve or remove the selected items |
+| `/manage/moderation/review/<id>/remove/` | Confirmation and removal with a moderation reason |
+| `/manage/moderation/review/<id>/dismiss/` | POST-only flag dismissal |
 
 `/` and `/api/hotspots/` accept the same optional query parameters: `q` (location search), `borough`, `neighborhood`, `provider` and `type` (official access type). For example, `/api/hotspots/?q=library&borough=Brooklyn`.
 

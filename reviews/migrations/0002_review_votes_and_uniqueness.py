@@ -7,31 +7,31 @@ from django.db import migrations, models
 
 def check_legacy_review_uniqueness(apps, schema_editor):
     """Stop before MySQL DDL if existing reviews need an explicit data decision."""
-    Review = apps.get_model('reviews', 'Review')
+    Review = apps.get_model("reviews", "Review")
     duplicates = list(
         Review.objects.using(schema_editor.connection.alias)
         .order_by()
-        .values('hotspot_id', 'author_id')
-        .annotate(review_count=models.Count('pk'))
+        .values("hotspot_id", "author_id")
+        .annotate(review_count=models.Count("pk"))
         .filter(review_count__gt=1)[:5]
     )
     if duplicates:
-        examples = ', '.join(
+        examples = ", ".join(
             f"hotspot {row['hotspot_id']}, author {row['author_id']} ({row['review_count']} reviews)"
             for row in duplicates
         )
         raise RuntimeError(
-            'Cannot apply reviews.0002: multiple reviews exist for the same hotspot and author. '
-            'No review data was changed. Back up the records and explicitly resolve the '
-            'duplicates before running migrate again. Examples: ' + examples
+            "Cannot apply reviews.0002: multiple reviews exist for the same hotspot and author. "
+            "No review data was changed. Back up the records and explicitly resolve the "
+            "duplicates before running migrate again. Examples: " + examples
         )
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('hotspots', '0001_initial'),
-        ('reviews', '0001_initial'),
+        ("hotspots", "0001_initial"),
+        ("reviews", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -40,28 +40,46 @@ class Migration(migrations.Migration):
         # uniqueness check leaves both the old data and schema ready for a retry.
         migrations.RunPython(check_legacy_review_uniqueness, migrations.RunPython.noop),
         migrations.CreateModel(
-            name='ReviewVote',
+            name="ReviewVote",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
         ),
         migrations.AddConstraint(
-            model_name='review',
-            constraint=models.UniqueConstraint(fields=('hotspot', 'author'), name='one_review_per_author_per_hotspot'),
+            model_name="review",
+            constraint=models.UniqueConstraint(
+                fields=("hotspot", "author"), name="one_review_per_author_per_hotspot"
+            ),
         ),
         migrations.AddField(
-            model_name='reviewvote',
-            name='review',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='votes', to='reviews.review'),
+            model_name="reviewvote",
+            name="review",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="votes",
+                to="reviews.review",
+            ),
         ),
         migrations.AddField(
-            model_name='reviewvote',
-            name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL),
+            model_name="reviewvote",
+            name="user",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL
+            ),
         ),
         migrations.AddConstraint(
-            model_name='reviewvote',
-            constraint=models.UniqueConstraint(fields=('review', 'user'), name='one_vote_per_user_per_review'),
+            model_name="reviewvote",
+            constraint=models.UniqueConstraint(
+                fields=("review", "user"), name="one_vote_per_user_per_review"
+            ),
         ),
     ]

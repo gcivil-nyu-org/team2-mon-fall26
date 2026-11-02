@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Hotspot, HotspotFollow
+from .models import HotspotFollow
 from .tests import make_hotspot
 
 
@@ -71,7 +71,9 @@ class FollowHotspotTests(TestCase):
             ).exists()
         )
 
-    def assert_expired_session_can_retry_after_login(self, action_url, initially_following):
+    def assert_expired_session_can_retry_after_login(
+        self, action_url, initially_following
+    ):
         password = "Local-regression-password-924!"
         self.user.set_password(password)
         self.user.save(update_fields=["password"])
@@ -105,10 +107,14 @@ class FollowHotspotTests(TestCase):
         self.assertEqual(HotspotFollow.objects.exists(), not initially_following)
 
     def test_expired_session_follow_returns_to_profile_after_login(self):
-        self.assert_expired_session_can_retry_after_login(self.follow_url, initially_following=False)
+        self.assert_expired_session_can_retry_after_login(
+            self.follow_url, initially_following=False
+        )
 
     def test_expired_session_unfollow_returns_to_profile_after_login(self):
-        self.assert_expired_session_can_retry_after_login(self.unfollow_url, initially_following=True)
+        self.assert_expired_session_can_retry_after_login(
+            self.unfollow_url, initially_following=True
+        )
 
     def test_get_never_changes_follow_relationship(self):
         self.client.force_login(self.user)
@@ -117,6 +123,7 @@ class FollowHotspotTests(TestCase):
         HotspotFollow.objects.create(user=self.user, hotspot=self.hotspot)
         self.assertEqual(self.client.get(self.unfollow_url).status_code, 405)
         self.assertTrue(HotspotFollow.objects.exists())
+
 
 class FollowedHotspotListTests(TestCase):
     def setUp(self):
@@ -154,6 +161,7 @@ class FollowedHotspotListTests(TestCase):
         self.assertContains(response, "Followed Park")
         self.assertNotContains(response, "Other Park")
         self.assertNotContains(response, "Retired Park")
+
 
 class FollowHotspotUiTests(TestCase):
     def setUp(self):

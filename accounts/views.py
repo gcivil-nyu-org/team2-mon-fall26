@@ -8,6 +8,8 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import FormView
 
 from hotspots.models import Hotspot
+from moderation.models import ModerationRecord
+from moderation.services import held_count, open_item_count
 from reviews.models import Review
 
 from .forms import LoginForm, SignUpForm
@@ -49,7 +51,10 @@ class SignUpView(FormView):
     def form_valid(self, form):
         user = form.save()
         login(self.request, user, backend="django.contrib.auth.backends.ModelBackend")
-        messages.success(self.request, f"Welcome to Connect NYC, {user.username}. Your account is ready.")
+        messages.success(
+            self.request,
+            f"Welcome to Connect NYC, {user.username}. Your account is ready.",
+        )
         return redirect(self.get_success_url())
 
 
@@ -84,7 +89,9 @@ def admin_home(request):
         for account in users.filter(is_active=True)[:25]
     ]
     active_users = list(users.filter(is_active=True))
-    administrator_count = sum(1 for account in active_users if role_for(account) == ADMINISTRATOR)
+    administrator_count = sum(
+        1 for account in active_users if role_for(account) == ADMINISTRATOR
+    )
     hotspot_counts = Hotspot.objects.aggregate(
         active=Count("pk", filter=Q(is_active=True)),
         inactive=Count("pk", filter=Q(is_active=False)),
@@ -95,5 +102,10 @@ def admin_home(request):
         "administrator_count": administrator_count,
         "hotspot_counts": hotspot_counts,
         "review_count": Review.objects.filter(is_demo=False).count(),
+        "open_flag_items": open_item_count(),
+        "held_count": held_count(),
+        "removed_count": ModerationRecord.objects.filter(
+            action=ModerationRecord.Action.REMOVED
+        ).count(),
     }
     return render(request, "accounts/admin_home.html", context)

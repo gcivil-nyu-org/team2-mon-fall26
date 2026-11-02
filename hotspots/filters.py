@@ -4,11 +4,13 @@ Every filter reads an official NYC Open Data field (see the E01 Data and Field
 Mapping wiki page). Filters combine with AND, and leaving a parameter blank
 removes that filter.
 """
+
 from urllib.parse import urlencode
 
 from django.db.models import Q
 
 from .models import Hotspot
+from .sorting import SORTS
 
 # Fields matched by the free-text location search (US02): landmark/site name,
 # street address or description, neighborhood, borough and ZIP code.
@@ -42,6 +44,9 @@ def read_params(params):
         value = params.get(name, "").strip()
         if value:
             values[name] = value
+    sort = params.get("sort", "").strip()
+    if sort in SORTS:
+        values["sort"] = sort  # US24; not a filter, so it never narrows results
     return values
 
 
@@ -65,6 +70,7 @@ def apply_filters(queryset, values):
 def filter_options(queryset):
     """Choices for each dropdown, built from every active hotspot (not only the
     current results) so a filter can always be changed to another value."""
+
     def distinct(field):
         return list(
             queryset.exclude(**{field: ""})
@@ -86,10 +92,13 @@ def filter_options(queryset):
     return {
         "borough": distinct("borough"),
         "neighborhood": [
-            {"borough": borough, "names": names} for borough, names in neighborhoods.items()
+            {"borough": borough, "names": names}
+            for borough, names in neighborhoods.items()
         ],
         "provider": distinct("provider"),
-        "type": [value for value, _ in Hotspot.AccessType.choices if value in present_types],
+        "type": [
+            value for value, _ in Hotspot.AccessType.choices if value in present_types
+        ],
     }
 
 
@@ -102,10 +111,14 @@ def active_filter_chips(values, base_url):
             continue
         remaining = {key: value for key, value in values.items() if key != name}
         label = "Search" if name == "q" else FILTERS[name][1]
-        chips.append({
-            "name": name,
-            "label": label,
-            "value": values[name],
-            "remove_url": f"{base_url}?{urlencode(remaining)}" if remaining else base_url,
-        })
+        chips.append(
+            {
+                "name": name,
+                "label": label,
+                "value": values[name],
+                "remove_url": (
+                    f"{base_url}?{urlencode(remaining)}" if remaining else base_url
+                ),
+            }
+        )
     return chips

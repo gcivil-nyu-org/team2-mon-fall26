@@ -5,7 +5,8 @@ from .models import Review
 
 
 def visible_reviews():
-    reviews = Review.objects.all()
+    """Reviews the public may see: never held for moderation (E05); demo rows only in demo mode."""
+    reviews = Review.objects.filter(is_held=False)
     return reviews if settings.DEMO_MODE else reviews.filter(is_demo=False)
 
 
@@ -18,7 +19,11 @@ def rating_summary(reviews):
         demo_count=Count("pk", filter=Q(is_demo=True)),
     )
     return {
-        "average": round(float(result["average"]), 1) if result["average"] is not None else None,
+        "average": (
+            round(float(result["average"]), 1)
+            if result["average"] is not None
+            else None
+        ),
         "count": result["count"],
         "review_count": result["review_count"],
         "has_demo_reviews": result["demo_count"] > 0,

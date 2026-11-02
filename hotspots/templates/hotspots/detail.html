@@ -40,6 +40,8 @@
     <div class="profile-map-wrap"><div id="hotspot-map" class="profile-map" role="region" aria-label="Map showing {{ hotspot.display_name }}" data-profile-only="true" data-tile-url="{{ tile_url }}" data-tile-attribution="{{ tile_attribution }}"></div><p id="map-notice" class="map-notice" role="status" hidden></p><noscript><p class="map-notice">Enable JavaScript to view the map. The official location information is shown beside it.</p></noscript><div class="map-caption"><span class="map-key"><span class="legend-pin" aria-hidden="true"></span>Official hotspot location</span></div></div>
   </section>
 
+  {% include "availability/_availability.html" %}
+
   <section class="community-section" id="reviews" aria-labelledby="community-title">
     <div class="section-heading"><h2 id="community-title">Hotspot Reviews</h2><span class="source-badge community-badge">Community feedback</span></div>
     <p class="section-description">Ratings and written reviews are separate from official location data.</p>
@@ -53,7 +55,7 @@
       <div class="review-list">
         <h3>Reviews <span>{{ rating_summary.review_count }}</span></h3>
         {% for review in reviews %}
-        <article class="review" aria-label="Review by {{ review.author.username }}">
+        <article class="review" id="review-{{ review.pk }}" aria-label="Review by {{ review.author.username }}">
           <div class="review-header"><span class="review-avatar" aria-hidden="true">{{ review.author.first_name|default:review.author.username|slice:":1"|upper }}</span><div><h4>{{ review.author.get_full_name|default:review.author.username }}</h4><div class="review-meta"><span class="review-rating"><span aria-hidden="true">★</span> {{ review.rating }} / 5</span><time datetime="{{ review.created_at|date:'c' }}">{{ review.created_at|date:"M j, Y" }}</time></div></div>{% if review.is_demo %}<span class="review-demo-badge">Demo review</span>{% endif %}</div>
           <p class="review-body">{{ review.body|linebreaksbr }}</p>
           <div class="review-actions">
@@ -65,6 +67,9 @@
             {% if review.author_id == user.pk and not review.is_demo %}
               <a href="{% url 'reviews:edit' review.pk %}">Edit</a>
               <a href="{% url 'reviews:delete' review.pk %}">Delete</a>
+            {% endif %}
+            {% if user_role != "visitor" and review.author_id != user.pk %}
+              {% if review.pk in flagged_ids %}<span class="flag-state">Flagged for review</span>{% else %}<a class="flag-link" href="{% url 'moderation:flag' 'review' review.pk %}" aria-label="Flag review by {{ review.author.username }} as inappropriate">Flag</a>{% endif %}
             {% endif %}
           </div>
         </article>

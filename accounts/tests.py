@@ -82,7 +82,10 @@ class SignUpTests(TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Create an account")
-        self.assertEqual(list(response.context["form"].fields), ["username", "email", "password1", "password2"])
+        self.assertEqual(
+            list(response.context["form"].fields),
+            ["username", "email", "password1", "password2"],
+        )
 
     def test_successful_signup_creates_contributor_and_signs_in(self):
         response = self.client.post(self.url, signup_data())
@@ -105,7 +108,10 @@ class SignUpTests(TestCase):
         make_user("Alex")
         response = self.client.post(self.url, signup_data(username="alex"))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["form"].errors["username"], ["A user with that username already exists."])
+        self.assertEqual(
+            response.context["form"].errors["username"],
+            ["A user with that username already exists."],
+        )
         self.assertEqual(User.objects.filter(username__iexact="alex").count(), 1)
 
     def test_duplicate_email_is_rejected_regardless_of_case(self):
@@ -121,10 +127,22 @@ class SignUpTests(TestCase):
             "invalid username": (signup_data(username="bad name!"), "username"),
             "missing email": (signup_data(email=""), "email"),
             "invalid email": (signup_data(email="not-an-email"), "email"),
-            "mismatched passwords": (signup_data(password2="Different-Pass-99"), "password2"),
-            "short password": (signup_data(password1="Ab1!", password2="Ab1!"), "password2"),
-            "common password": (signup_data(password1="password123", password2="password123"), "password2"),
-            "numeric password": (signup_data(password1="8675309123", password2="8675309123"), "password2"),
+            "mismatched passwords": (
+                signup_data(password2="Different-Pass-99"),
+                "password2",
+            ),
+            "short password": (
+                signup_data(password1="Ab1!", password2="Ab1!"),
+                "password2",
+            ),
+            "common password": (
+                signup_data(password1="password123", password2="password123"),
+                "password2",
+            ),
+            "numeric password": (
+                signup_data(password1="8675309123", password2="8675309123"),
+                "password2",
+            ),
         }
         for label, (data, field) in cases.items():
             with self.subTest(label):
@@ -164,7 +182,9 @@ class LoginTests(TestCase):
         self.assertContains(response, '<form method="post"', html=False)
 
     def test_valid_credentials_sign_in_and_show_signed_in_state(self):
-        response = self.client.post(self.url, {"username": "alex", "password": PASSWORD}, follow=True)
+        response = self.client.post(
+            self.url, {"username": "alex", "password": PASSWORD}, follow=True
+        )
         self.assertRedirects(response, reverse("hotspots:map"))
         self.assertEqual(int(self.client.session[SESSION_KEY]), self.user.pk)
         self.assertContains(response, "Signed in as alex.")
@@ -172,35 +192,53 @@ class LoginTests(TestCase):
         self.assertContains(response, "Log out")
 
     def test_invalid_credentials_show_one_generic_error(self):
-        wrong_password = self.client.post(self.url, {"username": "alex", "password": "nope"})
-        unknown_user = self.client.post(self.url, {"username": "nobody", "password": PASSWORD})
+        wrong_password = self.client.post(
+            self.url, {"username": "alex", "password": "nope"}
+        )
+        unknown_user = self.client.post(
+            self.url, {"username": "nobody", "password": PASSWORD}
+        )
         for response in (wrong_password, unknown_user):
             self.assertEqual(response.status_code, 200)
             self.assertNotIn(SESSION_KEY, self.client.session)
             form = response.context["form"]
-            self.assertEqual(form.non_field_errors(), ["The username or password is incorrect. Please try again."])
+            self.assertEqual(
+                form.non_field_errors(),
+                ["The username or password is incorrect. Please try again."],
+            )
             self.assertNotIn("username", form.errors)
             self.assertNotIn("password", form.errors)
 
     def test_inactive_account_gets_the_same_generic_error(self):
         make_user("dormant", is_active=False)
-        response = self.client.post(self.url, {"username": "dormant", "password": PASSWORD})
+        response = self.client.post(
+            self.url, {"username": "dormant", "password": PASSWORD}
+        )
         self.assertNotIn(SESSION_KEY, self.client.session)
         self.assertContains(response, "The username or password is incorrect.")
 
     def test_login_follows_safe_next_and_ignores_external_next(self):
         hotspot_url = make_hotspot().get_absolute_url()
-        response = self.client.post(self.url, {"username": "alex", "password": PASSWORD, "next": hotspot_url})
+        response = self.client.post(
+            self.url, {"username": "alex", "password": PASSWORD, "next": hotspot_url}
+        )
         self.assertRedirects(response, hotspot_url)
         self.client.logout()
         response = self.client.post(
-            self.url, {"username": "alex", "password": PASSWORD, "next": "https://evil.example.com/"}
+            self.url,
+            {
+                "username": "alex",
+                "password": PASSWORD,
+                "next": "https://evil.example.com/",
+            },
         )
         self.assertRedirects(response, reverse("hotspots:map"))
 
     @override_settings(ROOT_URLCONF=__name__)
     def test_signed_in_user_can_access_contribution_features(self):
-        self.client.post(reverse("accounts:login"), {"username": "alex", "password": PASSWORD})
+        self.client.post(
+            reverse("accounts:login"), {"username": "alex", "password": PASSWORD}
+        )
         response = self.client.get(reverse("contribute_stub"))
         self.assertEqual(response.status_code, 200)
 
@@ -238,7 +276,9 @@ class LogoutTests(TestCase):
         self.client.post(reverse("accounts:logout"))
         response = self.client.get(reverse("contribute_stub"))
         self.assertRedirects(
-            response, f"{reverse('accounts:login')}?next={reverse('contribute_stub')}", fetch_redirect_response=False
+            response,
+            f"{reverse('accounts:login')}?next={reverse('contribute_stub')}",
+            fetch_redirect_response=False,
         )
 
 
@@ -251,7 +291,12 @@ class ContributionSignInTests(TestCase):
 
     def test_visitors_can_browse_search_filter_and_read_reviews(self):
         author = make_user("reviewer")
-        Review.objects.create(hotspot=self.hotspot, author=author, rating=4, body="Solid signal near the fountain.")
+        Review.objects.create(
+            hotspot=self.hotspot,
+            author=author,
+            rating=4,
+            body="Solid signal near the fountain.",
+        )
         public_pages = [
             reverse("hotspots:map"),
             f"{reverse('hotspots:map')}?q=bryant&borough=Manhattan",
@@ -261,20 +306,25 @@ class ContributionSignInTests(TestCase):
         for url in public_pages:
             with self.subTest(url):
                 self.assertEqual(self.client.get(url).status_code, 200)
-        self.assertContains(self.client.get(self.profile_url), "Solid signal near the fountain.")
+        self.assertContains(
+            self.client.get(self.profile_url), "Solid signal near the fountain."
+        )
 
     def test_visitor_is_prompted_to_sign_in_or_sign_up_to_rate(self):
         response = self.client.get(self.profile_url)
         next_param = f"?next={self.profile_url}%23contribute"
         self.assertContains(response, "Sign in to rate or review this hotspot.")
         self.assertContains(response, f'href="{reverse("accounts:login")}{next_param}"')
-        self.assertContains(response, f'href="{reverse("accounts:signup")}{next_param}"')
+        self.assertContains(
+            response, f'href="{reverse("accounts:signup")}{next_param}"'
+        )
 
     def test_signing_in_returns_the_user_to_the_hotspot_they_started_from(self):
         make_user()
         next_url = f"{self.profile_url}#contribute"
         response = self.client.post(
-            reverse("accounts:login"), {"username": "alex", "password": PASSWORD, "next": next_url}
+            reverse("accounts:login"),
+            {"username": "alex", "password": PASSWORD, "next": next_url},
         )
         self.assertRedirects(response, next_url, fetch_redirect_response=False)
         page = self.client.get(self.profile_url)
@@ -285,14 +335,18 @@ class ContributionSignInTests(TestCase):
         next_url = f"{self.profile_url}#contribute"
         signup_page = self.client.get(reverse("accounts:signup"), {"next": next_url})
         self.assertContains(signup_page, f'name="next" value="{next_url}"')
-        response = self.client.post(reverse("accounts:signup"), {**signup_data(), "next": next_url})
+        response = self.client.post(
+            reverse("accounts:signup"), {**signup_data(), "next": next_url}
+        )
         self.assertRedirects(response, next_url, fetch_redirect_response=False)
 
     @override_settings(ROOT_URLCONF=__name__)
     def test_contribution_views_send_visitors_to_login_with_return_path(self):
         response = self.client.get(reverse("contribute_stub"))
         self.assertRedirects(
-            response, f"{reverse('accounts:login')}?next={reverse('contribute_stub')}", fetch_redirect_response=False
+            response,
+            f"{reverse('accounts:login')}?next={reverse('contribute_stub')}",
+            fetch_redirect_response=False,
         )
 
 
@@ -302,7 +356,9 @@ class AdministratorAccessTests(TestCase):
     def setUp(self):
         self.contributor = make_user("contributor")
         self.administrator = make_administrator()
-        self.superuser = User.objects.create_superuser("root", "root@example.com", PASSWORD)
+        self.superuser = User.objects.create_superuser(
+            "root", "root@example.com", PASSWORD
+        )
         self.admin_url = reverse("accounts:admin_home")
 
     def test_system_distinguishes_three_roles(self):
@@ -325,22 +381,32 @@ class AdministratorAccessTests(TestCase):
 
     def test_admin_link_is_visible_to_administrators_only(self):
         self.client.force_login(self.administrator)
-        self.assertContains(self.client.get(reverse("hotspots:map")), f'href="{self.admin_url}"')
+        self.assertContains(
+            self.client.get(reverse("hotspots:map")), f'href="{self.admin_url}"'
+        )
         self.client.force_login(self.contributor)
-        self.assertNotContains(self.client.get(reverse("hotspots:map")), f'href="{self.admin_url}"')
+        self.assertNotContains(
+            self.client.get(reverse("hotspots:map")), f'href="{self.admin_url}"'
+        )
         self.client.logout()
-        self.assertNotContains(self.client.get(reverse("hotspots:map")), f'href="{self.admin_url}"')
+        self.assertNotContains(
+            self.client.get(reverse("hotspots:map")), f'href="{self.admin_url}"'
+        )
 
     def test_contributors_are_refused_admin_area_by_direct_url(self):
         self.client.force_login(self.contributor)
         response = self.client.get(self.admin_url)
         self.assertEqual(response.status_code, 403)
-        self.assertContains(response, "You don't have access to this page", status_code=403)
+        self.assertContains(
+            response, "You don't have access to this page", status_code=403
+        )
 
     def test_visitors_are_sent_to_login_for_admin_area(self):
         response = self.client.get(self.admin_url)
         self.assertRedirects(
-            response, f"{reverse('accounts:login')}?next={self.admin_url}", fetch_redirect_response=False
+            response,
+            f"{reverse('accounts:login')}?next={self.admin_url}",
+            fetch_redirect_response=False,
         )
 
     @override_settings(ROOT_URLCONF=__name__)
@@ -356,7 +422,9 @@ class AdministratorAccessTests(TestCase):
         self.client.force_login(self.contributor)
         response = self.client.get(reverse("admin:index"))
         self.assertRedirects(
-            response, f"{reverse('admin:login')}?next={reverse('admin:index')}", fetch_redirect_response=False
+            response,
+            f"{reverse('admin:login')}?next={reverse('admin:index')}",
+            fetch_redirect_response=False,
         )
         self.client.force_login(self.administrator)
         self.assertEqual(self.client.get(reverse("admin:index")).status_code, 200)
@@ -374,7 +442,9 @@ class AdministratorAccessTests(TestCase):
         self.assertFalse(is_administrator(self.contributor))
         self.assertFalse(self.contributor.is_staff)
 
-    def test_set_administrator_command_rejects_unknown_accounts_and_superuser_revoke(self):
+    def test_set_administrator_command_rejects_unknown_accounts_and_superuser_revoke(
+        self,
+    ):
         with self.assertRaisesMessage(CommandError, "No account named"):
             call_command("set_administrator", "ghost", stdout=StringIO())
         with self.assertRaisesMessage(CommandError, "is a superuser"):

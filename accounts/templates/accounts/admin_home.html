@@ -41,5 +41,16 @@
       </div>
       <a class="button button-secondary" href="{% url 'admin:index' %}">Open Django admin</a>
     </section>
+
+    <section class="admin-panel" aria-labelledby="moderation-title">
+      <h2 id="moderation-title">Community moderation</h2>
+      <dl class="admin-stats">
+        <div><dt>Held for review</dt><dd>{{ held_count }}</dd></div>
+        <div><dt>Flagged items</dt><dd>{{ open_flag_items }}</dd></div>
+        <div><dt>Removed items</dt><dd>{{ removed_count }}</dd></div>
+      </dl>
+      <p class="admin-note">Approve or remove reviews held by the automated checks, handle flagged content, and inspect recent ratings and reviews.</p>
+      <a class="button button-primary" href="{% url 'moderation:queue' %}">Open moderation</a>
+    </section>
   </div>
 {% endblock %}

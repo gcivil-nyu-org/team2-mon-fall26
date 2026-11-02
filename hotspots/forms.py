@@ -4,7 +4,6 @@ from django.utils import timezone
 from .importing import BOROUGHS
 from .models import Hotspot
 
-
 MAX_IMPORT_BYTES = 5 * 1024 * 1024
 
 
@@ -31,7 +30,9 @@ class HotspotImportForm(forms.Form):
         try:
             self.csv_text = data.decode("utf-8-sig")
         except UnicodeError as exc:
-            raise forms.ValidationError("Save the CSV as UTF-8 and upload it again.") from exc
+            raise forms.ValidationError(
+                "Save the CSV as UTF-8 and upload it again."
+            ) from exc
         return uploaded
 
     def clean_source_date(self):
@@ -47,11 +48,25 @@ class HotspotEditForm(forms.ModelForm):
     class Meta:
         model = Hotspot
         fields = (
-            "name", "location_description", "latitude", "longitude", "borough",
-            "neighborhood_name", "neighborhood_code", "zip_code", "provider",
-            "access_type", "location_type", "ssid", "remarks", "activated_on",
+            "name",
+            "location_description",
+            "latitude",
+            "longitude",
+            "borough",
+            "neighborhood_name",
+            "neighborhood_code",
+            "zip_code",
+            "provider",
+            "access_type",
+            "location_type",
+            "ssid",
+            "remarks",
+            "activated_on",
         )
-        labels = {"ssid": "Wi-Fi network name (SSID)", "activated_on": "Activation date"}
+        labels = {
+            "ssid": "Wi-Fi network name (SSID)",
+            "activated_on": "Activation date",
+        }
         widgets = {
             "remarks": forms.Textarea(attrs={"rows": 3}),
             "activated_on": forms.DateInput(attrs={"type": "date"}),

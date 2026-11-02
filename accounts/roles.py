@@ -8,6 +8,7 @@ or migration of existing review data is needed:
   "Contributors" group so the role is visible in Django admin.
 - Administrator: a superuser, or a member of the "Administrators" group.
 """
+
 from django.contrib.auth.models import Group
 
 CONTRIBUTORS_GROUP = "Contributors"

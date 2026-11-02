@@ -45,7 +45,9 @@ def discussion_list(request):
 
 def discussion_detail(request, pk):
     post = get_object_or_404(
-        _vote_counts(ForumPost.objects.select_related("author", "hotspot"), request.user),
+        _vote_counts(
+            ForumPost.objects.select_related("author", "hotspot"), request.user
+        ),
         pk=pk,
     )
     comments = list(
@@ -129,7 +131,9 @@ def _toggle_vote(request, post=None, comment=None):
         return redirect("forum:detail", pk=post.pk if post else comment.post_id)
     if target.author_id == request.user.pk:
         messages.info(request, "You can't upvote your own forum content.")
-        destination = post.get_absolute_url() if post else comment.post.get_absolute_url()
+        destination = (
+            post.get_absolute_url() if post else comment.post.get_absolute_url()
+        )
         fragment = "comments" if post else f"comment-{comment.pk}"
         return redirect(f"{destination}#{fragment}")
 
@@ -141,7 +145,9 @@ def _toggle_vote(request, post=None, comment=None):
     else:
         ForumVote.objects.get_or_create(**filters)
     destination = post.get_absolute_url() if post else comment.post.get_absolute_url()
-    return redirect(f"{destination}#comments" if post else f"{destination}#comment-{comment.pk}")
+    return redirect(
+        f"{destination}#comments" if post else f"{destination}#comment-{comment.pk}"
+    )
 
 
 @contributor_required

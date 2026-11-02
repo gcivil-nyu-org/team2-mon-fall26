@@ -9,7 +9,6 @@ from reviews.services import rating_summary
 
 from .models import ForumComment, ForumPost, ForumVote
 
-
 User = get_user_model()
 
 
@@ -142,8 +141,12 @@ class ForumTests(TestCase):
         self.client.force_login(self.reader)
         self.client.post(reverse("forum:post_vote", args=[self.post.pk]))
         self.client.post(reverse("forum:comment_vote", args=[comment.pk]))
-        self.assertTrue(ForumVote.objects.filter(user=self.reader, post=self.post).exists())
-        self.assertTrue(ForumVote.objects.filter(user=self.reader, comment=comment).exists())
+        self.assertTrue(
+            ForumVote.objects.filter(user=self.reader, post=self.post).exists()
+        )
+        self.assertTrue(
+            ForumVote.objects.filter(user=self.reader, comment=comment).exists()
+        )
 
         self.client.post(reverse("forum:post_vote", args=[self.post.pk]))
         self.client.post(reverse("forum:comment_vote", args=[comment.pk]))
@@ -189,7 +192,9 @@ class ForumTests(TestCase):
         ForumVote.objects.create(user=other_reader, post=self.post)
         for index in range(3):
             ForumComment.objects.create(
-                post=self.post, author=self.author, body=f"Answer {index}",
+                post=self.post,
+                author=self.author,
+                body=f"Answer {index}",
             )
         self.client.force_login(self.reader)
 
@@ -229,13 +234,20 @@ class ForumTests(TestCase):
 
     def test_replies_stay_under_their_parent_before_the_next_root_comment(self):
         first = ForumComment.objects.create(
-            post=self.post, author=self.author, body="First root answer",
+            post=self.post,
+            author=self.author,
+            body="First root answer",
         )
         second = ForumComment.objects.create(
-            post=self.post, author=self.author, body="Second root answer",
+            post=self.post,
+            author=self.author,
+            body="Second root answer",
         )
         reply = ForumComment.objects.create(
-            post=self.post, author=self.reader, parent=first, body="First answer reply",
+            post=self.post,
+            author=self.reader,
+            parent=first,
+            body="First answer reply",
         )
 
         response = self.client.get(reverse("forum:detail", args=[self.post.pk]))

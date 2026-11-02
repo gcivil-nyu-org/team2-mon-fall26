@@ -13,6 +13,9 @@ class Review(models.Model):
     )
     body = models.TextField(blank=True)
     is_demo = models.BooleanField(default=False)
+    # E05: held reviews are hidden from the public and the average until an
+    # administrator approves or removes them. Only the author can see them.
+    is_held = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -41,5 +44,7 @@ class ReviewVote(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["review", "user"], name="one_vote_per_user_per_review")
+            models.UniqueConstraint(
+                fields=["review", "user"], name="one_vote_per_user_per_review"
+            )
         ]

@@ -10,52 +10,169 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('hotspots', '0002_hotspotfollow'),
+        ("hotspots", "0002_hotspotfollow"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ForumPost',
+            name="ForumPost",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('topic_type', models.CharField(choices=[('question', 'Question'), ('discussion', 'Discussion')], max_length=16)),
-                ('title', models.CharField(max_length=180)),
-                ('body', models.TextField(max_length=5000)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('author', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='forum_posts', to=settings.AUTH_USER_MODEL)),
-                ('hotspot', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='forum_posts', to='hotspots.hotspot')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "topic_type",
+                    models.CharField(
+                        choices=[
+                            ("question", "Question"),
+                            ("discussion", "Discussion"),
+                        ],
+                        max_length=16,
+                    ),
+                ),
+                ("title", models.CharField(max_length=180)),
+                ("body", models.TextField(max_length=5000)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "author",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="forum_posts",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "hotspot",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="forum_posts",
+                        to="hotspots.hotspot",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-created_at', '-pk'],
+                "ordering": ["-created_at", "-pk"],
             },
         ),
         migrations.CreateModel(
-            name='ForumComment',
+            name="ForumComment",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('body', models.TextField(max_length=2000)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('author', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='forum_comments', to=settings.AUTH_USER_MODEL)),
-                ('parent', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='replies', to='forum.forumcomment')),
-                ('post', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='comments', to='forum.forumpost')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("body", models.TextField(max_length=2000)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "author",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="forum_comments",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "parent",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="replies",
+                        to="forum.forumcomment",
+                    ),
+                ),
+                (
+                    "post",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="comments",
+                        to="forum.forumpost",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['created_at', 'pk'],
+                "ordering": ["created_at", "pk"],
             },
         ),
         migrations.CreateModel(
-            name='ForumVote',
+            name="ForumVote",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('comment', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='votes', to='forum.forumcomment')),
-                ('post', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='votes', to='forum.forumpost')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='forum_votes', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "comment",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="votes",
+                        to="forum.forumcomment",
+                    ),
+                ),
+                (
+                    "post",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="votes",
+                        to="forum.forumpost",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="forum_votes",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'constraints': [models.CheckConstraint(condition=models.Q(models.Q(('comment__isnull', True), ('post__isnull', False)), models.Q(('comment__isnull', False), ('post__isnull', True)), _connector='OR'), name='forum_vote_exactly_one_target'), models.UniqueConstraint(fields=('user', 'post'), name='one_user_vote_per_forum_post'), models.UniqueConstraint(fields=('user', 'comment'), name='one_user_vote_per_forum_comment')],
+                "constraints": [
+                    models.CheckConstraint(
+                        condition=models.Q(
+                            models.Q(
+                                ("comment__isnull", True), ("post__isnull", False)
+                            ),
+                            models.Q(
+                                ("comment__isnull", False), ("post__isnull", True)
+                            ),
+                            _connector="OR",
+                        ),
+                        name="forum_vote_exactly_one_target",
+                    ),
+                    models.UniqueConstraint(
+                        fields=("user", "post"), name="one_user_vote_per_forum_post"
+                    ),
+                    models.UniqueConstraint(
+                        fields=("user", "comment"),
+                        name="one_user_vote_per_forum_comment",
+                    ),
+                ],
             },
         ),
     ]

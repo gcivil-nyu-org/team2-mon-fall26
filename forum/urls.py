@@ -10,5 +10,9 @@ urlpatterns = [
     path("posts/<int:pk>/", views.discussion_detail, name="detail"),
     path("posts/<int:post_pk>/comments/", views.add_comment, name="comment"),
     path("posts/<int:post_pk>/vote/", views.toggle_post_vote, name="post_vote"),
-    path("comments/<int:comment_pk>/vote/", views.toggle_comment_vote, name="comment_vote"),
+    path(
+        "comments/<int:comment_pk>/vote/",
+        views.toggle_comment_vote,
+        name="comment_vote",
+    ),
 ]

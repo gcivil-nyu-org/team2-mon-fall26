@@ -38,11 +38,18 @@ def manage_list(request):
     page = Paginator(records.order_by("borough", "name", "hotspot_id"), 50).get_page(
         request.GET.get("page")
     )
-    return render(request, "hotspots/manage_list.html", {
-        "page_obj": page, "q": query, "status": status,
-        "active_count": counts["active"], "retired_count": counts["retired"],
-        "query_string": urlencode({"q": query, "status": status}),
-    })
+    return render(
+        request,
+        "hotspots/manage_list.html",
+        {
+            "page_obj": page,
+            "q": query,
+            "status": status,
+            "active_count": counts["active"],
+            "retired_count": counts["retired"],
+            "query_string": urlencode({"q": query, "status": status}),
+        },
+    )
 
 
 @administrator_required
@@ -54,17 +61,26 @@ def manage_import(request):
     )
     if request.method == "POST" and form.is_valid():
         try:
-            result = import_hotspots(StringIO(form.csv_text), form.cleaned_data["source_date"])
+            result = import_hotspots(
+                StringIO(form.csv_text), form.cleaned_data["source_date"]
+            )
         except HotspotImportError as exc:
             form.add_error(None, str(exc))
         else:
-            messages.success(request,
+            messages.success(
+                request,
                 f"Imported {result['total']} official hotspots: {result['created']} created, "
-                f"{result['updated']} updated. No records were removed or reactivated.")
+                f"{result['updated']} updated. No records were removed or reactivated.",
+            )
             return redirect("hotspots:manage_list")
-    return render(request, "hotspots/manage_import.html", {
-        "form": form, "source_url": Hotspot.source_url,
-    })
+    return render(
+        request,
+        "hotspots/manage_import.html",
+        {
+            "form": form,
+            "source_url": Hotspot.source_url,
+        },
+    )
 
 
 @administrator_required
@@ -72,13 +88,18 @@ def manage_import(request):
 def manage_edit(request, pk):
     hotspot = get_object_or_404(Hotspot, pk=pk)
     form = HotspotEditForm(
-        request.POST if request.method == "POST" else None, instance=hotspot,
+        request.POST if request.method == "POST" else None,
+        instance=hotspot,
     )
     if request.method == "POST" and form.is_valid():
         form.save()
-        messages.success(request, f"Updated {hotspot.display_name}. Visibility is unchanged.")
+        messages.success(
+            request, f"Updated {hotspot.display_name}. Visibility is unchanged."
+        )
         return redirect("hotspots:manage_list")
-    return render(request, "hotspots/manage_edit.html", {"form": form, "hotspot": hotspot})
+    return render(
+        request, "hotspots/manage_edit.html", {"form": form, "hotspot": hotspot}
+    )
 
 
 @administrator_required
@@ -87,8 +108,10 @@ def manage_retire(request, pk):
     hotspot = get_object_or_404(Hotspot, pk=pk)
     if request.method == "POST" and request.POST.get("confirm") == "yes":
         Hotspot.objects.filter(pk=pk).update(is_active=False)
-        messages.success(request,
-            f"Removed {hotspot.display_name} from public discovery. Reviews and helpful votes are retained.")
+        messages.success(
+            request,
+            f"Removed {hotspot.display_name} from public discovery. Reviews and helpful votes are retained.",
+        )
         return redirect("hotspots:manage_list")
     context = {
         "hotspot": hotspot,
@@ -96,5 +119,7 @@ def manage_retire(request, pk):
         "vote_count": ReviewVote.objects.filter(review__hotspot=hotspot).count(),
     }
     if request.method == "POST":
-        messages.error(request, "Confirm removal before changing this hotspot's visibility.")
+        messages.error(
+            request, "Confirm removal before changing this hotspot's visibility."
+        )
     return render(request, "hotspots/manage_confirm_retire.html", context)
