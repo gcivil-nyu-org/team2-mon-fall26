@@ -4,6 +4,10 @@ Last updated: **November 2, 2026**.
 
 This document records implementation progress, remaining work, and development history for Connect NYC. GitHub and ZenHub remain the sources for requirements, assignments, and workflow status. Update this record as work progresses; preserve the dated archive below.
 
+## Current release review — November 2, 2026
+
+PR #67 promotes the integrated develop branch to main: E05 moderation, E06 availability/reliability and sorting, and the CI quality/coverage checks, alongside the existing E07 fixes and E08 forum. PR #66 synchronized main into develop before this promotion. Review found and fixed an E06 expired-session login return: availability submissions now return to the hotspot profile's report section after sign-in, where the contributor can retry. No report is created before the explicit retry. All 223 tests pass on isolated MySQL 8.4, including two new login-return regressions; Black, Flake8, Django system checks and migration consistency checks pass. Latest-head CI, merge, deployment and online acceptance are separate follow-up states.
+
 ## E07 production PR — November 2, 2026
 
 [PR #62](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/62) promotes US25/US26 from the E07 branch to `main`. It synchronizes the existing main/E04 changes, preserving all administrator data-management routes, and fixes the expired-session follow/unfollow login return. These POST-only actions now send visitors back to the hotspot profile after sign-in so they can retry. US27 notifications remain unimplemented. Merge, CI/deployment completion and production acceptance are separate states; see the dated validation entry below.
@@ -29,7 +33,7 @@ E04 administrator import/list/edit/retirement (US16–US17, Boqing) is implement
 | [E03 — Rate & Review Hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/3) | Implemented and locally validated in PR #53 (Suvan) | Production release and deployed acceptance; synchronize Story workflow states. US15 remains MLP scope. |
 | [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | Administrator import/list/edit/retirement implemented and locally validated (Boqing) | PR merge and production acceptance; US18 remains previously closed. |
 | [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | Implemented (Jiahao); merged to `develop` in PR #60 after review fixes; promotion to `main`, deployment and acceptance pending | Shared content flagging, moderation review, and removal, plus rule-based automated checks that block or hold reviews before user flags. Reviews are registered today; E08 forum content registers in `moderation/registry.py`. |
-| [E06 — Report Availability & Assess Reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) | US22–US24 implemented and locally validated (E06 branch); seating/accessibility tags not started | Team review of the reliability rules below, MySQL/CI run, deployed acceptance, and the seating/accessibility tags story. |
+| [E06 — Report Availability & Assess Reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) | US22–US24 integrated in develop; PR #67 fixes login return and passes 223 integrated MySQL tests | Latest-head CI, promotion to main and deployed acceptance; seating/accessibility tags remain unimplemented. |
 | [E07 — Follow Hotspots & Receive Updates](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) | Partial: US25/US26 implemented and promoted through PR #62; merge/deployment acceptance tracked separately | US27 notifications remain unimplemented. |
 | [E08 — Discussion Forum & Community Interaction](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) | MVP implemented and review fixes validated with 140 tests on isolated MySQL 8.4 | PR merge, production release and deployed acceptance; E05 reporting/moderation remains separate. |
 
@@ -87,7 +91,7 @@ Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #
 | E05 | [US19 / #29 — Review content and flags](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/29) | Implemented; merged to `develop` in PR #60. `/manage/moderation/` (administrators only; contributors get 403) opens on **Held for review** (automated holds and community auto-hides, with Approve/Remove and bulk actions) and also has flagged content (type, link to the original, flag count, reasons, notes), recent ratings and reviews (newest 50 per page, including rating-only entries, with open-flag counts), and the moderation log. Linked from `/manage/`. |
 | E05 | [US20 / #30 — Remove violations](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/30) | Implemented; merged to `develop` in PR #60. Removal requires a confirmation page and a moderation reason (proposed list in `moderation.models.Reason`; team to confirm). The review is deleted, so it leaves public pages and the average recalculates; a `ModerationRecord` keeps a text snapshot, reason, note, flag count and administrator. Administrators cannot edit text. "Dismiss flags" closes flags without changing content and is logged. |
 | E05 | [US21 / #31 — Flag inappropriate content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/31) | Implemented; merged to `develop` in PR #60 for hotspot reviews. Signed-in contributors see a Flag link on other users' written reviews and choose a reason ("Something else" requires details). One flag per user per item, enforced by a database constraint; authors cannot flag their own reviews; visitors are sent to log in. Flags close automatically if the author deletes the review. E08 forum content uses the same flow once registered. |
-| E06 | [US22 / #32 — Report Working/Unavailable](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/32) | Implemented; locally validated, pending review and deployed acceptance. |
+| E06 | [US22 / #32 — Report Working/Unavailable](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/32) | Implemented; PR #67 adds safe expired-session login return and explicit retry for both statuses, verified against MySQL. Latest-head CI, merge and deployed acceptance remain separate. |
 | E06 | [US23 / #33 — Reliability and report recency](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/33) | Implemented; locally validated, pending review and deployed acceptance. Rules proposed in the archive entry below. |
 | E06 | [US24 / #34 — Sort by rating/reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/34) | Implemented; locally validated, pending review and deployed acceptance. |
 | E07 | [US25 / #35 — Follow/unfollow](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/35) | Implemented in PR #57, promoted through PR #62 with safe login continuation. POST-only and unique per user/hotspot; production acceptance remains separate. |
@@ -119,6 +123,13 @@ Closed test issue #44 is excluded from product completion progress.
 Docker Compose was used for this local review only. No production deployment or production database modification was performed.
 
 ## Development archive
+
+### November 2, 2026 — PR #67 promotion review and E06 login-return fix
+
+- Reviewed develop head `1059966`, whose tree matches the previously reviewed PR #66 revision. E05/E06 and CI changes are promoted alongside the existing E07/E08 work; migrations add availability/moderation storage and the review hold flag without deleting user data.
+- Two new MySQL regression tests reproduced the incorrect login destination for expired-session Working/Unavailable submissions. Replaced the endpoint-based redirect with a return to the active hotspot profile's availability section, retaining the shared active-contributor role check and POST-only writes.
+- All 223 tests passed on isolated MySQL 8.4 in 37.683 seconds, including actual sign-in, successful profile return, no automatic report creation and an explicit retry for both statuses. Black checked 92 files; Flake8, Django system checks, migration consistency and diff checks passed.
+- Latest-head CI, merge and deployment/production acceptance must be verified separately. No new Story closure or production database modification is claimed by the local validation.
 
 ### October 30, 2026 — E06 availability reports, reliability score and sorting (US22, US23, US24)
 
