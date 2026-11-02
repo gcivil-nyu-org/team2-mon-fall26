@@ -1,0 +1,20 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Start a discussion · Connect NYC{% endblock %}
+{% block forum_nav_class %}is-current{% endblock %}
+{% block forum_nav_current %}aria-current="page"{% endblock %}
+{% block content %}
+  <section class="auth-card forum-form-card" aria-labelledby="forum-form-title">
+    <p class="forum-eyebrow">Community discussions</p>
+    <h1 id="forum-form-title">Start a discussion</h1>
+    <p class="auth-intro">Ask about public Wi-Fi or start a topic. For first-hand feedback on one hotspot, use its separate rating and review form.</p>
+    <form method="post" class="auth-form">
+      {% csrf_token %}
+      {% include "accounts/_field.html" with field=form.topic_type %}
+      {% include "accounts/_field.html" with field=form.title %}
+      {% include "accounts/_field.html" with field=form.body %}
+      {% include "accounts/_field.html" with field=form.hotspot %}
+      <button type="submit" class="button button-primary auth-submit">Post discussion</button>
+    </form>
+    <p class="auth-switch"><a href="{% url 'forum:list' %}">Cancel and return to discussions</a></p>
+  </section>
+{% endblock %}

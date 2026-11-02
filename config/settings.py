@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "hotspots.apps.HotspotsConfig",
     "reviews.apps.ReviewsConfig",
     "accounts.apps.AccountsConfig",
+    "forum.apps.ForumConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

@@ -4,7 +4,7 @@ Connect NYC is an English-language web application that helps New York City resi
 
 ## Project description
 
-The core user journey is to browse a map, search or filter locations, and open a hotspot profile to see its provider, access information, ratings, and reviews. Public browsing does not require an account. Signed-in users can share and manage hotspot reviews, follow hotspots, and open their personal followed-hotspot list. A separate discussion area for Wi-Fi questions and conversations is planned. Availability reporting, reliability indicators, and notifications are planned extensions.
+The core user journey is to browse a map, search or filter locations, and open a hotspot profile to see its provider, access information, ratings, and reviews. Public browsing does not require an account. Signed-in users can share and manage hotspot reviews, follow hotspots, and open their personal followed-hotspot list. The public discussion forum supports Wi-Fi questions and conversations, threaded replies and helpful upvotes. Availability reporting, reliability indicators, and notifications are planned extensions.
 
 The application uses **Python 3.13, Django 5.2, and MySQL 8.4**. The frontend is built with Django templates, HTML, CSS, and JavaScript; Leaflet and OpenStreetMap provide the map. The current local demo runs as one web application and one database through Docker Compose.
 
@@ -12,7 +12,7 @@ For current implementation status, remaining work, and dated development history
 
 ## Implemented demo
 
-The demo includes hotspot discovery, account access, hotspot review contributions, administrator data maintenance and hotspot following:
+The demo includes hotspot discovery, account access, hotspot review contributions, administrator data maintenance, hotspot following and a public discussion forum:
 
 | Story | Demo behavior |
 | --- | --- |
@@ -23,6 +23,7 @@ The demo includes hotspot discovery, account access, hotspot review contribution
 | [US06–US10 / #16–#20](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) (E02) | Sign up, log in and log out. Visitors keep public browsing and are asked to sign in only to contribute, then returned to the hotspot they started from. Administrators get an admin-only area that contributors and visitors cannot open, even by direct URL. |
 | [US16–US17 / #26–#27](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) (E04) | Administrators import official CSV data, browse/search stored records, edit fields and confirm removal from public discovery while retaining reviews and votes. |
 | [US25–US26 / #35–#36](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) (E07) | Signed-in users follow/unfollow an active hotspot and access their own list through My followed hotspots. If a session expires, login returns to the hotspot profile so the user can retry the action. Notifications remain future scope. |
+| [US28–US30 / #38–#40](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) (E08) | Visitors browse public topics and comments; contributors create discussions, post threaded replies and toggle helpful upvotes on posts and comments. Optional hotspot links do not create reviews or affect ratings. |
 
 The profile includes a small rating aggregation service for its dependency on US12 / #22 under E03; that story remains owned by Jiahao. US18 / #28 retains its E04 parent and is integrated into the E01 interface. Rating and review contributions (E03: create, edit, delete, helpful upvotes) are implemented. Availability reporting, reliability scores, and notifications are not yet implemented.
 
