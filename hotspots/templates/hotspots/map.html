@@ -50,6 +50,13 @@
           {% for value in filter_options.type %}<option value="{{ value }}"{% if value == filters.type %} selected{% endif %}>{{ value }}</option>{% endfor %}
         </select>
       </div>
+      <div class="filter-field">
+        <label for="filter-sort">Sort by</label>
+        <select id="filter-sort" name="sort" data-autosubmit>
+          <option value="">Default order</option>
+          {% for value, label in sort_options %}<option value="{{ value }}"{% if value == filters.sort %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
       <div class="search-actions">
         <button type="submit" class="button button-primary">Search</button>
         {% if is_filtered %}<a class="button button-secondary" href="{% url 'hotspots:map' %}">Clear all</a>{% endif %}
