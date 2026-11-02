@@ -49,7 +49,9 @@ def create_review(request, hotspot_pk):
     hotspot = get_object_or_404(Hotspot, pk=hotspot_pk, is_active=True)
     existing = Review.objects.filter(hotspot=hotspot, author=request.user).first()
     if existing:
-        messages.info(request, "You already reviewed this hotspot. You can edit your review here.")
+        messages.info(
+            request, "You already reviewed this hotspot. You can edit your review here."
+        )
         return redirect("reviews:edit", pk=existing.pk)
     form = ReviewForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -67,7 +69,11 @@ def create_review(request, hotspot_pk):
             else:
                 messages.success(request, "Thanks. Your rating has been saved.")
         return redirect(_hotspot_url(hotspot))
-    return render(request, "reviews/review_form.html", {"form": form, "hotspot": hotspot, "editing": False})
+    return render(
+        request,
+        "reviews/review_form.html",
+        {"form": form, "hotspot": hotspot, "editing": False},
+    )
 
 
 @contributor_required
@@ -81,11 +87,19 @@ def edit_review(request, pk):
         with transaction.atomic():
             current = (
                 Review.objects.select_for_update()
-                .filter(pk=review.pk, author=request.user, is_demo=False, hotspot__is_active=True)
+                .filter(
+                    pk=review.pk,
+                    author=request.user,
+                    is_demo=False,
+                    hotspot__is_active=True,
+                )
                 .first()
             )
             if current is None:
-                messages.info(request, "This review is no longer available. It may have been removed by a moderator.")
+                messages.info(
+                    request,
+                    "This review is no longer available. It may have been removed by a moderator.",
+                )
                 return redirect(_hotspot_url(review.hotspot))
             current.rating = form.cleaned_data["rating"]
             current.body = form.cleaned_data["body"]
@@ -111,14 +125,20 @@ def delete_review(request, pk):
         review.delete()
         messages.success(request, "Your rating and review have been deleted.")
         return redirect(_hotspot_url(review.hotspot))
-    return render(request, "reviews/review_confirm_delete.html", {"review": review, "hotspot": review.hotspot})
+    return render(
+        request,
+        "reviews/review_confirm_delete.html",
+        {"review": review, "hotspot": review.hotspot},
+    )
 
 
 @contributor_required
 @require_POST
 def toggle_vote(request, pk):
     review = get_object_or_404(
-        visible_reviews().select_related("hotspot").exclude(body=""), pk=pk, hotspot__is_active=True
+        visible_reviews().select_related("hotspot").exclude(body=""),
+        pk=pk,
+        hotspot__is_active=True,
     )
     destination = safe_next_url(request) or _hotspot_url(review.hotspot)
     if review.author_id == request.user.pk:

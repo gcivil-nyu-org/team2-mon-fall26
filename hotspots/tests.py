@@ -39,7 +39,9 @@ def make_hotspot(hotspot_id=1344, **overrides):
 class ImportHotspotsTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        with (settings.BASE_DIR / "data" / "connectnyc_hotspots_sample.csv").open(newline="") as source:
+        with (settings.BASE_DIR / "data" / "connectnyc_hotspots_sample.csv").open(
+            newline=""
+        ) as source:
             cls.sample_rows = list(csv.DictReader(source))
 
     def import_rows(self, rows, **options):
@@ -56,7 +58,9 @@ class ImportHotspotsTests(TestCase):
         self.assertEqual(Hotspot.objects.count(), 36)
         first = Hotspot.objects.get(pk=999)
         second = Hotspot.objects.get(pk=1000)
-        self.assertEqual((first.latitude, first.longitude), (second.latitude, second.longitude))
+        self.assertEqual(
+            (first.latitude, first.longitude), (second.latitude, second.longitude)
+        )
         self.assertNotEqual(first.pk, second.pk)
 
     def test_missing_name_and_source_sentinels_are_normalized(self):
@@ -73,10 +77,16 @@ class ImportHotspotsTests(TestCase):
         self.import_rows([zero_name])
         hotspot = Hotspot.objects.get(pk=987654)
         self.assertEqual(hotspot.name, "0")
-        self.assertEqual(hotspot.display_name, f"{hotspot.provider} — {hotspot.location_description}")
+        self.assertEqual(
+            hotspot.display_name, f"{hotspot.provider} — {hotspot.location_description}"
+        )
 
     def test_real_source_reference_and_activation_date_are_preserved(self):
-        row = dict(self.sample_rows[0], sourceid="site-123", activated="2018-03-12T00:00:00.000")
+        row = dict(
+            self.sample_rows[0],
+            sourceid="site-123",
+            activated="2018-03-12T00:00:00.000",
+        )
         self.import_rows([row], source_date="2026-10-16")
         hotspot = Hotspot.objects.get()
         self.assertEqual(hotspot.source_ref, "site-123")
@@ -88,7 +98,9 @@ class ImportHotspotsTests(TestCase):
         self.import_rows([row])
         hotspot = Hotspot.objects.get()
         author = get_user_model().objects.create_user(username="reviewer")
-        review = Review.objects.create(hotspot=hotspot, author=author, rating=4, body="Helpful.")
+        review = Review.objects.create(
+            hotspot=hotspot, author=author, rating=4, body="Helpful."
+        )
         other = make_hotspot()
         hotspot.is_active = False
         hotspot.save(update_fields=["is_active"])
@@ -142,7 +154,9 @@ class HotspotReadExperienceTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.hotspot = make_hotspot()
-        cls.other = make_hotspot(53, name="Clinton Hill Library", borough="Brooklyn", provider="BPL")
+        cls.other = make_hotspot(
+            53, name="Clinton Hill Library", borough="Brooklyn", provider="BPL"
+        )
         cls.inactive = make_hotspot(10, name="Inactive record", is_active=False)
         cls.author = get_user_model().objects.create_user(username="alex")
 
@@ -152,7 +166,9 @@ class HotspotReadExperienceTests(TestCase):
         self.assertEqual(response.context["hotspot_count"], 2)
         self.assertEqual(response.context["borough_count"], 2)
         self.assertEqual(response.context["provider_count"], 2)
-        self.assertEqual({item["id"] for item in response.context["map_data"]}, {1344, 53})
+        self.assertEqual(
+            {item["id"] for item in response.context["map_data"]}, {1344, 53}
+        )
         self.assertContains(response, self.hotspot.source_url)
 
     def test_anonymous_profile_separates_sources_and_no_ratings(self):
@@ -166,20 +182,38 @@ class HotspotReadExperienceTests(TestCase):
         self.assertEqual(response.context["rating_summary"]["count"], 0)
 
     def test_profile_includes_rating_only_entries_and_excludes_other_hotspots(self):
-        for index, (rating, body) in enumerate([(2, "First visit"), (5, ""), (5, "Another visit")]):
-            author = self.author if index == 0 else get_user_model().objects.create_user(username=f"visitor{index}")
-            Review.objects.create(hotspot=self.hotspot, author=author, rating=rating, body=body)
-        Review.objects.create(hotspot=self.other, author=self.author, rating=1, body="Another location")
+        for index, (rating, body) in enumerate(
+            [(2, "First visit"), (5, ""), (5, "Another visit")]
+        ):
+            author = (
+                self.author
+                if index == 0
+                else get_user_model().objects.create_user(username=f"visitor{index}")
+            )
+            Review.objects.create(
+                hotspot=self.hotspot, author=author, rating=rating, body=body
+            )
+        Review.objects.create(
+            hotspot=self.other, author=self.author, rating=1, body="Another location"
+        )
         response = self.client.get(self.hotspot.get_absolute_url())
-        self.assertEqual(response.context["rating_summary"], {
-            "average": 4.0, "count": 3, "review_count": 2, "has_demo_reviews": False,
-        })
+        self.assertEqual(
+            response.context["rating_summary"],
+            {
+                "average": 4.0,
+                "count": 3,
+                "review_count": 2,
+                "has_demo_reviews": False,
+            },
+        )
         self.assertEqual(len(response.context["reviews"]), 2)
         self.assertNotContains(response, "Another location")
 
     def test_review_html_is_escaped(self):
         Review.objects.create(
-            hotspot=self.hotspot, author=self.author, rating=4,
+            hotspot=self.hotspot,
+            author=self.author,
+            rating=4,
             body='<script>alert("unsafe")</script>',
         )
         response = self.client.get(self.hotspot.get_absolute_url())
@@ -189,19 +223,32 @@ class HotspotReadExperienceTests(TestCase):
     def test_inactive_and_missing_hotspots_return_404(self):
         for pk in [self.inactive.pk, 999999]:
             with self.subTest(pk=pk):
-                self.assertEqual(self.client.get(reverse("hotspots:detail", args=[pk])).status_code, 404)
+                self.assertEqual(
+                    self.client.get(reverse("hotspots:detail", args=[pk])).status_code,
+                    404,
+                )
 
     def test_read_routes_reject_post_without_creating_contributions(self):
-        for url in [reverse("hotspots:map"), self.hotspot.get_absolute_url(), reverse("hotspots:data")]:
+        for url in [
+            reverse("hotspots:map"),
+            self.hotspot.get_absolute_url(),
+            reverse("hotspots:data"),
+        ]:
             with self.subTest(url=url):
-                self.assertEqual(self.client.post(url, {"rating": 5, "body": "new"}).status_code, 405)
+                self.assertEqual(
+                    self.client.post(url, {"rating": 5, "body": "new"}).status_code, 405
+                )
         self.assertFalse(Review.objects.exists())
 
     def test_api_returns_current_hotspot_rating_and_official_metadata(self):
-        Review.objects.create(hotspot=self.hotspot, author=self.author, rating=4, body="")
+        Review.objects.create(
+            hotspot=self.hotspot, author=self.author, rating=4, body=""
+        )
         payload = self.client.get(reverse("hotspots:data")).json()
         self.assertEqual(payload["count"], 2)
-        record = next(item for item in payload["hotspots"] if item["id"] == self.hotspot.pk)
+        record = next(
+            item for item in payload["hotspots"] if item["id"] == self.hotspot.pk
+        )
         self.assertEqual(record["average_rating"], 4.0)
         self.assertEqual(record["rating_count"], 1)
         self.assertEqual(record["review_count"], 0)
@@ -209,7 +256,13 @@ class HotspotReadExperienceTests(TestCase):
         self.assertEqual(record["source_acquired_on"], "2026-10-14")
 
     def test_demo_feedback_is_hidden_outside_demo_mode(self):
-        Review.objects.create(hotspot=self.hotspot, author=self.author, rating=5, body="Fictional review", is_demo=True)
+        Review.objects.create(
+            hotspot=self.hotspot,
+            author=self.author,
+            rating=5,
+            body="Fictional review",
+            is_demo=True,
+        )
         response = self.client.get(self.hotspot.get_absolute_url())
         self.assertEqual(response.context["rating_summary"]["count"], 0)
         self.assertNotContains(response, "Fictional review")
@@ -237,21 +290,45 @@ class SearchAndFilterTests(TestCase):
     def setUpTestData(cls):
         make_hotspot(1344)  # Bryant Park, Manhattan / Midtown, Partner, Partner Site
         make_hotspot(
-            53, name="Clinton Hill Library", location_description="380 Washington Ave",
-            borough="Brooklyn", neighborhood_name="Clinton Hill", zip_code="11238",
-            provider="BPL", access_type="Free", location_type="Library",
+            53,
+            name="Clinton Hill Library",
+            location_description="380 Washington Ave",
+            borough="Brooklyn",
+            neighborhood_name="Clinton Hill",
+            zip_code="11238",
+            provider="BPL",
+            access_type="Free",
+            location_type="Library",
         )
         make_hotspot(
-            70, name=None, location_description="125 Court St.",
-            borough="Brooklyn", neighborhood_name="Brooklyn Heights-Cobble Hill", zip_code="11201",
-            provider="Downtown Brooklyn", access_type="Free", location_type="Outdoor",
+            70,
+            name=None,
+            location_description="125 Court St.",
+            borough="Brooklyn",
+            neighborhood_name="Brooklyn Heights-Cobble Hill",
+            zip_code="11201",
+            provider="Downtown Brooklyn",
+            access_type="Free",
+            location_type="Outdoor",
         )
         make_hotspot(
-            80, name="Flushing Library", location_description="41-17 Main St",
-            borough="Queens", neighborhood_name="Flushing", zip_code="11355",
-            provider="QPL", access_type="Limited Free", location_type="Library",
+            80,
+            name="Flushing Library",
+            location_description="41-17 Main St",
+            borough="Queens",
+            neighborhood_name="Flushing",
+            zip_code="11355",
+            provider="QPL",
+            access_type="Limited Free",
+            location_type="Library",
         )
-        make_hotspot(90, name="Retired Brooklyn kiosk", borough="Brooklyn", provider="BPL", is_active=False)
+        make_hotspot(
+            90,
+            name="Retired Brooklyn kiosk",
+            borough="Brooklyn",
+            provider="BPL",
+            is_active=False,
+        )
 
     def page_ids(self, **params):
         response = self.client.get(reverse("hotspots:map"), params)
@@ -332,7 +409,9 @@ class SearchAndFilterTests(TestCase):
 
     def test_filters_combine_with_search(self):
         self.assert_results({53}, q="library", borough="Brooklyn")
-        self.assert_results({70}, borough="Brooklyn", type="Free", provider="Downtown Brooklyn")
+        self.assert_results(
+            {70}, borough="Brooklyn", type="Free", provider="Downtown Brooklyn"
+        )
         self.assert_results(set(), provider="QPL", type="Free")
 
     def test_unknown_filter_value_shows_no_match_message(self):
@@ -343,14 +422,25 @@ class SearchAndFilterTests(TestCase):
         response, _ids = self.page_ids(borough="Queens")
         options = response.context["filter_options"]
         self.assertEqual(options["borough"], ["Brooklyn", "Manhattan", "Queens"])
-        self.assertEqual(options["provider"], ["BPL", "Downtown Brooklyn", "Partner", "QPL"])
+        self.assertEqual(
+            options["provider"], ["BPL", "Downtown Brooklyn", "Partner", "QPL"]
+        )
         self.assertEqual(options["type"], ["Free", "Limited Free", "Partner Site"])
-        self.assertIn({"borough": "Brooklyn", "names": ["Brooklyn Heights-Cobble Hill", "Clinton Hill"]}, options["neighborhood"])
+        self.assertIn(
+            {
+                "borough": "Brooklyn",
+                "names": ["Brooklyn Heights-Cobble Hill", "Clinton Hill"],
+            },
+            options["neighborhood"],
+        )
         self.assertContains(response, '<option value="Queens" selected>')
 
     def test_each_active_filter_can_be_removed_on_its_own(self):
         response, _ids = self.page_ids(q="library", borough="Brooklyn")
-        chips = {chip["name"]: chip["remove_url"] for chip in response.context["filter_chips"]}
+        chips = {
+            chip["name"]: chip["remove_url"]
+            for chip in response.context["filter_chips"]
+        }
         self.assertEqual(chips, {"q": "/?borough=Brooklyn", "borough": "/?q=library"})
         self.assertContains(response, "Clear all")
         _response, ids = self.page_ids(borough="Brooklyn")
@@ -361,8 +451,13 @@ class SearchAndFilterTests(TestCase):
         self.assertEqual(response.context["total_count"], 4)
         self.assertContains(response, "<strong>2</strong> of 4 hotspots match")
         with override_settings(DEMO_MODE=True):
-            self.assertContains(self.client.get(reverse("hotspots:map"), {"borough": "Brooklyn"}), "4-record sample")
+            self.assertContains(
+                self.client.get(reverse("hotspots:map"), {"borough": "Brooklyn"}),
+                "4-record sample",
+            )
 
     def test_api_echoes_applied_filters(self):
-        payload = self.client.get(reverse("hotspots:data"), {"q": " park ", "borough": ""}).json()
+        payload = self.client.get(
+            reverse("hotspots:data"), {"q": " park ", "borough": ""}
+        ).json()
         self.assertEqual(payload["filters"], {"q": "park"})

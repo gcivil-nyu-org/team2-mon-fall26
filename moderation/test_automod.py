@@ -1,4 +1,5 @@
 """E05 automated moderation: block at submit, hold for review, trust, community auto-hide."""
+
 from datetime import timedelta
 
 from django.test import TestCase, override_settings
@@ -14,7 +15,9 @@ from .automod import blocking_problems, hold_reasons, is_trusted
 from .models import ContentFlag, ModerationRecord, Reason
 from .registry import REVIEW
 
-CLEAN = "Strong signal near the fountain, easy to connect and fast enough for video calls."
+CLEAN = (
+    "Strong signal near the fountain, easy to connect and fast enough for video calls."
+)
 
 
 def reasons_for(review, is_new=True):
@@ -65,13 +68,19 @@ class HoldRuleTests(TestCase):
 
     def review(self, body, hotspot=0, author=None, **fields):
         return Review.objects.create(
-            hotspot=self.hotspots[hotspot], author=author or self.author, rating=3, body=body, **fields
+            hotspot=self.hotspots[hotspot],
+            author=author or self.author,
+            rating=3,
+            body=body,
+            **fields,
         )
 
     def test_clean_reviews_and_ratings_are_not_held(self):
         self.assertEqual(reasons_for(self.review(CLEAN)), [])
         self.assertEqual(reasons_for(self.review("", hotspot=1)), [])
-        self.assertEqual(reasons_for(self.review("Free Wi-Fi that actually works!", hotspot=2)), [])
+        self.assertEqual(
+            reasons_for(self.review("Free Wi-Fi that actually works!", hotspot=2)), []
+        )
 
     def test_each_suspicious_signal_is_held_with_an_explanation(self):
         cases = {
@@ -85,11 +94,16 @@ class HoldRuleTests(TestCase):
         for index, (text, expected) in enumerate(cases.items()):
             with self.subTest(text=text):
                 details = reasons_for(self.review(text, hotspot=index))
-                self.assertTrue(any(detail.startswith(expected) for detail in details), details)
+                self.assertTrue(
+                    any(detail.startswith(expected) for detail in details), details
+                )
 
     def test_duplicate_text_is_held(self):
         self.review(CLEAN, hotspot=0)
-        self.assertIn("Same text as another of this author's reviews", reasons_for(self.review(CLEAN.upper().lower(), hotspot=1)))
+        self.assertIn(
+            "Same text as another of this author's reviews",
+            reasons_for(self.review(CLEAN.upper().lower(), hotspot=1)),
+        )
         other = self.review(CLEAN, hotspot=2, author=make_user("copycat"))
         self.assertIn("Same text as a review by another account", reasons_for(other))
 
@@ -98,25 +112,43 @@ class HoldRuleTests(TestCase):
             self.review(f"Review number {index} with enough detail.", hotspot=index)
         fourth = self.review("Fourth review in a few minutes.", hotspot=3)
         self.assertIn("Posting many reviews in a short time", reasons_for(fourth))
-        self.assertNotIn("Posting many reviews in a short time", reasons_for(fourth, is_new=False))
+        self.assertNotIn(
+            "Posting many reviews in a short time", reasons_for(fourth, is_new=False)
+        )
         Review.objects.update(created_at=timezone.now() - timedelta(hours=1))
-        self.assertEqual(reasons_for(self.review("Later review, after a break.", hotspot=4)), [])
+        self.assertEqual(
+            reasons_for(self.review("Later review, after a break.", hotspot=4)), []
+        )
 
     def test_trusted_authors_skip_soft_rules_but_not_spam_rules(self):
         for index in range(3):
             self.review(f"Helpful review {index} about this hotspot.", hotspot=index)
         Review.objects.update(created_at=timezone.now() - timedelta(days=2))
         self.assertTrue(is_trusted(self.author))
-        self.assertEqual(reasons_for(self.review("THE SIGNAL HERE IS AMAZING, BEST IN MIDTOWN", hotspot=3)), [])
-        self.assertTrue(reasons_for(self.review("DM me for a discount code", hotspot=4)))
+        self.assertEqual(
+            reasons_for(
+                self.review("THE SIGNAL HERE IS AMAZING, BEST IN MIDTOWN", hotspot=3)
+            ),
+            [],
+        )
+        self.assertTrue(
+            reasons_for(self.review("DM me for a discount code", hotspot=4))
+        )
 
     def test_repeat_offenders_have_everything_held(self):
         admin = make_administrator()
         for index in range(2):
-            services.remove_content(REVIEW, self.review(f"spam number {index}", hotspot=index), admin, Reason.SPAM)
+            services.remove_content(
+                REVIEW,
+                self.review(f"spam number {index}", hotspot=index),
+                admin,
+                Reason.SPAM,
+            )
         self.assertFalse(is_trusted(self.author))
         details = reasons_for(self.review("", hotspot=2))
-        self.assertEqual(details, ["Author has had several reviews removed by moderators"])
+        self.assertEqual(
+            details, ["Author has had several reviews removed by moderators"]
+        )
 
 
 @override_settings(DEMO_MODE=False)
@@ -125,18 +157,29 @@ class SubmitAndHoldFlowTests(TestCase):
         self.hotspot = make_hotspot()
         self.author = make_user("author")
         self.admin = make_administrator("moderator")
-        Review.objects.create(hotspot=self.hotspot, author=make_user("fan"), rating=5, body="Reliable connection.")
+        Review.objects.create(
+            hotspot=self.hotspot,
+            author=make_user("fan"),
+            rating=5,
+            body="Reliable connection.",
+        )
         self.client.force_login(self.author)
 
     def submit(self, body, rating=1):
-        return self.client.post(reverse("reviews:create", args=[self.hotspot.pk]), {"rating": rating, "body": body}, follow=True)
+        return self.client.post(
+            reverse("reviews:create", args=[self.hotspot.pk]),
+            {"rating": rating, "body": body},
+            follow=True,
+        )
 
     def profile(self):
         return self.client.get(self.hotspot.get_absolute_url())
 
     def test_blocked_text_shows_an_error_and_saves_nothing(self):
         response = self.submit("Cheap watches at https://watches.example")
-        self.assertContains(response, "can&#x27;t include links, email addresses or phone numbers")
+        self.assertContains(
+            response, "can&#x27;t include links, email addresses or phone numbers"
+        )
         self.assertFalse(Review.objects.filter(author=self.author).exists())
 
     def test_held_review_is_hidden_from_public_and_average_until_approved(self):
@@ -163,11 +206,19 @@ class SubmitAndHoldFlowTests(TestCase):
         self.assertEqual([item["pk"] for item in queue.context["items"]], [review.pk])
         self.assertContains(queue, "Automated check:")
         self.assertContains(queue, "Promotional wording")
-        self.client.post(reverse("moderation:approve", args=["review", review.pk]), {"version": REVIEW.describe(review)["version"]})
+        self.client.post(
+            reverse("moderation:approve", args=["review", review.pk]),
+            {"version": REVIEW.describe(review)["version"]},
+        )
         review.refresh_from_db()
         self.assertFalse(review.is_held)
-        self.assertEqual(ContentFlag.objects.get(object_id=review.pk).status, ContentFlag.Status.DISMISSED)
-        self.assertEqual(ModerationRecord.objects.get().action, ModerationRecord.Action.APPROVED)
+        self.assertEqual(
+            ContentFlag.objects.get(object_id=review.pk).status,
+            ContentFlag.Status.DISMISSED,
+        )
+        self.assertEqual(
+            ModerationRecord.objects.get().action, ModerationRecord.Action.APPROVED
+        )
         self.client.logout()
         self.assertEqual(self.profile().context["rating_summary"]["average"], 3.0)
 
@@ -180,7 +231,11 @@ class SubmitAndHoldFlowTests(TestCase):
     def test_editing_a_published_review_into_spam_holds_it(self):
         self.submit(CLEAN, rating=4)
         review = Review.objects.get(author=self.author)
-        response = self.client.post(reverse("reviews:edit", args=[review.pk]), {"rating": 4, "body": "DM me on telegram for crypto tips"}, follow=True)
+        response = self.client.post(
+            reverse("reviews:edit", args=[review.pk]),
+            {"rating": 4, "body": "DM me on telegram for crypto tips"},
+            follow=True,
+        )
         self.assertContains(response, "waiting for a moderator")
         review.refresh_from_db()
         self.assertTrue(review.is_held)
@@ -188,24 +243,43 @@ class SubmitAndHoldFlowTests(TestCase):
     def test_editing_a_held_review_keeps_it_held(self):
         self.submit("Promo code inside, message me")
         review = Review.objects.get(author=self.author)
-        self.client.post(reverse("reviews:edit", args=[review.pk]), {"rating": 3, "body": CLEAN})
+        self.client.post(
+            reverse("reviews:edit", args=[review.pk]), {"rating": 3, "body": CLEAN}
+        )
         review.refresh_from_db()
         self.assertTrue(review.is_held)
-        self.assertEqual(ContentFlag.objects.filter(object_id=review.pk, status=ContentFlag.Status.OPEN).count(), 1)
+        self.assertEqual(
+            ContentFlag.objects.filter(
+                object_id=review.pk, status=ContentFlag.Status.OPEN
+            ).count(),
+            1,
+        )
 
     def test_held_reviews_cannot_be_flagged_or_upvoted(self):
         self.submit("Promo code inside, message me")
         review = Review.objects.get(author=self.author)
         self.client.force_login(make_user("other"))
-        self.assertEqual(self.client.get(reverse("moderation:flag", args=["review", review.pk])).status_code, 404)
-        self.assertEqual(self.client.post(reverse("reviews:vote", args=[review.pk])).status_code, 404)
+        self.assertEqual(
+            self.client.get(
+                reverse("moderation:flag", args=["review", review.pk])
+            ).status_code,
+            404,
+        )
+        self.assertEqual(
+            self.client.post(reverse("reviews:vote", args=[review.pk])).status_code, 404
+        )
 
 
 @override_settings(DEMO_MODE=False, MODERATION_AUTO_HIDE_FLAGS=3)
 class CommunityAutoHideTests(TestCase):
     def setUp(self):
         self.hotspot = make_hotspot()
-        self.review = Review.objects.create(hotspot=self.hotspot, author=make_user("author"), rating=1, body="Rude review here")
+        self.review = Review.objects.create(
+            hotspot=self.hotspot,
+            author=make_user("author"),
+            rating=1,
+            body="Rude review here",
+        )
         self.url = reverse("moderation:flag", args=["review", self.review.pk])
 
     def flag(self, username):
@@ -221,12 +295,19 @@ class CommunityAutoHideTests(TestCase):
         self.review.refresh_from_db()
         self.assertTrue(self.review.is_held)
         self.client.logout()
-        self.assertNotContains(self.client.get(self.hotspot.get_absolute_url()), "Rude review here")
+        self.assertNotContains(
+            self.client.get(self.hotspot.get_absolute_url()), "Rude review here"
+        )
         self.client.force_login(make_administrator())
         held = self.client.get(reverse("moderation:queue"))
         self.assertEqual(held.context["items"][0]["flag_count"], 3)
         self.assertContains(held, "after several users flagged it")
-        self.assertEqual(self.client.get(reverse("moderation:queue"), {"tab": "flagged"}).context["items"], [])
+        self.assertEqual(
+            self.client.get(reverse("moderation:queue"), {"tab": "flagged"}).context[
+                "items"
+            ],
+            [],
+        )
 
 
 @override_settings(DEMO_MODE=False)
@@ -236,42 +317,111 @@ class BulkActionTests(TestCase):
         self.admin = make_administrator()
         self.held = []
         for index, hotspot in enumerate(self.hotspots):
-            review = Review.objects.create(hotspot=hotspot, author=make_user(f"spammer{index}"), rating=1, body=f"promo code {index}")
-            services.hold(REVIEW, review, [(Reason.SPAM, "Promotional wording: promo code")])
+            review = Review.objects.create(
+                hotspot=hotspot,
+                author=make_user(f"spammer{index}"),
+                rating=1,
+                body=f"promo code {index}",
+            )
+            services.hold(
+                REVIEW, review, [(Reason.SPAM, "Promotional wording: promo code")]
+            )
             self.held.append(review)
         self.bulk = reverse("moderation:bulk")
         self.client.force_login(self.admin)
 
     def keys(self, reviews):
-        return [f"review:{review.pk}|{REVIEW.describe(review)['version']}" for review in reviews]
+        return [
+            f"review:{review.pk}|{REVIEW.describe(review)['version']}"
+            for review in reviews
+        ]
 
     def test_bulk_remove_logs_each_item(self):
-        response = self.client.post(self.bulk, {"action": "remove", "confirm": "yes", "reason": Reason.SPAM, "note": "Spam wave", "items": self.keys(self.held[:2])}, follow=True)
+        response = self.client.post(
+            self.bulk,
+            {
+                "action": "remove",
+                "confirm": "yes",
+                "reason": Reason.SPAM,
+                "note": "Spam wave",
+                "items": self.keys(self.held[:2]),
+            },
+            follow=True,
+        )
         self.assertContains(response, "Removed 2 items")
         self.assertEqual(Review.objects.count(), 1)
-        self.assertEqual(ModerationRecord.objects.filter(action=ModerationRecord.Action.REMOVED).count(), 2)
+        self.assertEqual(
+            ModerationRecord.objects.filter(
+                action=ModerationRecord.Action.REMOVED
+            ).count(),
+            2,
+        )
 
     def test_bulk_approve_publishes_only_held_items(self):
-        self.client.post(self.bulk, {"action": "approve", "items": self.keys(self.held) + ["review:999999", "nope"]})
+        self.client.post(
+            self.bulk,
+            {
+                "action": "approve",
+                "items": self.keys(self.held) + ["review:999999", "nope"],
+            },
+        )
         self.assertFalse(Review.objects.filter(is_held=True).exists())
-        self.assertEqual(ModerationRecord.objects.filter(action=ModerationRecord.Action.APPROVED).count(), 3)
+        self.assertEqual(
+            ModerationRecord.objects.filter(
+                action=ModerationRecord.Action.APPROVED
+            ).count(),
+            3,
+        )
 
     def test_bulk_requires_a_selection_and_a_valid_reason(self):
-        self.assertContains(self.client.post(self.bulk, {"action": "remove", "reason": Reason.SPAM}, follow=True), "Select at least one item")
-        response = self.client.post(self.bulk, {"action": "remove", "confirm": "yes", "reason": "", "items": self.keys(self.held)})
+        self.assertContains(
+            self.client.post(
+                self.bulk, {"action": "remove", "reason": Reason.SPAM}, follow=True
+            ),
+            "Select at least one item",
+        )
+        response = self.client.post(
+            self.bulk,
+            {
+                "action": "remove",
+                "confirm": "yes",
+                "reason": "",
+                "items": self.keys(self.held),
+            },
+        )
         self.assertContains(response, "Choose a moderation reason.")
         self.assertTemplateUsed(response, "moderation/confirm_bulk_remove.html")
         self.assertEqual(Review.objects.count(), 3)
 
     def test_contributors_cannot_approve_or_bulk_act(self):
         self.client.force_login(make_user("contributor"))
-        self.assertEqual(self.client.post(reverse("moderation:approve", args=["review", self.held[0].pk]), {"version": REVIEW.describe(self.held[0])["version"]}).status_code, 403)
-        self.assertEqual(self.client.post(self.bulk, {"action": "approve", "items": self.keys(self.held)}).status_code, 403)
+        self.assertEqual(
+            self.client.post(
+                reverse("moderation:approve", args=["review", self.held[0].pk]),
+                {"version": REVIEW.describe(self.held[0])["version"]},
+            ).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post(
+                self.bulk, {"action": "approve", "items": self.keys(self.held)}
+            ).status_code,
+            403,
+        )
         self.assertEqual(Review.objects.filter(is_held=True).count(), 3)
 
     def test_approving_a_published_review_returns_404(self):
-        published = Review.objects.create(hotspot=self.hotspots[0], author=make_user("fine"), rating=5, body="Good")
-        self.assertEqual(self.client.post(reverse("moderation:approve", args=["review", published.pk])).status_code, 404)
+        published = Review.objects.create(
+            hotspot=self.hotspots[0], author=make_user("fine"), rating=5, body="Good"
+        )
+        self.assertEqual(
+            self.client.post(
+                reverse("moderation:approve", args=["review", published.pk])
+            ).status_code,
+            404,
+        )
 
     def test_administration_page_shows_held_count(self):
-        self.assertEqual(self.client.get(reverse("accounts:admin_home")).context["held_count"], 3)
+        self.assertEqual(
+            self.client.get(reverse("accounts:admin_home")).context["held_count"], 3
+        )

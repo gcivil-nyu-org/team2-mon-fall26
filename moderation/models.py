@@ -44,11 +44,17 @@ class ContentFlag(models.Model):
     )
     reason = models.CharField(max_length=20, choices=Reason.choices)
     note = models.CharField(max_length=500, blank=True)
-    status = models.CharField(max_length=12, choices=Status.choices, default=Status.OPEN)
+    status = models.CharField(
+        max_length=12, choices=Status.choices, default=Status.OPEN
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
     resolution = models.ForeignKey(
-        "ModerationRecord", null=True, blank=True, on_delete=models.SET_NULL, related_name="flags"
+        "ModerationRecord",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="flags",
     )
 
     class Meta:

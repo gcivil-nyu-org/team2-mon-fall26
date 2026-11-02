@@ -12,11 +12,13 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "path", nargs="?",
+            "path",
+            nargs="?",
             default=str(settings.BASE_DIR / "data" / "connectnyc_hotspots_sample.csv"),
         )
         parser.add_argument(
-            "--source-date", default="2026-10-14",
+            "--source-date",
+            default="2026-10-14",
             help="Acquisition date (YYYY-MM-DD); the bundled sample was acquired on 2026-10-14.",
         )
 
@@ -24,7 +26,9 @@ class Command(BaseCommand):
         try:
             source_date = date.fromisoformat(options["source_date"])
         except ValueError as exc:
-            raise CommandError("--source-date must be a valid YYYY-MM-DD date.") from exc
+            raise CommandError(
+                "--source-date must be a valid YYYY-MM-DD date."
+            ) from exc
 
         try:
             with Path(options["path"]).open(encoding="utf-8-sig", newline="") as source:
@@ -34,7 +38,9 @@ class Command(BaseCommand):
         except OSError as exc:
             raise CommandError(f"Unable to read CSV: {exc}") from exc
 
-        self.stdout.write(self.style.SUCCESS(
-            f"Imported {result['total']} official hotspots: {result['created']} created, "
-            f"{result['updated']} updated. No records were removed."
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Imported {result['total']} official hotspots: {result['created']} created, "
+                f"{result['updated']} updated. No records were removed."
+            )
+        )

@@ -9,6 +9,7 @@ Use these instead of ad hoc checks so every Epic enforces roles the same way:
   ``@administrator_required`` or ``AdministratorRequiredMixin``. Visitors are
   sent to log in; signed-in non-administrators get 403, even by direct URL (US10).
 """
+
 from functools import wraps
 
 from django.contrib.auth.mixins import AccessMixin

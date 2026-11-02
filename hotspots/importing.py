@@ -1,4 +1,5 @@
 """Validated, atomic imports shared by the CLI and administrator upload form."""
+
 import csv
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -8,11 +9,24 @@ from django.db import transaction
 
 from .models import Hotspot
 
-
 REQUIRED_COLUMNS = {
-    "doitt_id", "objectid", "name", "location", "latitude", "longitude",
-    "boroname", "ntaname", "ntacode", "zip", "provider", "type",
-    "location_t", "ssid", "remarks", "sourceid", "activated",
+    "doitt_id",
+    "objectid",
+    "name",
+    "location",
+    "latitude",
+    "longitude",
+    "boroname",
+    "ntaname",
+    "ntacode",
+    "zip",
+    "provider",
+    "type",
+    "location_t",
+    "ssid",
+    "remarks",
+    "sourceid",
+    "activated",
 }
 BOROUGHS = {"Manhattan", "Bronx", "Brooklyn", "Queens", "Staten Island"}
 
@@ -74,18 +88,24 @@ def import_hotspots(source, source_date):
         columns = reader.fieldnames or []
         missing = REQUIRED_COLUMNS.difference(columns)
         if missing:
-            raise HotspotImportError(f"Missing CSV columns: {', '.join(sorted(missing))}")
+            raise HotspotImportError(
+                f"Missing CSV columns: {', '.join(sorted(missing))}"
+            )
         if len(columns) != len(set(columns)):
             raise HotspotImportError("Duplicate CSV column names are not allowed.")
         for row in reader:
             try:
                 if None in row or any(value is None for value in row.values()):
-                    raise ValueError("The number of values does not match the CSV header.")
+                    raise ValueError(
+                        "The number of values does not match the CSV header."
+                    )
                 hotspot = _record(row, source_date)
                 if hotspot.pk in identifiers:
                     raise ValueError(f"Duplicate doitt_id {hotspot.pk} in the file.")
             except (ValueError, InvalidOperation, ValidationError) as exc:
-                raise HotspotImportError(f"Invalid row {reader.line_num}: {exc}") from exc
+                raise HotspotImportError(
+                    f"Invalid row {reader.line_num}: {exc}"
+                ) from exc
             identifiers.add(hotspot.pk)
             records.append(hotspot)
     except (OSError, csv.Error, UnicodeError) as exc:

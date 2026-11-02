@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Hotspot, HotspotFollow
+from .models import HotspotFollow
 from .tests import make_hotspot
 
 
@@ -69,6 +69,7 @@ class FollowHotspotTests(TestCase):
             ).exists()
         )
 
+
 class FollowedHotspotListTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="alex")
@@ -105,6 +106,7 @@ class FollowedHotspotListTests(TestCase):
         self.assertContains(response, "Followed Park")
         self.assertNotContains(response, "Other Park")
         self.assertNotContains(response, "Retired Park")
+
 
 class FollowHotspotUiTests(TestCase):
     def setUp(self):

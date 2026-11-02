@@ -4,7 +4,9 @@ from moderation.automod import blocking_problems
 
 from .models import Review
 
-RATING_CHOICES = [(value, f"{value} star{'s' if value > 1 else ''}") for value in range(5, 0, -1)]
+RATING_CHOICES = [
+    (value, f"{value} star{'s' if value > 1 else ''}") for value in range(5, 0, -1)
+]
 
 
 class ReviewForm(forms.ModelForm):

@@ -30,10 +30,15 @@ class OfficialDataManagementTests(TestCase):
         cls.hotspot = make_hotspot()
         cls.retired = make_hotspot(20, name="Retired library", is_active=False)
         cls.review = Review.objects.create(
-            hotspot=cls.hotspot, author=cls.contributor, rating=4, body="Keep this review."
+            hotspot=cls.hotspot,
+            author=cls.contributor,
+            rating=4,
+            body="Keep this review.",
         )
         cls.vote = ReviewVote.objects.create(review=cls.review, user=cls.voter)
-        with (settings.BASE_DIR / "data/connectnyc_hotspots_sample.csv").open(newline="") as source:
+        with (settings.BASE_DIR / "data/connectnyc_hotspots_sample.csv").open(
+            newline=""
+        ) as source:
             cls.sample_rows = list(csv.DictReader(source))
 
     def setUp(self):
@@ -45,7 +50,9 @@ class OfficialDataManagementTests(TestCase):
         writer.writeheader()
         writer.writerows(self.sample_rows[:1] if rows is None else rows)
         data = {
-            "csv_file": SimpleUploadedFile("hotspots.csv", stream.getvalue().encode(), "text/csv"),
+            "csv_file": SimpleUploadedFile(
+                "hotspots.csv", stream.getvalue().encode(), "text/csv"
+            ),
             "source_date": "2026-10-14",
         }
         data.update(extra)
@@ -59,7 +66,8 @@ class OfficialDataManagementTests(TestCase):
 
     def routes(self):
         return [
-            reverse("hotspots:manage_list"), reverse("hotspots:manage_import"),
+            reverse("hotspots:manage_list"),
+            reverse("hotspots:manage_import"),
             reverse("hotspots:manage_edit", args=[self.hotspot.pk]),
             reverse("hotspots:manage_retire", args=[self.hotspot.pk]),
         ]
@@ -71,11 +79,19 @@ class OfficialDataManagementTests(TestCase):
                 self.client.force_login(self.contributor)
             for route in self.routes():
                 for method in (self.client.get, self.client.post):
-                    with self.subTest(signed_in=signed_in, route=route, method=method.__name__):
+                    with self.subTest(
+                        signed_in=signed_in, route=route, method=method.__name__
+                    ):
                         response = method(route, {"confirm": "yes"})
-                        self.assertEqual(response.status_code, 403 if signed_in else 302)
+                        self.assertEqual(
+                            response.status_code, 403 if signed_in else 302
+                        )
                         if not signed_in:
-                            self.assertTrue(response.url.startswith(reverse("accounts:login") + "?next="))
+                            self.assertTrue(
+                                response.url.startswith(
+                                    reverse("accounts:login") + "?next="
+                                )
+                            )
         self.hotspot.refresh_from_db()
         self.assertTrue(self.hotspot.is_active)
 
@@ -83,7 +99,9 @@ class OfficialDataManagementTests(TestCase):
         self.contributor.is_staff = True
         self.contributor.save(update_fields=["is_staff"])
         self.client.force_login(self.contributor)
-        self.assertEqual(self.client.get(reverse("hotspots:manage_list")).status_code, 403)
+        self.assertEqual(
+            self.client.get(reverse("hotspots:manage_list")).status_code, 403
+        )
 
     def test_all_administrator_pages_render_and_dashboard_links_to_tools(self):
         for route in self.routes():
@@ -98,21 +116,29 @@ class OfficialDataManagementTests(TestCase):
         self.assertEqual(response.context["page_obj"].paginator.count, 2)
         self.assertEqual(response.context["active_count"], 1)
         self.assertEqual(response.context["retired_count"], 1)
-        for query, expected in [({"status": "retired"}, {20}), ({"q": "1344"}, {1344}),
-                                ({"status": "active", "q": "library"}, set())]:
+        for query, expected in [
+            ({"status": "retired"}, {20}),
+            ({"q": "1344"}, {1344}),
+            ({"status": "active", "q": "library"}, set()),
+        ]:
             response = self.client.get(reverse("hotspots:manage_list"), query)
             self.assertEqual({h.pk for h in response.context["page_obj"]}, expected)
 
     def test_list_paginates_with_filter_query_preserved(self):
         for index in range(51):
             make_hotspot(10000 + index, name=f"Library {index:02d}")
-        response = self.client.get(reverse("hotspots:manage_list"), {"q": "Library", "status": "active", "page": 2})
+        response = self.client.get(
+            reverse("hotspots:manage_list"),
+            {"q": "Library", "status": "active", "page": 2},
+        )
         self.assertEqual(response.context["page_obj"].number, 2)
         self.assertEqual(len(response.context["page_obj"]), 1)
         self.assertContains(response, "q=Library&amp;status=active")
 
     def test_upload_creates_then_updates_without_duplicate_or_lost_relationship(self):
-        row = dict(self.sample_rows[0], doitt_id=str(self.hotspot.pk), name="Official update")
+        row = dict(
+            self.sample_rows[0], doitt_id=str(self.hotspot.pk), name="Official update"
+        )
         response = self.upload([row, self.sample_rows[1]])
         self.assertRedirects(response, reverse("hotspots:manage_list"))
         self.upload([row, self.sample_rows[1]])
@@ -120,14 +146,22 @@ class OfficialDataManagementTests(TestCase):
         self.hotspot.refresh_from_db()
         self.assertEqual(self.hotspot.name, "Official update")
         self.assertEqual(self.hotspot.source_acquired_on, date(2026, 10, 14))
-        self.assertTrue(Review.objects.filter(pk=self.review.pk, hotspot=self.hotspot).exists())
+        self.assertTrue(
+            Review.objects.filter(pk=self.review.pk, hotspot=self.hotspot).exists()
+        )
         self.assertTrue(ReviewVote.objects.filter(pk=self.vote.pk).exists())
 
     def test_invalid_later_upload_row_rolls_back_every_change(self):
-        response = self.upload([
-            dict(self.sample_rows[0], doitt_id=str(self.hotspot.pk), name="Do not save"),
-            dict(self.sample_rows[1], latitude="91"),
-        ])
+        response = self.upload(
+            [
+                dict(
+                    self.sample_rows[0],
+                    doitt_id=str(self.hotspot.pk),
+                    name="Do not save",
+                ),
+                dict(self.sample_rows[1], latitude="91"),
+            ]
+        )
         self.assertContains(response, "Invalid row 3")
         self.hotspot.refresh_from_db()
         self.assertEqual(self.hotspot.name, "Bryant Park")
@@ -145,18 +179,30 @@ class OfficialDataManagementTests(TestCase):
         self.assertEqual(Hotspot.objects.count(), 2)
 
     def test_import_rejects_future_acquisition_date_and_empty_post(self):
-        response = self.upload(source_date=(timezone.localdate() + timedelta(days=1)).isoformat())
+        response = self.upload(
+            source_date=(timezone.localdate() + timedelta(days=1)).isoformat()
+        )
         self.assertContains(response, "cannot be in the future")
         response = self.client.post(reverse("hotspots:manage_import"), {})
         self.assertContains(response, "This field is required.")
         self.assertEqual(Hotspot.objects.count(), 2)
 
-    def test_edit_updates_public_data_but_preserves_identity_provenance_and_reviews(self):
-        response = self.client.post(reverse("hotspots:manage_edit", args=[self.hotspot.pk]), self.edit_data(
-            name="Updated Bryant Park", borough="Queens", provider="New provider",
-            hotspot_id="999999", source_object_id="999999", source_ref="forged",
-            source_acquired_on="2020-01-01", is_active="False",
-        ))
+    def test_edit_updates_public_data_but_preserves_identity_provenance_and_reviews(
+        self,
+    ):
+        response = self.client.post(
+            reverse("hotspots:manage_edit", args=[self.hotspot.pk]),
+            self.edit_data(
+                name="Updated Bryant Park",
+                borough="Queens",
+                provider="New provider",
+                hotspot_id="999999",
+                source_object_id="999999",
+                source_ref="forged",
+                source_acquired_on="2020-01-01",
+                is_active="False",
+            ),
+        )
         self.assertRedirects(response, reverse("hotspots:manage_list"))
         self.hotspot.refresh_from_db()
         self.assertEqual(self.hotspot.source_object_id, 11344)
@@ -165,25 +211,41 @@ class OfficialDataManagementTests(TestCase):
         self.assertTrue(self.hotspot.is_active)
         self.assertEqual(self.hotspot.reviews.get().pk, self.review.pk)
         self.assertEqual(Hotspot.objects.count(), 2)
-        self.assertContains(self.client.get(self.hotspot.get_absolute_url()), "Updated Bryant Park")
+        self.assertContains(
+            self.client.get(self.hotspot.get_absolute_url()), "Updated Bryant Park"
+        )
         api = self.client.get(reverse("hotspots:data"), {"borough": "Queens"}).json()
         self.assertEqual(api["hotspots"][0]["provider"], "New provider")
-        self.assertEqual(self.client.get(reverse("hotspots:data"), {"borough": "Manhattan"}).json()["count"], 0)
+        self.assertEqual(
+            self.client.get(reverse("hotspots:data"), {"borough": "Manhattan"}).json()[
+                "count"
+            ],
+            0,
+        )
 
     def test_invalid_edit_keeps_input_without_database_changes(self):
-        for changes, field in [({"latitude": "91"}, "latitude"), ({"borough": "Moon"}, "borough"),
-                               ({"access_type": "Invalid"}, "access_type")]:
+        for changes, field in [
+            ({"latitude": "91"}, "latitude"),
+            ({"borough": "Moon"}, "borough"),
+            ({"access_type": "Invalid"}, "access_type"),
+        ]:
             with self.subTest(field=field):
-                response = self.client.post(reverse("hotspots:manage_edit", args=[self.hotspot.pk]),
-                                            self.edit_data(name="Unsaved name", **changes))
+                response = self.client.post(
+                    reverse("hotspots:manage_edit", args=[self.hotspot.pk]),
+                    self.edit_data(name="Unsaved name", **changes),
+                )
                 self.assertEqual(response.status_code, 200)
                 self.assertIn(field, response.context["form"].errors)
-                self.assertEqual(response.context["form"]["name"].value(), "Unsaved name")
+                self.assertEqual(
+                    response.context["form"]["name"].value(), "Unsaved name"
+                )
         self.hotspot.refresh_from_db()
         self.assertEqual(self.hotspot.name, "Bryant Park")
 
     def test_stale_edit_cannot_undo_retirement(self):
-        form = HotspotEditForm(self.edit_data(name="Corrected name"), instance=self.hotspot)
+        form = HotspotEditForm(
+            self.edit_data(name="Corrected name"), instance=self.hotspot
+        )
         self.assertTrue(form.is_valid(), form.errors)
         Hotspot.objects.filter(pk=self.hotspot.pk).update(is_active=False)
         form.save()
@@ -199,32 +261,47 @@ class OfficialDataManagementTests(TestCase):
         self.assertTrue(self.hotspot.is_active)
         self.assertTrue(Review.objects.filter(pk=self.review.pk).exists())
 
-    def test_retirement_hides_public_hotspot_and_filters_but_preserves_reviews_and_votes(self):
+    def test_retirement_hides_public_hotspot_and_filters_but_preserves_reviews_and_votes(
+        self,
+    ):
         route = reverse("hotspots:manage_retire", args=[self.hotspot.pk])
-        self.assertRedirects(self.client.post(route, {"confirm": "yes"}), reverse("hotspots:manage_list"))
+        self.assertRedirects(
+            self.client.post(route, {"confirm": "yes"}), reverse("hotspots:manage_list")
+        )
         self.hotspot.refresh_from_db()
         self.assertFalse(self.hotspot.is_active)
-        self.assertEqual(Review.objects.get(pk=self.review.pk).body, "Keep this review.")
+        self.assertEqual(
+            Review.objects.get(pk=self.review.pk).body, "Keep this review."
+        )
         self.assertTrue(ReviewVote.objects.filter(pk=self.vote.pk).exists())
-        self.assertEqual(self.client.get(self.hotspot.get_absolute_url()).status_code, 404)
+        self.assertEqual(
+            self.client.get(self.hotspot.get_absolute_url()).status_code, 404
+        )
         self.assertEqual(self.client.get(reverse("hotspots:data")).json()["count"], 0)
         response = self.client.get(reverse("hotspots:map"), {"q": "Bryant"})
         self.assertEqual(response.context["hotspot_count"], 0)
         self.assertEqual(response.context["filter_options"], {})
         self.client.force_login(self.contributor)
-        for name, kwargs in [("reviews:create", {"hotspot_pk": self.hotspot.pk}),
-                             ("reviews:edit", {"pk": self.review.pk}),
-                             ("reviews:delete", {"pk": self.review.pk}),
-                             ("reviews:vote", {"pk": self.review.pk})]:
+        for name, kwargs in [
+            ("reviews:create", {"hotspot_pk": self.hotspot.pk}),
+            ("reviews:edit", {"pk": self.review.pk}),
+            ("reviews:delete", {"pk": self.review.pk}),
+            ("reviews:vote", {"pk": self.review.pk}),
+        ]:
             response = self.client.post(reverse(name, kwargs=kwargs), {"rating": 5})
             self.assertEqual(response.status_code, 404)
 
     def test_reimport_of_removed_hotspot_does_not_restore_public_visibility(self):
-        self.client.post(reverse("hotspots:manage_retire", args=[self.hotspot.pk]), {"confirm": "yes"})
+        self.client.post(
+            reverse("hotspots:manage_retire", args=[self.hotspot.pk]),
+            {"confirm": "yes"},
+        )
         self.upload([dict(self.sample_rows[0], doitt_id=str(self.hotspot.pk))])
         self.hotspot.refresh_from_db()
         self.assertFalse(self.hotspot.is_active)
-        self.assertEqual(self.client.get(self.hotspot.get_absolute_url()).status_code, 404)
+        self.assertEqual(
+            self.client.get(self.hotspot.get_absolute_url()).status_code, 404
+        )
         self.assertTrue(ReviewVote.objects.filter(pk=self.vote.pk).exists())
 
     def test_mutations_require_csrf_and_unsupported_methods_do_not_write(self):
@@ -232,14 +309,24 @@ class OfficialDataManagementTests(TestCase):
         csrf_client.force_login(self.administrator)
         for route in self.routes()[1:]:
             with self.subTest(route=route):
-                self.assertEqual(csrf_client.post(route, {"confirm": "yes"}).status_code, 403)
-                self.assertEqual(self.client.put(route, "{}", content_type="application/json").status_code, 405)
+                self.assertEqual(
+                    csrf_client.post(route, {"confirm": "yes"}).status_code, 403
+                )
+                self.assertEqual(
+                    self.client.put(
+                        route, "{}", content_type="application/json"
+                    ).status_code,
+                    405,
+                )
         self.hotspot.refresh_from_db()
         self.assertTrue(self.hotspot.is_active)
 
     def test_unknown_hotspot_has_no_management_actions(self):
         for name in ("manage_edit", "manage_retire"):
-            self.assertEqual(self.client.get(reverse(f"hotspots:{name}", args=[999999])).status_code, 404)
+            self.assertEqual(
+                self.client.get(reverse(f"hotspots:{name}", args=[999999])).status_code,
+                404,
+            )
 
     def test_official_names_are_escaped_in_management_pages(self):
         self.hotspot.name = '<script>alert("x")</script>'

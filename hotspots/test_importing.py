@@ -15,7 +15,9 @@ from .models import Hotspot
 class SharedHotspotImportTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        with (settings.BASE_DIR / "data" / "connectnyc_hotspots_sample.csv").open(newline="") as source:
+        with (settings.BASE_DIR / "data" / "connectnyc_hotspots_sample.csv").open(
+            newline=""
+        ) as source:
             cls.row = next(csv.DictReader(source))
 
     def csv_source(self, rows):
@@ -33,7 +35,9 @@ class SharedHotspotImportTests(TestCase):
         hotspot = Hotspot.objects.get()
         user = get_user_model().objects.create_user(username="review-author")
         voter = get_user_model().objects.create_user(username="review-voter")
-        review = Review.objects.create(hotspot=hotspot, author=user, rating=5, body="Useful.")
+        review = Review.objects.create(
+            hotspot=hotspot, author=user, rating=5, body="Useful."
+        )
         vote = ReviewVote.objects.create(review=review, user=voter)
         hotspot.is_active = False
         hotspot.save(update_fields=["is_active"])
@@ -47,11 +51,18 @@ class SharedHotspotImportTests(TestCase):
         self.assertEqual(hotspot.name, "Updated official record")
         self.assertEqual(hotspot.source_acquired_on, date(2026, 10, 26))
         self.assertFalse(hotspot.is_active)
-        self.assertTrue(Review.objects.filter(pk=review.pk, hotspot=hotspot, body="Useful.").exists())
+        self.assertTrue(
+            Review.objects.filter(
+                pk=review.pk, hotspot=hotspot, body="Useful."
+            ).exists()
+        )
         self.assertTrue(ReviewVote.objects.filter(pk=vote.pk, review=review).exists())
 
     def test_extra_or_missing_row_values_reject_the_file(self):
-        for values in [list(self.row.values()) + ["extra"], list(self.row.values())[:-1]]:
+        for values in [
+            list(self.row.values()) + ["extra"],
+            list(self.row.values())[:-1],
+        ]:
             with self.subTest(values=len(values)):
                 source = self.csv_source([self.row])
                 source.seek(0, 2)

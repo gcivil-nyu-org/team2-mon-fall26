@@ -19,7 +19,11 @@ def rating_summary(reviews):
         demo_count=Count("pk", filter=Q(is_demo=True)),
     )
     return {
-        "average": round(float(result["average"]), 1) if result["average"] is not None else None,
+        "average": (
+            round(float(result["average"]), 1)
+            if result["average"] is not None
+            else None
+        ),
         "count": result["count"],
         "review_count": result["review_count"],
         "has_demo_reviews": result["demo_count"] > 0,

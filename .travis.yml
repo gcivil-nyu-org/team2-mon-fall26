@@ -20,7 +20,13 @@ env:
 script:
   - docker compose up --build --wait
   - docker compose exec -T db sh -c "mysql -uroot -p\"$MYSQL_ROOT_PASSWORD\" -e \"GRANT ALL PRIVILEGES ON *.* TO 'connectnyc'@'%'; FLUSH PRIVILEGES;\""
-  - docker compose exec -T web python manage.py test
+  - docker compose exec -T web black --check .
+  - docker compose exec -T web flake8 .
+  - docker compose exec -T web coverage run --data-file=/tmp/.coverage --source=. manage.py test --noinput
+  - docker compose exec -T web coverage report --data-file=/tmp/.coverage -m
+
+after_success:
+  - docker compose exec -T -e TRAVIS="$TRAVIS" -e TRAVIS_JOB_ID="$TRAVIS_JOB_ID" -e TRAVIS_BRANCH="$TRAVIS_BRANCH" -e TRAVIS_REPO_SLUG="$TRAVIS_REPO_SLUG" -e TRAVIS_COMMIT="$TRAVIS_COMMIT" -e COVERALLS_REPO_TOKEN="$COVERALLS_REPO_TOKEN" web coveralls
 
 after_script:
   - docker compose down -v

@@ -12,6 +12,7 @@ from reviews.services import rating_summary, visible_reviews
 from .filters import active_filter_chips, apply_filters, filter_options, read_params
 from .models import Hotspot, HotspotFollow
 
+
 def _map_settings():
     return {
         "demo_mode": settings.DEMO_MODE,
@@ -110,12 +111,17 @@ def detail(request, pk):
     is_following = False
     if request.user.is_authenticated:
         voted_ids = set(
-            ReviewVote.objects.filter(user=request.user, review__hotspot=hotspot).values_list(
-                "review_id", flat=True
-            )
+            ReviewVote.objects.filter(
+                user=request.user, review__hotspot=hotspot
+            ).values_list("review_id", flat=True)
         )
-        user_review = Review.objects.filter(hotspot=hotspot, author=request.user, is_demo=False).first()
-        is_following = HotspotFollow.objects.filter(user=request.user, hotspot=hotspot,).exists()
+        user_review = Review.objects.filter(
+            hotspot=hotspot, author=request.user, is_demo=False
+        ).first()
+        is_following = HotspotFollow.objects.filter(
+            user=request.user,
+            hotspot=hotspot,
+        ).exists()
     context = {
         **_map_settings(),
         "hotspot": hotspot,
@@ -129,11 +135,15 @@ def detail(request, pk):
     }
     return render(request, "hotspots/detail.html", context)
 
+
 @require_GET
 def hotspot_data(request):
     filters = read_params(request.GET)
     records = _map_data(apply_filters(Hotspot.objects.filter(is_active=True), filters))
-    return JsonResponse({"count": len(records), "filters": filters, "hotspots": records})
+    return JsonResponse(
+        {"count": len(records), "filters": filters, "hotspots": records}
+    )
+
 
 @login_required
 @require_POST
@@ -155,6 +165,7 @@ def unfollow(request, pk):
         hotspot=hotspot,
     ).delete()
     return redirect(hotspot.get_absolute_url())
+
 
 @login_required
 @require_GET
