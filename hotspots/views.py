@@ -3,6 +3,7 @@ from django.db.models import Avg, Count, Q
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.auth.views import redirect_to_login
 from django.views.decorators.http import require_GET, require_POST
 
 from availability.models import AvailabilityReport
@@ -166,10 +167,12 @@ def hotspot_data(request):
     )
 
 
-@login_required
 @require_POST
 def follow(request, pk):
     hotspot = get_object_or_404(Hotspot, pk=pk, is_active=True)
+    if not request.user.is_authenticated:
+        # Login redirects with GET; return to the profile to retry the action.
+        return redirect_to_login(hotspot.get_absolute_url())
     HotspotFollow.objects.get_or_create(
         user=request.user,
         hotspot=hotspot,
@@ -177,10 +180,11 @@ def follow(request, pk):
     return redirect(hotspot.get_absolute_url())
 
 
-@login_required
 @require_POST
 def unfollow(request, pk):
     hotspot = get_object_or_404(Hotspot, pk=pk, is_active=True)
+    if not request.user.is_authenticated:
+        return redirect_to_login(hotspot.get_absolute_url())
     HotspotFollow.objects.filter(
         user=request.user,
         hotspot=hotspot,

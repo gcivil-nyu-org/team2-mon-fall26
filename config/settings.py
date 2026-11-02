@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "availability.apps.AvailabilityConfig",
     "accounts.apps.AccountsConfig",
     "moderation.apps.ModerationConfig",
+    "forum.apps.ForumConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

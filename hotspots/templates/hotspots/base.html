@@ -21,6 +21,7 @@
       </a>
       <nav aria-label="Main navigation">
         <a class="nav-link map-nav-link {% block map_nav_class %}{% endblock %}" href="{% url 'hotspots:map' %}" {% block map_nav_current %}{% endblock %}>Explore map</a>
+        <a class="nav-link {% block forum_nav_class %}{% endblock %}" href="{% url 'forum:list' %}" {% block forum_nav_current %}{% endblock %}>Discussions</a>
         {% if user.is_authenticated %}
           <a class="nav-link" href="{% url 'hotspots:followed' %}">
             My followed hotspots
