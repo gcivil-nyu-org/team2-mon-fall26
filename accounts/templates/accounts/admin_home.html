@@ -34,7 +34,11 @@
         <div><dt>Inactive records</dt><dd>{{ hotspot_counts.inactive }}</dd></div>
         <div><dt>Community ratings</dt><dd>{{ review_count }}</dd></div>
       </dl>
-      <p class="admin-note">Import, update and removal tools for official records (E04) and moderation tools (E05) will be added to this area.</p>
+      <p class="admin-note">Maintain official hotspot records and control which locations appear in public discovery.</p>
+      <div class="manage-form-actions">
+        <a class="button button-primary" href="{% url 'hotspots:manage_list' %}">Manage hotspot data</a>
+        <a class="button button-secondary" href="{% url 'hotspots:manage_import' %}">Import official CSV</a>
+      </div>
       <a class="button button-secondary" href="{% url 'admin:index' %}">Open Django admin</a>
     </section>
   </div>
