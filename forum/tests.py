@@ -182,3 +182,64 @@ class ForumTests(TestCase):
         self.assertEqual(before, after)
         self.assertEqual(after["average"], 4.0)
         self.assertEqual(Review.objects.get(pk=review.pk).rating, 4)
+
+    def test_list_vote_counts_are_not_multiplied_by_comments(self):
+        other_reader = make_user("another-forum-reader")
+        ForumVote.objects.create(user=self.reader, post=self.post)
+        ForumVote.objects.create(user=other_reader, post=self.post)
+        for index in range(3):
+            ForumComment.objects.create(
+                post=self.post, author=self.author, body=f"Answer {index}",
+            )
+        self.client.force_login(self.reader)
+
+        response = self.client.get(reverse("forum:list"))
+
+        listed_post = response.context["posts"].get(pk=self.post.pk)
+        self.assertEqual(listed_post.comment_count, 3)
+        self.assertEqual(listed_post.vote_count, 2)
+        self.assertEqual(listed_post.user_vote_count, 1)
+
+    def test_malformed_reply_parent_is_rejected_without_creating_comment(self):
+        self.client.force_login(self.reader)
+
+        response = self.client.post(
+            reverse("forum:comment", args=[self.post.pk]),
+            {"body": "Reply text", "parent_id": "not-a-comment-id"},
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(ForumComment.objects.exists())
+
+    def test_deep_reply_thread_renders_without_recursive_template_failure(self):
+        parent = None
+        for index in range(300):
+            parent = ForumComment.objects.create(
+                post=self.post,
+                author=self.author,
+                parent=parent,
+                body=f"Nested answer {index}",
+            )
+
+        response = self.client.get(reverse("forum:detail", args=[self.post.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Nested answer 299")
+        self.assertEqual(response.context["comment_count"], 300)
+
+    def test_replies_stay_under_their_parent_before_the_next_root_comment(self):
+        first = ForumComment.objects.create(
+            post=self.post, author=self.author, body="First root answer",
+        )
+        second = ForumComment.objects.create(
+            post=self.post, author=self.author, body="Second root answer",
+        )
+        reply = ForumComment.objects.create(
+            post=self.post, author=self.reader, parent=first, body="First answer reply",
+        )
+
+        response = self.client.get(reverse("forum:detail", args=[self.post.pk]))
+
+        html = response.content.decode()
+        self.assertLess(html.index(first.body), html.index(reply.body))
+        self.assertLess(html.index(reply.body), html.index(second.body))

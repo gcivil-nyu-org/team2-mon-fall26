@@ -1,9 +1,9 @@
 from django.contrib import messages
 from django.db.models import Count, Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.permissions import contributor_required
-from hotspots.models import Hotspot
 
 from .forms import ForumCommentForm, ForumPostForm
 from .models import ForumComment, ForumPost, ForumVote
@@ -12,9 +12,25 @@ from .models import ForumComment, ForumPost, ForumVote
 def _vote_counts(queryset, user):
     user_id = user.pk
     return queryset.annotate(
-        vote_count=Count("votes"),
-        user_vote_count=Count("votes", filter=Q(votes__user_id=user_id)),
+        vote_count=Count("votes", distinct=True),
+        user_vote_count=Count("votes", filter=Q(votes__user_id=user_id), distinct=True),
     )
+
+
+def _comment_events(comments):
+    """Render nested threads without recursive template calls."""
+    pending = [("comment", comment) for comment in reversed(comments)]
+    while pending:
+        kind, comment = pending.pop()
+        yield kind, comment
+        if kind == "comment":
+            pending.append(("close_comment", None))
+            if comment.child_comments:
+                pending.append(("close_children", None))
+                pending.extend(
+                    ("comment", child) for child in reversed(comment.child_comments)
+                )
+                pending.append(("open_children", None))
 
 
 def discussion_list(request):
@@ -60,6 +76,7 @@ def discussion_detail(request, pk):
         {
             "post": post,
             "comments": top_level_comments,
+            "comment_events": _comment_events(top_level_comments),
             "comment_count": len(comments),
             "comment_form": ForumCommentForm(),
             "reply_to": reply_to,
@@ -89,6 +106,10 @@ def add_comment(request, post_pk):
     parent = None
     parent_id = request.POST.get("parent_id", "").strip()
     if parent_id:
+        try:
+            parent_id = int(parent_id)
+        except ValueError:
+            raise Http404("Comment not found.") from None
         parent = get_object_or_404(ForumComment, pk=parent_id, post=post)
     if form.is_valid():
         comment = form.save(commit=False)

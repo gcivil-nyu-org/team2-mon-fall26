@@ -1,4 +1,3 @@
-<li class="forum-comment" id="comment-{{ comment.pk }}">
   <article class="forum-comment-card">
     <div class="forum-comment-head">
       <strong>{{ comment.author.username }}</strong>
@@ -23,9 +22,3 @@
       {% endif %}
     </div>
   </article>
-  {% if comment.child_comments %}
-    <ol class="forum-comment-children">
-      {% for child in comment.child_comments %}{% include "forum/_comment.html" with comment=child %}{% endfor %}
-    </ol>
-  {% endif %}
-</li>

@@ -52,7 +52,18 @@
 
       {% if comments %}
         <ol class="forum-comment-list">
-          {% for comment in comments %}{% include "forum/_comment.html" with comment=comment %}{% endfor %}
+          {% for kind, comment in comment_events %}
+            {% if kind == "comment" %}
+              <li class="forum-comment" id="comment-{{ comment.pk }}">
+                {% include "forum/_comment.html" with comment=comment %}
+            {% elif kind == "open_children" %}
+              <ol class="forum-comment-children">
+            {% elif kind == "close_children" %}
+              </ol>
+            {% else %}
+              </li>
+            {% endif %}
+          {% endfor %}
         </ol>
       {% else %}
         <p class="forum-no-comments">No comments yet. Be the first to share a helpful answer.</p>

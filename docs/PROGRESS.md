@@ -31,7 +31,7 @@ E04 administrator import/list/edit/retirement (US16–US17, Boqing) is implement
 | [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | Not implemented | Shared content flagging, moderation review, and removal. |
 | [E06 — Report Availability & Assess Reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) | Planned MLP; not implemented | Working/Unavailable reports, reliability/recency, rating/reliability sorting, and seating/accessibility tags (not yet decomposed into a Story). |
 | [E07 — Follow Hotspots & Receive Updates](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) | Partial: US25/US26 implemented and promoted through PR #62; merge/deployment acceptance tracked separately | US27 notifications remain unimplemented. |
-| [E08 — Discussion Forum & Community Interaction](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) | MVP implemented locally; automated tests pass | Production release and deployed acceptance; E05 reporting/moderation remains separate. |
+| [E08 — Discussion Forum & Community Interaction](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) | MVP implemented and review fixes validated with 140 tests on isolated MySQL 8.4 | PR merge, production release and deployed acceptance; E05 reporting/moderation remains separate. |
 
 ## User Story progress
 
@@ -197,3 +197,11 @@ Docker Compose was used for this local review only. No production deployment or 
 - Added regression tests for follow and unfollow through actual login/return/retry, and GET mutation rejection. All **126 tests passed on isolated MySQL 8.4**, including existing E04 coverage. Django system checks, migration consistency and diff checks passed.
 - Independent review found no additional blocking authorization, data or migration issue. The additive migration creates only HotspotFollow with a unique user/hotspot pair; existing rows are not rewritten.
 - PR #62 targets main; existing Travis configuration can deploy production after a successful main build. This entry records local validation before merge, not CI success or completed production deployment/acceptance. US27 notifications remain future work. The login fix should also be synchronized back to develop.
+
+
+### November 2, 2026 — PR #64 forum review fixes
+
+- Reviewed the forum against US28–US30 and reproduced three defects before fixing them: discussion-list helpful counts multiplied by comment count; a malformed reply parent ID raised HTTP 500; and a 300-level reply chain raised RecursionError while rendering the thread.
+- Count distinct forum votes across comment joins and validate reply IDs before querying. Render the existing nested comment markup using an iterative traversal, preserving sibling order and arbitrary reply nesting without recursive template calls.
+- Added four regression tests covering combined comment/vote counts, invalid parent input, deep thread rendering and parent/sibling ordering. All **140 tests passed on isolated MySQL 8.4** (15.587 seconds); Django system checks, migration consistency checks and whitespace validation passed. No schema change is required for these fixes.
+- This records local review validation before merge. CI success, deployment completion and production acceptance are not asserted; E05 reporting/moderation remains separate.
