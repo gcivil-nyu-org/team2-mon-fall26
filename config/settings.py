@@ -1,4 +1,5 @@
 """Connect NYC: one Django application backed by MySQL."""
+
 import os
 from pathlib import Path
 
@@ -10,21 +11,35 @@ load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
 if not SECRET_KEY or SECRET_KEY == "replace-with-a-random-secret":
-    raise ImproperlyConfigured("Set DJANGO_SECRET_KEY; run python3 scripts/create_env.py for a local demo.")
+    raise ImproperlyConfigured(
+        "Set DJANGO_SECRET_KEY; run python3 scripts/create_env.py for a local demo."
+    )
 DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
-ALLOWED_HOSTS = [host.strip() for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host.strip()]
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    if host.strip()
+]
 DEMO_MODE = os.environ.get("DEMO_MODE", "0") == "1"
 
 # E05 automated moderation (moderation/automod.py). Blocked terms are rejected
 # outright; add them as a comma-separated MODERATION_BLOCKED_TERMS environment value.
 MODERATION_BLOCKED_TERMS = [
-    term for term in os.environ.get("MODERATION_BLOCKED_TERMS", "").split(",") if term.strip()
+    term
+    for term in os.environ.get("MODERATION_BLOCKED_TERMS", "").split(",")
+    if term.strip()
 ]
-MODERATION_AUTO_HIDE_FLAGS = 3  # distinct user flags that hide a review until an admin decides
-MODERATION_TRUSTED_MIN_REVIEWS = 3  # published reviews, with none removed, to skip soft rules
+MODERATION_AUTO_HIDE_FLAGS = (
+    3  # distinct user flags that hide a review until an admin decides
+)
+MODERATION_TRUSTED_MIN_REVIEWS = (
+    3  # published reviews, with none removed, to skip soft rules
+)
 MODERATION_TRUSTED_MIN_AGE_HOURS = 24  # ...counting only reviews at least this old
 MODERATION_REPEAT_OFFENDER_REMOVALS = 2  # removals after which every new review is held
-MODERATION_BURST_LIMIT = 3  # earlier reviews within the window before the next one is held
+MODERATION_BURST_LIMIT = (
+    3  # earlier reviews within the window before the next one is held
+)
 MODERATION_BURST_MINUTES = 10
 
 INSTALLED_APPS = [
@@ -51,32 +66,43 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 ROOT_URLCONF = "config.urls"
-TEMPLATES = [{
-    "BACKEND": "django.template.backends.django.DjangoTemplates",
-    "DIRS": [BASE_DIR / "templates"],
-    "APP_DIRS": True,
-    "OPTIONS": {"context_processors": [
-        "django.template.context_processors.request",
-        "django.contrib.auth.context_processors.auth",
-        "django.contrib.messages.context_processors.messages",
-        "accounts.context_processors.roles",
-    ]},
-}]
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+                "accounts.context_processors.roles",
+            ]
+        },
+    }
+]
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
-DATABASES = {"default": {
-    "ENGINE": "django.db.backends.mysql",
-    "NAME": os.environ.get("MYSQL_DATABASE", "connectnyc"),
-    "USER": os.environ.get("MYSQL_USER", "connectnyc"),
-    "PASSWORD": os.environ.get("MYSQL_PASSWORD", ""),
-    "HOST": os.environ.get("MYSQL_HOST", "127.0.0.1"),
-    "PORT": os.environ.get("MYSQL_PORT", "3306"),
-    "OPTIONS": {"charset": "utf8mb4", "init_command": "SET sql_mode='STRICT_TRANS_TABLES'"},
-    "CONN_MAX_AGE": 60,
-    "CONN_HEALTH_CHECKS": True,
-}}
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": os.environ.get("MYSQL_DATABASE", "connectnyc"),
+        "USER": os.environ.get("MYSQL_USER", "connectnyc"),
+        "PASSWORD": os.environ.get("MYSQL_PASSWORD", ""),
+        "HOST": os.environ.get("MYSQL_HOST", "127.0.0.1"),
+        "PORT": os.environ.get("MYSQL_PORT", "3306"),
+        "OPTIONS": {
+            "charset": "utf8mb4",
+            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
+        "CONN_MAX_AGE": 60,
+        "CONN_HEALTH_CHECKS": True,
+    }
+}
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -93,10 +119,14 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    },
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-MAP_TILE_URL = os.environ.get("MAP_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+MAP_TILE_URL = os.environ.get(
+    "MAP_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+)
 MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
@@ -107,6 +137,10 @@ SESSION_COOKIE_SECURE = os.environ.get("DJANGO_SECURE_COOKIES", "0") == "1"
 CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
 # Behind an HTTPS load balancer (e.g. AWS), list the public origin(s) so login and
 # sign-up forms pass CSRF checks, and trust the proxy's X-Forwarded-Proto header.
-CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if origin.strip()]
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
 if os.environ.get("DJANGO_BEHIND_HTTPS_PROXY", "0") == "1":
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

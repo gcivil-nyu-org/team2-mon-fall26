@@ -4,6 +4,7 @@ Administrator removals resolve their flags first, so only still-open flags are
 touched here. Without this, the moderation view would list items that no longer
 exist.
 """
+
 from django.contrib.contenttypes.models import ContentType
 from django.db.models.signals import post_delete
 from django.utils import timezone

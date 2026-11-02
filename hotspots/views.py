@@ -84,7 +84,9 @@ def _map_data(hotspots, sort=None):
 def map_view(request):
     active_hotspots = Hotspot.objects.filter(is_active=True)
     filters = read_params(request.GET)
-    hotspots = sort_hotspots(apply_filters(active_hotspots, filters), filters.get("sort"))
+    hotspots = sort_hotspots(
+        apply_filters(active_hotspots, filters), filters.get("sort")
+    )
     map_data = _map_data(hotspots, filters.get("sort"))
     total_count = active_hotspots.count()
     context = {
@@ -121,13 +123,20 @@ def detail(request, pk):
     is_following = False
     if request.user.is_authenticated:
         voted_ids = set(
-            ReviewVote.objects.filter(user=request.user, review__hotspot=hotspot).values_list(
-                "review_id", flat=True
-            )
+            ReviewVote.objects.filter(
+                user=request.user, review__hotspot=hotspot
+            ).values_list("review_id", flat=True)
         )
-        user_review = Review.objects.filter(hotspot=hotspot, author=request.user, is_demo=False).first()
-        user_report = AvailabilityReport.objects.filter(hotspot=hotspot, reporter=request.user).first()
-        is_following = HotspotFollow.objects.filter(user=request.user, hotspot=hotspot,).exists()
+        user_review = Review.objects.filter(
+            hotspot=hotspot, author=request.user, is_demo=False
+        ).first()
+        user_report = AvailabilityReport.objects.filter(
+            hotspot=hotspot, reporter=request.user
+        ).first()
+        is_following = HotspotFollow.objects.filter(
+            user=request.user,
+            hotspot=hotspot,
+        ).exists()
     context = {
         **_map_settings(),
         "hotspot": hotspot,
@@ -143,12 +152,19 @@ def detail(request, pk):
     }
     return render(request, "hotspots/detail.html", context)
 
+
 @require_GET
 def hotspot_data(request):
     filters = read_params(request.GET)
-    hotspots = sort_hotspots(apply_filters(Hotspot.objects.filter(is_active=True), filters), filters.get("sort"))
+    hotspots = sort_hotspots(
+        apply_filters(Hotspot.objects.filter(is_active=True), filters),
+        filters.get("sort"),
+    )
     records = _map_data(hotspots, filters.get("sort"))
-    return JsonResponse({"count": len(records), "filters": filters, "hotspots": records})
+    return JsonResponse(
+        {"count": len(records), "filters": filters, "hotspots": records}
+    )
+
 
 @login_required
 @require_POST
@@ -170,6 +186,7 @@ def unfollow(request, pk):
         hotspot=hotspot,
     ).delete()
     return redirect(hotspot.get_absolute_url())
+
 
 @login_required
 @require_GET

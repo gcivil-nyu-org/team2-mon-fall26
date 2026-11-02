@@ -15,7 +15,9 @@ class AvailabilityReport(models.Model):
         UNAVAILABLE = "unavailable", "Unavailable"
 
     hotspot = models.ForeignKey(
-        "hotspots.Hotspot", on_delete=models.CASCADE, related_name="availability_reports"
+        "hotspots.Hotspot",
+        on_delete=models.CASCADE,
+        related_name="availability_reports",
     )
     reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     status = models.CharField(max_length=12, choices=Status.choices)
@@ -23,7 +25,11 @@ class AvailabilityReport(models.Model):
 
     class Meta:
         ordering = ["-created_at", "-pk"]
-        indexes = [models.Index(fields=["hotspot", "created_at"], name="availability_hotspot_time")]
+        indexes = [
+            models.Index(
+                fields=["hotspot", "created_at"], name="availability_hotspot_time"
+            )
+        ]
 
     def __str__(self):
         return f"{self.status} for {self.hotspot_id} by {self.reporter_id}"

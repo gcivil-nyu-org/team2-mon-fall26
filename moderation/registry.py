@@ -6,6 +6,7 @@ registered today; when E08 adds forum posts, comments and replies, each one is a
 new ``FlaggableType`` entry and the flag form, moderation view and removal flow
 work for it unchanged.
 """
+
 from dataclasses import dataclass
 from typing import Callable
 
@@ -54,7 +55,11 @@ def _describe_review(review):
         "text": review.body,
         "rating": review.rating,
         "reference": f"{hotspot.display_name} (NYC ID {hotspot.pk})",
-        "url": f"{hotspot.get_absolute_url()}#review-{review.pk}" if hotspot.is_active and not review.is_held else "",
+        "url": (
+            f"{hotspot.get_absolute_url()}#review-{review.pk}"
+            if hotspot.is_active and not review.is_held
+            else ""
+        ),
         "created_at": review.created_at,
         "is_demo": review.is_demo,
         "is_held": review.is_held,

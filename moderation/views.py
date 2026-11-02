@@ -36,7 +36,9 @@ def flag_content(request, kind, pk):
         messages.info(request, "You can't flag your own content.")
         return redirect(_back_to(info))
     if services.flags_for(flaggable, obj.pk).filter(flagged_by=request.user).exists():
-        messages.info(request, "You already flagged this. An administrator will review it.")
+        messages.info(
+            request, "You already flagged this. An administrator will review it."
+        )
         return redirect(_back_to(info))
     form = FlagForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
@@ -50,15 +52,25 @@ def flag_content(request, kind, pk):
                     note=form.cleaned_data["note"],
                 )
         except IntegrityError:
-            messages.info(request, "You already flagged this. An administrator will review it.")
+            messages.info(
+                request, "You already flagged this. An administrator will review it."
+            )
         else:
             # Community auto-hide: enough separate flags hide the item until an admin decides.
             services.auto_hide_if_widely_flagged(flaggable, obj)
-            messages.success(request, "Thanks for flagging this. An administrator will review it.")
+            messages.success(
+                request, "Thanks for flagging this. An administrator will review it."
+            )
         return redirect(_back_to(info))
-    return render(request, "moderation/flag_form.html", {
-        "form": form, "flaggable": flaggable, "info": info,
-    })
+    return render(
+        request,
+        "moderation/flag_form.html",
+        {
+            "form": form,
+            "flaggable": flaggable,
+            "info": info,
+        },
+    )
 
 
 @administrator_required
@@ -74,7 +86,9 @@ def moderation_queue(request):
         "tab_label": TABS[tab],
         "held_count": services.held_count(),
         "open_item_count": services.open_item_count(),
-        "removed_count": ModerationRecord.objects.filter(action=ModerationRecord.Action.REMOVED).count(),
+        "removed_count": ModerationRecord.objects.filter(
+            action=ModerationRecord.Action.REMOVED
+        ).count(),
         "removal_form": RemovalForm(initial={"reason": Reason.SPAM}),
     }
     if tab == "held":
@@ -83,12 +97,16 @@ def moderation_queue(request):
         context["items"] = services.flagged_items()
     elif tab == "recent":
         page = Paginator(
-            Review.objects.select_related("hotspot", "author").order_by("-created_at", "-pk"), 50
+            Review.objects.select_related("hotspot", "author").order_by(
+                "-created_at", "-pk"
+            ),
+            50,
         ).get_page(request.GET.get("page"))
         counts = services.open_flag_counts(REVIEW, [review.pk for review in page])
         context["page_obj"] = page
         context["reviews"] = [
-            {"review": review, "open_flags": counts.get(review.pk, 0)} for review in page
+            {"review": review, "open_flags": counts.get(review.pk, 0)}
+            for review in page
         ]
     else:
         context["page_obj"] = Paginator(
@@ -108,17 +126,34 @@ def remove_content(request, kind, pk):
     if request.method == "POST" and form.is_valid():
         destination = f"{reverse('moderation:queue')}?tab={'held' if info['is_held'] else 'flagged'}"
         record = services.remove_content(
-            flaggable, obj, request.user, form.cleaned_data["reason"], form.cleaned_data["note"]
+            flaggable,
+            obj,
+            request.user,
+            form.cleaned_data["reason"],
+            form.cleaned_data["note"],
         )
         if record is None:
-            messages.info(request, "This item no longer exists; its author may have deleted it.")
+            messages.info(
+                request, "This item no longer exists; its author may have deleted it."
+            )
         else:
-            messages.success(request, f"Removed the {flaggable.label.lower()} by {info['author']}. The decision was logged.")
+            messages.success(
+                request,
+                f"Removed the {flaggable.label.lower()} by {info['author']}. The decision was logged.",
+            )
         return redirect(destination)
     open_flags = services.open_flags_for(flaggable, obj.pk).select_related("flagged_by")
-    return render(request, "moderation/confirm_remove.html", {
-        "form": form, "flaggable": flaggable, "info": info, "pk": obj.pk, "open_flags": open_flags,
-    })
+    return render(
+        request,
+        "moderation/confirm_remove.html",
+        {
+            "form": form,
+            "flaggable": flaggable,
+            "info": info,
+            "pk": obj.pk,
+            "open_flags": open_flags,
+        },
+    )
 
 
 @administrator_required
@@ -130,7 +165,9 @@ def dismiss_flags(request, kind, pk):
     if not services.open_flags_for(flaggable, obj.pk).exists():
         messages.info(request, "There are no open flags on this item.")
     elif services.dismiss_flags(flaggable, obj, request.user) is None:
-        messages.info(request, "This item no longer exists; its author may have deleted it.")
+        messages.info(
+            request, "This item no longer exists; its author may have deleted it."
+        )
     else:
         messages.success(request, "Flags dismissed. The content was left unchanged.")
     return redirect(f"{reverse('moderation:queue')}?tab=flagged")
@@ -148,10 +185,17 @@ def approve_content(request, kind, pk):
     """Publish an item that was held for review, exactly as the administrator saw it."""
     flaggable = get_type(kind)
     obj = get_object_or_404(flaggable.held_queryset(), pk=pk)
-    if services.approve(flaggable, obj, request.user, version=request.POST.get("version", "")) is None:
+    if (
+        services.approve(
+            flaggable, obj, request.user, version=request.POST.get("version", "")
+        )
+        is None
+    ):
         messages.error(request, STALE_APPROVAL)
     else:
-        messages.success(request, f"Approved and published the {flaggable.label.lower()}.")
+        messages.success(
+            request, f"Approved and published the {flaggable.label.lower()}."
+        )
     return redirect(f"{reverse('moderation:queue')}?tab=held")
 
 
@@ -202,31 +246,54 @@ def bulk_action(request):
         skipped = len(selected) - approved
         messages.success(request, f"Approved and published {_plural(approved)}.")
         if skipped:
-            messages.info(request, f"{_plural(skipped)} not published: edited since you opened the queue, not held, or already handled.")
+            messages.info(
+                request,
+                f"{_plural(skipped)} not published: edited since you opened the queue, not held, or already handled.",
+            )
         return redirect(destination)
 
     if action != "remove":
         messages.error(request, "Choose an action.")
         return redirect(destination)
 
-    form = RemovalForm(request.POST if request.POST.get("confirm") == "yes" else None,
-                       initial={"reason": request.POST.get("reason") or Reason.SPAM})
+    form = RemovalForm(
+        request.POST if request.POST.get("confirm") == "yes" else None,
+        initial={"reason": request.POST.get("reason") or Reason.SPAM},
+    )
     if request.POST.get("confirm") == "yes" and form.is_valid():
         removed = sum(
             services.remove_content(
-                flaggable, obj, request.user, form.cleaned_data["reason"], form.cleaned_data["note"]
-            ) is not None
+                flaggable,
+                obj,
+                request.user,
+                form.cleaned_data["reason"],
+                form.cleaned_data["note"],
+            )
+            is not None
             for flaggable, obj, _ in selected
         )
-        messages.success(request, f"Removed {_plural(removed)}. Each removal was logged.")
+        messages.success(
+            request, f"Removed {_plural(removed)}. Each removal was logged."
+        )
         return redirect(destination)
     # First step, or a confirmation with errors: show what will be removed. Nothing is deleted.
     items = [
-        {"type": flaggable, "pk": obj.pk, "info": flaggable.describe(obj),
-         "value": f"{flaggable.key}:{obj.pk}|{version}"}
+        {
+            "type": flaggable,
+            "pk": obj.pk,
+            "info": flaggable.describe(obj),
+            "value": f"{flaggable.key}:{obj.pk}|{version}",
+        }
         for flaggable, obj, version in selected
     ]
-    return render(request, "moderation/confirm_bulk_remove.html", {
-        "form": form, "items": items, "tab": tab, "destination": destination,
-        "affects_rating": any(item["type"].affects_rating for item in items),
-    })
+    return render(
+        request,
+        "moderation/confirm_bulk_remove.html",
+        {
+            "form": form,
+            "items": items,
+            "tab": tab,
+            "destination": destination,
+            "affects_rating": any(item["type"].affects_rating for item in items),
+        },
+    )

@@ -21,12 +21,18 @@ class Hotspot(models.Model):
     latitude = models.DecimalField(
         max_digits=16,
         decimal_places=12,
-        validators=[MinValueValidator(Decimal("-90")), MaxValueValidator(Decimal("90"))],
+        validators=[
+            MinValueValidator(Decimal("-90")),
+            MaxValueValidator(Decimal("90")),
+        ],
     )
     longitude = models.DecimalField(
         max_digits=16,
         decimal_places=12,
-        validators=[MinValueValidator(Decimal("-180")), MaxValueValidator(Decimal("180"))],
+        validators=[
+            MinValueValidator(Decimal("-180")),
+            MaxValueValidator(Decimal("180")),
+        ],
     )
     borough = models.CharField(max_length=32)
     neighborhood_name = models.CharField(max_length=255, blank=True)
@@ -72,6 +78,7 @@ class Hotspot(models.Model):
 
     def __str__(self):
         return self.display_name
+
 
 class HotspotFollow(models.Model):
     user = models.ForeignKey(

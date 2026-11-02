@@ -10,19 +10,30 @@ from reviews.models import Review
 from reviews.services import rating_summary
 
 from .models import AvailabilityReport
-from .services import MIN_REPORTS, REPORT_WINDOW_DAYS, availability_by_hotspot, hotspot_availability
+from .services import (
+    MIN_REPORTS,
+    REPORT_WINDOW_DAYS,
+    availability_by_hotspot,
+    hotspot_availability,
+)
 
 WORKING = AvailabilityReport.Status.WORKING
 UNAVAILABLE = AvailabilityReport.Status.UNAVAILABLE
 
 
 def make_users(count):
-    return [get_user_model().objects.create_user(username=f"reporter{i}") for i in range(count)]
+    return [
+        get_user_model().objects.create_user(username=f"reporter{i}")
+        for i in range(count)
+    ]
 
 
 def report(hotspot, user, status, days_ago=0):
     return AvailabilityReport.objects.create(
-        hotspot=hotspot, reporter=user, status=status, created_at=timezone.now() - timedelta(days=days_ago)
+        hotspot=hotspot,
+        reporter=user,
+        status=status,
+        created_at=timezone.now() - timedelta(days=days_ago),
     )
 
 
@@ -45,9 +56,16 @@ class SubmitReportTests(TestCase):
         self.client.force_login(self.user)
         before = timezone.now()
         response = self.client.post(self.url, {"status": "unavailable"})
-        self.assertRedirects(response, f"{self.hotspot.get_absolute_url()}#availability", fetch_redirect_response=False)
+        self.assertRedirects(
+            response,
+            f"{self.hotspot.get_absolute_url()}#availability",
+            fetch_redirect_response=False,
+        )
         saved = AvailabilityReport.objects.get()
-        self.assertEqual((saved.hotspot, saved.reporter, saved.status), (self.hotspot, self.user, UNAVAILABLE))
+        self.assertEqual(
+            (saved.hotspot, saved.reporter, saved.status),
+            (self.hotspot, self.user, UNAVAILABLE),
+        )
         self.assertGreaterEqual(saved.created_at, before)
 
     def test_only_working_or_unavailable_are_accepted(self):
@@ -62,7 +80,9 @@ class SubmitReportTests(TestCase):
         self.assertEqual(self.client.get(self.url).status_code, 405)
         self.hotspot.is_active = False
         self.hotspot.save()
-        self.assertEqual(self.client.post(self.url, {"status": "working"}).status_code, 404)
+        self.assertEqual(
+            self.client.post(self.url, {"status": "working"}).status_code, 404
+        )
         self.assertFalse(AvailabilityReport.objects.exists())
 
     def test_reports_are_kept_separate_from_ratings(self):
@@ -87,7 +107,9 @@ class ReliabilityRulesTests(TestCase):
         report(self.hotspot, self.users[0], WORKING)
         report(self.hotspot, self.users[1], WORKING)
         summary = hotspot_availability(self.hotspot)
-        self.assertEqual((MIN_REPORTS, summary["report_count"], summary["score"]), (3, 2, None))
+        self.assertEqual(
+            (MIN_REPORTS, summary["report_count"], summary["score"]), (3, 2, None)
+        )
         self.assertFalse(summary["has_enough"])
 
     def test_score_is_share_of_working_reports(self):
@@ -105,7 +127,9 @@ class ReliabilityRulesTests(TestCase):
         report(self.hotspot, self.users[0], WORKING, days_ago=5)
         report(self.hotspot, self.users[0], UNAVAILABLE, days_ago=1)
         summary = hotspot_availability(self.hotspot)
-        self.assertEqual((summary["working_count"], summary["unavailable_count"]), (0, 1))
+        self.assertEqual(
+            (summary["working_count"], summary["unavailable_count"]), (0, 1)
+        )
 
     def test_reports_expire_after_the_window(self):
         report(self.hotspot, self.users[0], WORKING, days_ago=REPORT_WINDOW_DAYS + 1)
@@ -116,7 +140,12 @@ class ReliabilityRulesTests(TestCase):
         other = make_hotspot(53, name="Clinton Hill Library", borough="Brooklyn")
         report(other, self.users[0], WORKING)
         self.assertEqual(hotspot_availability(self.hotspot)["report_count"], 0)
-        self.assertEqual(availability_by_hotspot([self.hotspot.pk, other.pk])[other.pk]["report_count"], 1)
+        self.assertEqual(
+            availability_by_hotspot([self.hotspot.pk, other.pk])[other.pk][
+                "report_count"
+            ],
+            1,
+        )
 
     def test_profile_shows_score_time_source_and_the_community_note(self):
         for user, status in zip(self.users[:3], [WORKING, WORKING, UNAVAILABLE]):
@@ -124,7 +153,9 @@ class ReliabilityRulesTests(TestCase):
         page = self.client.get(self.hotspot.get_absolute_url())
         self.assertContains(page, "67%")
         self.assertContains(page, "reporter0")
-        self.assertContains(page, "community observations, not a guarantee of live connectivity")
+        self.assertContains(
+            page, "community observations, not a guarantee of live connectivity"
+        )
         self.assertContains(page, "Log in to report")
 
     def test_profile_without_enough_reports_says_so(self):
@@ -162,7 +193,9 @@ class SortTests(TestCase):
         for user in self.users:
             Review.objects.create(hotspot=self.c, author=user, rating=5)
         Review.objects.create(hotspot=self.a, author=self.users[0], rating=3)
-        self.assertEqual(self.names(sort="rating"), ["C Kiosk", "A Library", "D Plaza", "B Park"])
+        self.assertEqual(
+            self.names(sort="rating"), ["C Kiosk", "A Library", "D Plaza", "B Park"]
+        )
 
     def test_sort_by_reliability_puts_most_reliable_first_and_thin_data_last(self):
         for user, status in zip(self.users, [WORKING, WORKING, WORKING]):
@@ -170,14 +203,20 @@ class SortTests(TestCase):
         for user, status in zip(self.users, [WORKING, UNAVAILABLE, UNAVAILABLE]):
             report(self.a, user, status)
         report(self.c, self.users[0], WORKING)  # one report is not enough for a score
-        self.assertEqual(self.names(sort="reliability"), ["B Park", "A Library", "D Plaza", "C Kiosk"])
+        self.assertEqual(
+            self.names(sort="reliability"),
+            ["B Park", "A Library", "D Plaza", "C Kiosk"],
+        )
 
     def test_sorting_works_together_with_filters(self):
         for user in self.users:
             report(self.a, user, UNAVAILABLE)
             report(self.b, user, WORKING)
             report(self.d, user, WORKING)
-        self.assertEqual(self.names(sort="reliability", borough="Manhattan"), ["B Park", "A Library", "C Kiosk"])
+        self.assertEqual(
+            self.names(sort="reliability", borough="Manhattan"),
+            ["B Park", "A Library", "C Kiosk"],
+        )
 
     def test_unknown_sort_is_ignored(self):
         self.assertEqual(self.names(sort="bogus"), self.names())

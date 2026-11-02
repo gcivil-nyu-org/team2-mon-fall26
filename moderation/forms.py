@@ -24,7 +24,9 @@ class FlagForm(forms.Form):
     def clean(self):
         cleaned = super().clean()
         if cleaned.get("reason") == Reason.OTHER and not cleaned.get("note"):
-            self.add_error("note", "Describe the problem when you choose “Something else”.")
+            self.add_error(
+                "note", "Describe the problem when you choose “Something else”."
+            )
         return cleaned
 
 
@@ -48,5 +50,7 @@ class RemovalForm(forms.Form):
     def clean(self):
         cleaned = super().clean()
         if cleaned.get("reason") == Reason.OTHER and not cleaned.get("note"):
-            self.add_error("note", "Explain the reason when you choose “Something else”.")
+            self.add_error(
+                "note", "Explain the reason when you choose “Something else”."
+            )
         return cleaned

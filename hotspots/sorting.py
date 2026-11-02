@@ -1,4 +1,5 @@
 """Sorting for search and filter results (E06 US24)."""
+
 from django.db.models import Avg
 
 from availability.services import availability_by_hotspot
@@ -27,8 +28,13 @@ def sort_hotspots(hotspots, sort):
             .values_list("hotspot_id", "average")
         )
     else:
-        values = {pk: summary["score"] for pk, summary in availability_by_hotspot(ids).items()}
+        values = {
+            pk: summary["score"] for pk, summary in availability_by_hotspot(ids).items()
+        }
     return sorted(
         hotspots,
-        key=lambda hotspot: (values.get(hotspot.pk) is None, -(values.get(hotspot.pk) or 0)),
+        key=lambda hotspot: (
+            values.get(hotspot.pk) is None,
+            -(values.get(hotspot.pk) or 0),
+        ),
     )

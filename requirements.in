@@ -3,3 +3,7 @@ mysqlclient>=2.2.7,<3
 gunicorn>=23,<24
 whitenoise>=6.11,<7
 python-dotenv>=1.1,<2
+black>=25,<27
+flake8>=7,<8
+coverage>=7,<8
+coveralls>=4,<5

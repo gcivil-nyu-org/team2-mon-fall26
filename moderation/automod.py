@@ -13,6 +13,7 @@ administrators only see the grey area, as on most review sites:
 
 Thresholds and word lists can be tuned in settings (see ``config/settings.py``).
 """
+
 import re
 from datetime import timedelta
 
@@ -32,16 +33,42 @@ _LINK = re.compile(
     r"site|online|click|link|app|me|ly|gg|tk|live|club|vip|win|bet|us)\b(/\S*)?"
 )
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(\.[\w-]+)+")
-_PHONE = re.compile(r"(?<![\d.])(\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?![\d.])")
+_PHONE = re.compile(
+    r"(?<![\d.])(\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?![\d.])"
+)
 
 # --- Tier 2: held for an administrator ----------------------------------------
 
 _PROMO_PHRASES = [
-    "promo code", "coupon", "discount code", "% off", "percent off", "buy now", "order now",
-    "limited offer", "limited time offer", "click here", "dm me", "message me on", "text me",
-    "whatsapp", "telegram", "crypto", "bitcoin", "forex", "make money", "earn money",
-    "work from home", "casino", "betting", "follow me on", "subscribe to my", "check out my",
-    "visit my", "best price", "cheap price",
+    "promo code",
+    "coupon",
+    "discount code",
+    "% off",
+    "percent off",
+    "buy now",
+    "order now",
+    "limited offer",
+    "limited time offer",
+    "click here",
+    "dm me",
+    "message me on",
+    "text me",
+    "whatsapp",
+    "telegram",
+    "crypto",
+    "bitcoin",
+    "forex",
+    "make money",
+    "earn money",
+    "work from home",
+    "casino",
+    "betting",
+    "follow me on",
+    "subscribe to my",
+    "check out my",
+    "visit my",
+    "best price",
+    "cheap price",
 ]
 # Common profanity is held rather than blocked: context matters, a person decides.
 _PROFANITY = re.compile(
@@ -51,7 +78,9 @@ _PROFANITY = re.compile(
 )
 _REPEATED_CHAR = re.compile(r"(\S)\1{5,}")
 _REPEATED_WORD = re.compile(r"\b(\w+)(?:\W+\1\b){3,}", re.IGNORECASE)
-_LEET = str.maketrans({"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s"})
+_LEET = str.maketrans(
+    {"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s"}
+)
 
 
 def _setting(name, default):
@@ -63,7 +92,11 @@ def _normalize(text):
 
 
 def _blocked_terms():
-    return [term.strip().lower() for term in _setting("MODERATION_BLOCKED_TERMS", []) if term.strip()]
+    return [
+        term.strip().lower()
+        for term in _setting("MODERATION_BLOCKED_TERMS", [])
+        if term.strip()
+    ]
 
 
 def blocking_problems(text):
@@ -80,14 +113,19 @@ def blocking_problems(text):
     plain = _normalize(text.translate(_LEET))
     for term in _blocked_terms():
         if (" " in term and term in plain) or term in words:
-            problems.append("This review contains language that isn't allowed on Connect NYC.")
+            problems.append(
+                "This review contains language that isn't allowed on Connect NYC."
+            )
             break
     return problems
 
 
 def _is_shouting(text):
     letters = [char for char in text if char.isalpha()]
-    return len(letters) >= 20 and sum(char.isupper() for char in letters) / len(letters) >= 0.7
+    return (
+        len(letters) >= 20
+        and sum(char.isupper() for char in letters) / len(letters) >= 0.7
+    )
 
 
 def _removed_count(user):
@@ -106,7 +144,9 @@ def is_trusted(user, exclude_pk=None):
     """
     from reviews.models import Review
 
-    settled_before = timezone.now() - timedelta(hours=_setting("MODERATION_TRUSTED_MIN_AGE_HOURS", 24))
+    settled_before = timezone.now() - timedelta(
+        hours=_setting("MODERATION_TRUSTED_MIN_AGE_HOURS", 24)
+    )
     published = Review.objects.filter(
         author=user, is_held=False, is_demo=False, created_at__lte=settled_before
     ).exclude(pk=exclude_pk)
@@ -123,7 +163,9 @@ def hold_reasons(review, is_new):
     reasons = []
     author = review.author
     if _removed_count(author) >= _setting("MODERATION_REPEAT_OFFENDER_REMOVALS", 2):
-        reasons.append((Reason.SPAM, "Author has had several reviews removed by moderators"))
+        reasons.append(
+            (Reason.SPAM, "Author has had several reviews removed by moderators")
+        )
     text = review.body
     if not text:
         return reasons  # A rating with no text has nothing else to check.
@@ -143,7 +185,9 @@ def hold_reasons(review, is_new):
             _normalize(body) == normalized
             for body in others.filter(author=author).values_list("body", flat=True)
         ):
-            reasons.append((Reason.SPAM, "Same text as another of this author's reviews"))
+            reasons.append(
+                (Reason.SPAM, "Same text as another of this author's reviews")
+            )
         elif others.exclude(author=author).filter(body__iexact=text.strip()).exists():
             reasons.append((Reason.SPAM, "Same text as a review by another account"))
 
@@ -153,8 +197,12 @@ def hold_reasons(review, is_new):
         if _REPEATED_CHAR.search(text) or _REPEATED_WORD.search(text):
             reasons.append((Reason.SPAM, "Heavily repeated characters or words"))
         if is_new:
-            window = timezone.now() - timedelta(minutes=_setting("MODERATION_BURST_MINUTES", 10))
-            recent = Review.objects.filter(author=author, created_at__gte=window).exclude(pk=review.pk)
+            window = timezone.now() - timedelta(
+                minutes=_setting("MODERATION_BURST_MINUTES", 10)
+            )
+            recent = Review.objects.filter(
+                author=author, created_at__gte=window
+            ).exclude(pk=review.pk)
             if recent.count() >= _setting("MODERATION_BURST_LIMIT", 3):
                 reasons.append((Reason.SPAM, "Posting many reviews in a short time"))
     return reasons

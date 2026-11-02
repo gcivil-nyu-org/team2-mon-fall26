@@ -15,7 +15,9 @@ def content_type_for(flaggable):
 
 
 def flags_for(flaggable, pk):
-    return ContentFlag.objects.filter(content_type=content_type_for(flaggable), object_id=pk)
+    return ContentFlag.objects.filter(
+        content_type=content_type_for(flaggable), object_id=pk
+    )
 
 
 def open_flags_for(flaggable, pk):
@@ -48,6 +50,7 @@ def open_flag_counts(flaggable, ids):
 
 # --- Automated holds ----------------------------------------------------------
 
+
 def hold(flaggable, obj, reasons):
     """Hide an item until an administrator decides, recording why as an automated flag.
 
@@ -58,7 +61,9 @@ def hold(flaggable, obj, reasons):
     note = "; ".join(detail for _, detail in reasons)[:500]
     with transaction.atomic():
         flaggable.set_held(obj, True)
-        existing = open_flags_for(flaggable, obj.pk).filter(flagged_by__isnull=True).first()
+        existing = (
+            open_flags_for(flaggable, obj.pk).filter(flagged_by__isnull=True).first()
+        )
         if existing:
             existing.reason, existing.note = reason, note
             existing.save(update_fields=["reason", "note"])
@@ -75,7 +80,9 @@ def hold(flaggable, obj, reasons):
 def auto_hide_if_widely_flagged(flaggable, obj):
     """Community auto-hide: enough distinct users flagging a visible item hides it."""
     threshold = getattr(settings, "MODERATION_AUTO_HIDE_FLAGS", 3)
-    user_flags = open_flags_for(flaggable, obj.pk).filter(flagged_by__isnull=False).count()
+    user_flags = (
+        open_flags_for(flaggable, obj.pk).filter(flagged_by__isnull=False).count()
+    )
     if user_flags >= threshold and not flaggable.describe(obj)["is_held"]:
         flaggable.set_held(obj, True)
         return True
@@ -83,6 +90,7 @@ def auto_hide_if_widely_flagged(flaggable, obj):
 
 
 # --- Administrator queues -----------------------------------------------------
+
 
 def held_count():
     return sum(flaggable.held_queryset().count() for flaggable in all_types())
@@ -98,17 +106,27 @@ def _flag_details(flaggable, ids):
     notes = defaultdict(list)
     automated = defaultdict(list)
     latest = {}
-    open_flags = ContentFlag.objects.filter(
-        content_type=content_type_for(flaggable), object_id__in=list(ids), status=ContentFlag.Status.OPEN
-    ).select_related("flagged_by").order_by("-created_at")
+    open_flags = (
+        ContentFlag.objects.filter(
+            content_type=content_type_for(flaggable),
+            object_id__in=list(ids),
+            status=ContentFlag.Status.OPEN,
+        )
+        .select_related("flagged_by")
+        .order_by("-created_at")
+    )
     for flag in open_flags:
         latest.setdefault(flag.object_id, flag.created_at)
         if flag.is_automated:
-            automated[flag.object_id].extend(part for part in flag.note.split("; ") if part)
+            automated[flag.object_id].extend(
+                part for part in flag.note.split("; ") if part
+            )
             continue
         reasons[flag.object_id][flag.get_reason_display()] += 1
         if flag.note and len(notes[flag.object_id]) < 3:
-            notes[flag.object_id].append({"user": flag.flagged_by.username, "text": flag.note})
+            notes[flag.object_id].append(
+                {"user": flag.flagged_by.username, "text": flag.note}
+            )
     return reasons, notes, automated, latest
 
 
@@ -134,7 +152,9 @@ def held_items():
         objects = list(flaggable.held_queryset())
         details = _flag_details(flaggable, [obj.pk for obj in objects])
         items.extend(_item(flaggable, obj, *details) for obj in objects)
-    items.sort(key=lambda item: item["latest"] or item["info"]["created_at"], reverse=True)
+    items.sort(
+        key=lambda item: item["latest"] or item["info"]["created_at"], reverse=True
+    )
     return items
 
 
@@ -154,8 +174,12 @@ def flagged_items():
         ids = [group["object_id"] for group in groups]
         if not ids:
             continue
-        held_ids = set(flaggable.held_queryset().filter(pk__in=ids).values_list("pk", flat=True))
-        objects = flaggable.admin_queryset().in_bulk([pk for pk in ids if pk not in held_ids])
+        held_ids = set(
+            flaggable.held_queryset().filter(pk__in=ids).values_list("pk", flat=True)
+        )
+        objects = flaggable.admin_queryset().in_bulk(
+            [pk for pk in ids if pk not in held_ids]
+        )
         details = _flag_details(flaggable, objects.keys())
         items.extend(_item(flaggable, obj, *details) for obj in objects.values())
     items.sort(key=lambda item: item["latest"], reverse=True)
@@ -163,6 +187,7 @@ def flagged_items():
 
 
 # --- Administrator decisions --------------------------------------------------
+
 
 def _record(flaggable, obj, action, moderator, reason="", note="", new_status=None):
     info = flaggable.describe(obj)
@@ -208,7 +233,12 @@ def remove_content(flaggable, obj, moderator, reason, note=""):
         if obj is None:
             return None
         record = _record(
-            flaggable, obj, ModerationRecord.Action.REMOVED, moderator, reason, note,
+            flaggable,
+            obj,
+            ModerationRecord.Action.REMOVED,
+            moderator,
+            reason,
+            note,
             ContentFlag.Status.REMOVED,
         )
         obj.delete()
@@ -222,7 +252,10 @@ def dismiss_flags(flaggable, obj, moderator):
         if obj is None:
             return None
         return _record(
-            flaggable, obj, ModerationRecord.Action.DISMISSED, moderator,
+            flaggable,
+            obj,
+            ModerationRecord.Action.DISMISSED,
+            moderator,
             new_status=ContentFlag.Status.DISMISSED,
         )
 
@@ -241,7 +274,10 @@ def approve(flaggable, obj, moderator, version=None):
         if version is not None and flaggable.describe(obj)["version"] != version:
             return None
         record = _record(
-            flaggable, obj, ModerationRecord.Action.APPROVED, moderator,
+            flaggable,
+            obj,
+            ModerationRecord.Action.APPROVED,
+            moderator,
             new_status=ContentFlag.Status.DISMISSED,
         )
         flaggable.set_held(obj, False)

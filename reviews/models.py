@@ -44,5 +44,7 @@ class ReviewVote(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["review", "user"], name="one_vote_per_user_per_review")
+            models.UniqueConstraint(
+                fields=["review", "user"], name="one_vote_per_user_per_review"
+            )
         ]

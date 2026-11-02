@@ -17,6 +17,8 @@ def submit_report(request, hotspot_pk):
     if status not in AvailabilityReport.Status.values:
         messages.error(request, "Choose Working or Unavailable.")
         return redirect(destination)
-    AvailabilityReport.objects.create(hotspot=hotspot, reporter=request.user, status=status)
+    AvailabilityReport.objects.create(
+        hotspot=hotspot, reporter=request.user, status=status
+    )
     messages.success(request, "Thanks. Your availability report has been saved.")
     return redirect(destination)

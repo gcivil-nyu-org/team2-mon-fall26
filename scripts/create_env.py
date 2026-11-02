@@ -1,4 +1,5 @@
 """Create local demo credentials without overwriting an existing .env."""
+
 import os
 import secrets
 from pathlib import Path
