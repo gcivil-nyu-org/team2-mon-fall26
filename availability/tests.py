@@ -1,4 +1,5 @@
 from datetime import timedelta
+from urllib.parse import parse_qs, urlsplit
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -51,6 +52,49 @@ class SubmitReportTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse("accounts:login"), response["Location"])
         self.assertFalse(AvailabilityReport.objects.exists())
+
+    def assert_expired_session_can_retry_after_login(self, status):
+        password = "Local-regression-password-924!"
+        self.user.set_password(password)
+        self.user.save(update_fields=["password"])
+        self.client.force_login(self.user)
+        self.client.get(self.hotspot.get_absolute_url())
+        self.client.logout()
+
+        response = self.client.post(self.url, {"status": status})
+        self.assertEqual(response.status_code, 302)
+        login_url = response["Location"]
+        self.assertEqual(urlsplit(login_url).path, reverse("accounts:login"))
+        self.assertEqual(
+            parse_qs(urlsplit(login_url).query)["next"],
+            [f"{self.hotspot.get_absolute_url()}#availability"],
+        )
+        self.assertFalse(AvailabilityReport.objects.exists())
+
+        response = self.client.post(
+            login_url,
+            {"username": self.user.username, "password": password},
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.request["PATH_INFO"], self.hotspot.get_absolute_url())
+        self.assertFalse(AvailabilityReport.objects.exists())
+
+        response = self.client.post(self.url, {"status": status})
+        self.assertRedirects(
+            response, f"{self.hotspot.get_absolute_url()}#availability"
+        )
+        saved = AvailabilityReport.objects.get()
+        self.assertEqual(
+            (saved.hotspot, saved.reporter, saved.status),
+            (self.hotspot, self.user, status),
+        )
+
+    def test_expired_session_working_report_returns_to_profile_after_login(self):
+        self.assert_expired_session_can_retry_after_login(WORKING)
+
+    def test_expired_session_unavailable_report_returns_to_profile_after_login(self):
+        self.assert_expired_session_can_retry_after_login(UNAVAILABLE)
 
     def test_contributor_report_is_saved_with_source_and_timestamp(self):
         self.client.force_login(self.user)
