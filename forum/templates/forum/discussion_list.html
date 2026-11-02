@@ -1,0 +1,63 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Community discussions · Connect NYC{% endblock %}
+{% block forum_nav_class %}is-current{% endblock %}
+{% block forum_nav_current %}aria-current="page"{% endblock %}
+{% block content %}
+  <section class="forum-page" aria-labelledby="forum-title">
+    <header class="forum-heading">
+      <div>
+        <p class="forum-eyebrow">Connect NYC community</p>
+        <h1 id="forum-title">Wi-Fi discussions</h1>
+        <p>Ask a question, share a recommendation, or help someone find a place to connect.</p>
+      </div>
+      {% if user.is_authenticated %}
+        <a class="button button-primary" href="{% url 'forum:create' %}">Start a discussion</a>
+      {% else %}
+        <a class="button button-primary" href="{% url 'accounts:login' %}?next={% url 'forum:create' %}">Sign in to post</a>
+      {% endif %}
+    </header>
+
+    <div class="forum-feed" aria-label="Discussion topics">
+      {% for post in posts %}
+        <article class="forum-post-card">
+          <div class="forum-post-votes">
+            {% if user.is_authenticated and post.author_id != user.pk %}
+              <form method="post" action="{% url 'forum:post_vote' post.pk %}">
+                {% csrf_token %}
+                <button class="forum-vote{% if post.user_vote_count %} is-voted{% endif %}" type="submit" aria-label="{% if post.user_vote_count %}Remove helpful vote{% else %}Mark this post helpful{% endif %}" aria-pressed="{% if post.user_vote_count %}true{% else %}false{% endif %}">▲</button>
+              </form>
+            {% else %}
+              {% if user.is_authenticated %}
+                <span class="forum-vote-static" aria-hidden="true">▲</span>
+              {% else %}
+                <a class="forum-vote-static" href="{% url 'accounts:login' %}?next={{ post.get_absolute_url|urlencode }}" aria-label="Sign in to mark this post helpful">▲</a>
+              {% endif %}
+            {% endif %}
+            <span class="forum-vote-count" aria-label="{{ post.vote_count }} helpful votes">{{ post.vote_count }}</span>
+          </div>
+          <div class="forum-post-summary">
+            <div class="forum-meta">
+              <span class="forum-topic-tag">{{ post.get_topic_type_display }}</span>
+              <span>Posted by <strong>{{ post.author.username }}</strong></span>
+              <time datetime="{{ post.created_at|date:'c' }}">{{ post.created_at|date:"M j, Y" }}</time>
+            </div>
+            <h2><a href="{{ post.get_absolute_url }}">{{ post.title }}</a></h2>
+            <p class="forum-excerpt">{{ post.body|truncatechars:260 }}</p>
+            {% if post.hotspot %}<p class="forum-related">Related hotspot: <a href="{{ post.hotspot.get_absolute_url }}">{{ post.hotspot.display_name }}</a></p>{% endif %}
+            <a class="forum-comment-link" href="{{ post.get_absolute_url }}#comments">{{ post.comment_count }} comment{{ post.comment_count|pluralize }}</a>
+          </div>
+        </article>
+      {% empty %}
+        <div class="forum-empty">
+          <h2>Start the conversation</h2>
+          <p>There are no discussions yet. Ask the community your first NYC Wi-Fi question.</p>
+          {% if user.is_authenticated %}
+            <a class="button button-primary" href="{% url 'forum:create' %}">Create the first post</a>
+          {% else %}
+            <a class="button button-primary" href="{% url 'accounts:login' %}?next={% url 'forum:create' %}">Sign in to post</a>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

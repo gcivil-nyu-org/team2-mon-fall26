@@ -1,0 +1,73 @@
+{% extends "hotspots/base.html" %}
+{% block title %}{{ post.title }} · Wi-Fi discussions{% endblock %}
+{% block forum_nav_class %}is-current{% endblock %}
+{% block forum_nav_current %}aria-current="page"{% endblock %}
+{% block content %}
+  <section class="forum-page forum-detail" aria-labelledby="discussion-title">
+    <p class="forum-back"><a href="{% url 'forum:list' %}">← All discussions</a></p>
+    <article class="forum-detail-card">
+      <div class="forum-detail-votes">
+        {% if user.is_authenticated and post.author_id != user.pk %}
+          <form method="post" action="{% url 'forum:post_vote' post.pk %}">
+            {% csrf_token %}
+            <button class="forum-vote{% if post.user_vote_count %} is-voted{% endif %}" type="submit" aria-label="{% if post.user_vote_count %}Remove helpful vote{% else %}Mark this post helpful{% endif %}" aria-pressed="{% if post.user_vote_count %}true{% else %}false{% endif %}">▲</button>
+          </form>
+        {% else %}
+          {% if user.is_authenticated %}
+            <span class="forum-vote-static" aria-hidden="true">▲</span>
+          {% else %}
+            <a class="forum-vote-static" href="{% url 'accounts:login' %}?next={{ post.get_absolute_url|urlencode }}" aria-label="Sign in to mark this post helpful">▲</a>
+          {% endif %}
+        {% endif %}
+        <span class="forum-vote-count">{{ post.vote_count }}</span>
+        <span class="forum-vote-label">helpful</span>
+      </div>
+      <div class="forum-detail-content">
+        <div class="forum-meta">
+          <span class="forum-topic-tag">{{ post.get_topic_type_display }}</span>
+          <span>Posted by <strong>{{ post.author.username }}</strong></span>
+          <time datetime="{{ post.created_at|date:'c' }}">{{ post.created_at|date:"M j, Y · g:i A" }}</time>
+        </div>
+        <h1 id="discussion-title">{{ post.title }}</h1>
+        <div class="forum-post-body">{{ post.body|linebreaks }}</div>
+        {% if post.hotspot %}<p class="forum-related">Related hotspot: <a href="{{ post.hotspot.get_absolute_url }}">{{ post.hotspot.display_name }}</a></p>{% endif %}
+      </div>
+    </article>
+
+    <section class="forum-comments" id="comments" aria-labelledby="comments-title">
+      <h2 id="comments-title">Comments <span>{{ comment_count }}</span></h2>
+      {% if user.is_authenticated %}
+        <form id="comment-form" class="forum-comment-form" method="post" action="{% url 'forum:comment' post.pk %}">
+          {% csrf_token %}
+          {% if reply_to %}
+            <div class="forum-replying">Replying to <strong>{{ reply_to.author.username }}</strong> · <a href="{{ post.get_absolute_url }}#comment-form">Cancel</a></div>
+            <input type="hidden" name="parent_id" value="{{ reply_to.pk }}">
+          {% endif %}
+          {% include "accounts/_field.html" with field=comment_form.body %}
+          <button type="submit" class="button button-primary">Post comment</button>
+        </form>
+      {% else %}
+        <p class="forum-sign-in-prompt"><a href="{% url 'accounts:login' %}?next={{ request.get_full_path|urlencode }}">Sign in</a> to comment, reply, or vote.</p>
+      {% endif %}
+
+      {% if comments %}
+        <ol class="forum-comment-list">
+          {% for kind, comment in comment_events %}
+            {% if kind == "comment" %}
+              <li class="forum-comment" id="comment-{{ comment.pk }}">
+                {% include "forum/_comment.html" with comment=comment %}
+            {% elif kind == "open_children" %}
+              <ol class="forum-comment-children">
+            {% elif kind == "close_children" %}
+              </ol>
+            {% else %}
+              </li>
+            {% endif %}
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="forum-no-comments">No comments yet. Be the first to share a helpful answer.</p>
+      {% endif %}
+    </section>
+  </section>
+{% endblock %}
