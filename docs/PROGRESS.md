@@ -31,7 +31,7 @@ E04 administrator import/list/edit/retirement (US16–US17, Boqing) is implement
 | [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | Not implemented | Shared content flagging, moderation review, and removal. |
 | [E06 — Report Availability & Assess Reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) | Planned MLP; not implemented | Working/Unavailable reports, reliability/recency, rating/reliability sorting, and seating/accessibility tags (not yet decomposed into a Story). |
 | [E07 — Follow Hotspots & Receive Updates](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) | Partial: US25/US26 implemented and promoted through PR #62; merge/deployment acceptance tracked separately | US27 notifications remain unimplemented. |
-| [E08 — Discussion Forum & Community Interaction](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) | Not implemented | Topic-based posts, comments/replies, and forum votes; separate from hotspot reviews. |
+| [E08 — Discussion Forum & Community Interaction](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) | MVP implemented locally; automated tests pass | Production release and deployed acceptance; E05 reporting/moderation remains separate. |
 
 ## User Story progress
 
@@ -93,9 +93,9 @@ Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #
 | E07 | [US25 / #35 — Follow/unfollow](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/35) | Implemented in PR #57, promoted through PR #62 with safe login continuation. POST-only and unique per user/hotspot; production acceptance remains separate. |
 | E07 | [US26 / #36 — My followed hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/36) | Implemented in PR #57 and promoted through PR #62. Personal list excludes other users' follows and retired hotspots; production acceptance remains separate. |
 | E07 | [US27 / #37 — Notifications](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/37) | Planned MLP; not implemented. |
-| E08 | [US28 / #38 — Browse/create discussion topics](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/38) | Not implemented. |
-| E08 | [US29 / #39 — Comments and replies](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/39) | Not implemented. |
-| E08 | [US30 / #40 — Forum upvotes](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/40) | Not implemented; does not affect hotspot star ratings. |
+| E08 | [US28 / #38 — Browse/create discussion topics](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/38) | Implemented locally; covered by passing automated tests. Public discussion listing and detail; signed-in contributors create questions or discussion topics, optionally linked to an active hotspot. |
+| E08 | [US29 / #39 — Comments and replies](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/39) | Implemented locally; covered by passing automated tests. Contributors add comments and threaded replies; public visitors can read them. |
+| E08 | [US30 / #40 — Forum upvotes](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/40) | Implemented locally; covered by passing automated tests. One toggleable helpful upvote per user on posts/comments; no self-votes or downvotes. Separate from E03 review votes and star ratings. |
 
 ## Support and planning
 
@@ -119,6 +119,12 @@ Closed test issue #44 is excluded from product completion progress.
 Docker Compose was used for this local review only. No production deployment or production database modification was performed.
 
 ## Development archive
+
+### November 2, 2026 — E08 discussion forum MVP (US28–US30)
+
+- Added the separate `forum` app with public discussion listing/detail, question/discussion topics, optional active-hotspot references, threaded comments/replies, and unique per-user helpful upvotes on posts and comments.
+- Contributor-only create/reply/vote actions use E02 access controls. Forum votes never modify E03 reviews or hotspot rating aggregates. The navigation links to Discussions.
+- Added automated tests for public reading, contributor-only writes, threaded replies, vote add/remove/uniqueness, and review-rating isolation. All **136 tests** pass against the Docker Compose MySQL database; Django system checks and `makemigrations --check --dry-run` pass. Production deployment, manual browser acceptance and GitHub workflow state were not checked. E05 content reporting/moderation remains out of scope.
 
 ### October 24, 2026 — E03 rate, edit, delete and upvote reviews (US11, US13, US14, US15)
 
