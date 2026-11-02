@@ -26,7 +26,26 @@ script:
   - docker compose exec -T web coverage report --data-file=/tmp/.coverage -m
 
 after_success:
-  - docker compose exec -T -e TRAVIS="$TRAVIS" -e TRAVIS_JOB_ID="$TRAVIS_JOB_ID" -e TRAVIS_BRANCH="$TRAVIS_BRANCH" -e TRAVIS_REPO_SLUG="$TRAVIS_REPO_SLUG" -e TRAVIS_COMMIT="$TRAVIS_COMMIT" -e COVERALLS_REPO_TOKEN="$COVERALLS_REPO_TOKEN" web coveralls
+  - |
+    coverage_pull_request="${TRAVIS_PULL_REQUEST:-false}"
+    if [ "$coverage_pull_request" = "false" ]; then
+      coverage_pull_request=""
+    fi
+    docker compose exec -T \
+      -e COVERAGE_FILE=/tmp/.coverage \
+      -e TRAVIS -e TRAVIS_JOB_ID \
+      -e TRAVIS_PULL_REQUEST="$coverage_pull_request" \
+      -e COVERALLS_REPO_TOKEN \
+      -e GIT_BRANCH="${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH}" \
+      -e GIT_ID="$(git rev-parse HEAD)" \
+      -e GIT_AUTHOR_NAME="$(git log -1 --format=%aN)" \
+      -e GIT_AUTHOR_EMAIL="$(git log -1 --format=%ae)" \
+      -e GIT_COMMITTER_NAME="$(git log -1 --format=%cN)" \
+      -e GIT_COMMITTER_EMAIL="$(git log -1 --format=%ce)" \
+      -e GIT_MESSAGE="$(git log -1 --format=%s)" \
+      -e GIT_REMOTE=origin \
+      -e GIT_URL="https://github.com/$TRAVIS_REPO_SLUG.git" \
+      web coveralls
 
 after_script:
   - docker compose down -v

@@ -1,6 +1,6 @@
 # Project progress
 
-Last updated: **November 1, 2026**.
+Last updated: **November 2, 2026**.
 
 This document records implementation progress, remaining work, and development history for Connect NYC. GitHub and ZenHub remain the sources for requirements, assignments, and workflow status. Update this record as work progresses; preserve the dated archive below.
 
@@ -197,3 +197,12 @@ Docker Compose was used for this local review only. No production deployment or 
 - Added 22 regression tests. The full **114-test suite passed on isolated MySQL 8.4**, plus Django system checks, migration consistency checks and diff whitespace validation. No schema migration is required.
 - Browser checks verified visitor login/return, stored-record search, editing reflected on the public profile, cancellation and confirmed retirement, and the Retired filter. CLI reimport and database/public-route checks verified the retired record retained four local review fixtures and one helpful vote without returning to public discovery. CSV upload validation/idempotence/rollback were tested through Django's HTTP test client.
 - Updated README and this progress archive. [PR #54](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/54) contains the implementation and author self-review. A normal merge attempt was blocked by the required external approval; automatic merge is disabled. No branch protections were changed. Deployment and production acceptance remain with the team; Docker is local validation only.
+
+
+### November 2, 2026 — PR #63 CI quality and coverage review
+
+- Added Black, Flake8 and coverage collection to the existing Docker/MySQL Travis workflow. The formatting changes preserve the AST of all changed production Python files and migrations; the only other Python change removes an unused test import.
+- Review found that Coveralls was reading the default `/app/.coverage` instead of the generated `/tmp/.coverage`, and the application image contains neither Git nor `.git`. The upload command now points to the measured data and supplies Git metadata from the CI checkout through Coveralls' supported environment fallback. PR builds receive their PR number; normal branch builds omit the `false` sentinel in the uploader only, preserving the original Travis variable for deployment decisions.
+- The reviewed code passed all **204 tests on isolated MySQL 8.4** (37.577 seconds), Black (83 files unchanged), Flake8, Django system checks and migration consistency checks. Coverage reported **99% across the configured `--source=.` scope**, which includes tests and migrations; this is not an application-only metric.
+- Offline Coveralls payload checks against that actual coverage file produced **81 source files and 3,272 covered lines**, the exact tested head `368f549339c94cb1b41b80b6e99fc5caf1df2373`, and the expected PR association. A separate branch-build check correctly omitted the PR field. No payload was uploaded to Coveralls during local verification.
+- Review fixes affect CI reporting only. PR merge, remote CI/Coveralls delivery, integration deployment and production acceptance remain separate steps and are not asserted by this validation record.
