@@ -1,3 +1,5 @@
+from urllib.parse import parse_qs, urlsplit
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -68,6 +70,53 @@ class FollowHotspotTests(TestCase):
                 hotspot=self.hotspot,
             ).exists()
         )
+
+    def assert_expired_session_can_retry_after_login(self, action_url, initially_following):
+        password = "Local-regression-password-924!"
+        self.user.set_password(password)
+        self.user.save(update_fields=["password"])
+        if initially_following:
+            HotspotFollow.objects.create(user=self.user, hotspot=self.hotspot)
+        self.client.force_login(self.user)
+        self.client.get(self.hotspot.get_absolute_url())
+        self.client.logout()
+
+        response = self.client.post(action_url)
+        self.assertEqual(response.status_code, 302)
+        login_url = response["Location"]
+        self.assertEqual(urlsplit(login_url).path, reverse("accounts:login"))
+        self.assertEqual(
+            parse_qs(urlsplit(login_url).query)["next"],
+            [self.hotspot.get_absolute_url()],
+        )
+        self.assertEqual(HotspotFollow.objects.exists(), initially_following)
+
+        response = self.client.post(
+            login_url,
+            {"username": self.user.username, "password": password},
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.request["PATH_INFO"], self.hotspot.get_absolute_url())
+        self.assertEqual(HotspotFollow.objects.exists(), initially_following)
+
+        response = self.client.post(action_url)
+        self.assertRedirects(response, self.hotspot.get_absolute_url())
+        self.assertEqual(HotspotFollow.objects.exists(), not initially_following)
+
+    def test_expired_session_follow_returns_to_profile_after_login(self):
+        self.assert_expired_session_can_retry_after_login(self.follow_url, initially_following=False)
+
+    def test_expired_session_unfollow_returns_to_profile_after_login(self):
+        self.assert_expired_session_can_retry_after_login(self.unfollow_url, initially_following=True)
+
+    def test_get_never_changes_follow_relationship(self):
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get(self.follow_url).status_code, 405)
+        self.assertFalse(HotspotFollow.objects.exists())
+        HotspotFollow.objects.create(user=self.user, hotspot=self.hotspot)
+        self.assertEqual(self.client.get(self.unfollow_url).status_code, 405)
+        self.assertTrue(HotspotFollow.objects.exists())
 
 class FollowedHotspotListTests(TestCase):
     def setUp(self):

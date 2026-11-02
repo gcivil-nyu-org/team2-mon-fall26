@@ -1,10 +1,16 @@
 # Project progress
 
-Last updated: **October 26, 2026**.
+Last updated: **November 2, 2026**.
 
 This document records implementation progress, remaining work, and development history for Connect NYC. GitHub and ZenHub remain the sources for requirements, assignments, and workflow status. Update this record as work progresses; preserve the dated archive below.
 
-## Current milestone
+## E07 production PR — November 2, 2026
+
+[PR #62](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/62) promotes US25/US26 from the E07 branch to `main`. It synchronizes the existing main/E04 changes, preserving all administrator data-management routes, and fixes the expired-session follow/unfollow login return. These POST-only actions now send visitors back to the hotspot profile after sign-in so they can retry. US27 notifications remain unimplemented. Merge, CI/deployment completion and production acceptance are separate states; see the dated validation entry below.
+
+The earlier milestone notes below are retained as historical context. E04 is already included in main `6510446`; this PR does not introduce a second E04 implementation. E05/E06 work on `develop` is outside this E07 production PR.
+
+## Earlier milestone record
 
 E01 discovery is integrated in `main` through PRs #47 and #48. The E01 Epic, source-label story #28, and data/acceptance support tasks #42 and #43 are closed. The production deployment was recorded in PR #50; this review does not verify which revision is currently deployed.
 
@@ -24,7 +30,7 @@ E04 administrator import/list/edit/retirement (US16–US17, Boqing) is implement
 | [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | Administrator import/list/edit/retirement implemented and locally validated (Boqing) | PR merge and production acceptance; US18 remains previously closed. |
 | [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | Not implemented | Shared content flagging, moderation review, and removal. |
 | [E06 — Report Availability & Assess Reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) | Planned MLP; not implemented | Working/Unavailable reports, reliability/recency, rating/reliability sorting, and seating/accessibility tags (not yet decomposed into a Story). |
-| [E07 — Follow Hotspots & Receive Updates](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) | Planned MLP; not implemented | Follow/unfollow, personal list, and notifications. |
+| [E07 — Follow Hotspots & Receive Updates](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) | Partial: US25/US26 implemented and promoted through PR #62; merge/deployment acceptance tracked separately | US27 notifications remain unimplemented. |
 | [E08 — Discussion Forum & Community Interaction](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) | Not implemented | Topic-based posts, comments/replies, and forum votes; separate from hotspot reviews. |
 
 ## User Story progress
@@ -84,8 +90,8 @@ Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #
 | E06 | [US22 / #32 — Report Working/Unavailable](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/32) | Planned MLP; not implemented. |
 | E06 | [US23 / #33 — Reliability and report recency](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/33) | Planned MLP; not implemented. |
 | E06 | [US24 / #34 — Sort by rating/reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/34) | Planned MLP; not implemented. |
-| E07 | [US25 / #35 — Follow/unfollow](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/35) | Planned MLP; not implemented. |
-| E07 | [US26 / #36 — My followed hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/36) | Planned MLP; not implemented. |
+| E07 | [US25 / #35 — Follow/unfollow](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/35) | Implemented in PR #57, promoted through PR #62 with safe login continuation. POST-only and unique per user/hotspot; production acceptance remains separate. |
+| E07 | [US26 / #36 — My followed hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/36) | Implemented in PR #57 and promoted through PR #62. Personal list excludes other users' follows and retired hotspots; production acceptance remains separate. |
 | E07 | [US27 / #37 — Notifications](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/37) | Planned MLP; not implemented. |
 | E08 | [US28 / #38 — Browse/create discussion topics](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/38) | Not implemented. |
 | E08 | [US29 / #39 — Comments and replies](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/39) | Not implemented. |
@@ -176,3 +182,12 @@ Docker Compose was used for this local review only. No production deployment or 
 - Added 22 regression tests. The full **114-test suite passed on isolated MySQL 8.4**, plus Django system checks, migration consistency checks and diff whitespace validation. No schema migration is required.
 - Browser checks verified visitor login/return, stored-record search, editing reflected on the public profile, cancellation and confirmed retirement, and the Retired filter. CLI reimport and database/public-route checks verified the retired record retained four local review fixtures and one helpful vote without returning to public discovery. CSV upload validation/idempotence/rollback were tested through Django's HTTP test client.
 - Updated README and this progress archive. [PR #54](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/54) contains the implementation and author self-review. A normal merge attempt was blocked by the required external approval; automatic merge is disabled. No branch protections were changed. Deployment and production acceptance remain with the team; Docker is local validation only.
+
+
+### November 2, 2026 — E07 production PR review and login fix
+
+- Reviewed PR #62 at its original E07 head `4205bdc`. Synchronized main `6510446` into the branch and resolved `hotspots/urls.py` by retaining both E04 management and E07 follow/list routes. No E05/E06 code was included.
+- Fixed the previously reproduced expired-session follow/unfollow HTTP 405: sign-in returns to the GET-safe hotspot profile for an explicit retry. Mutations remain POST-only, user-scoped and CSRF-protected.
+- Added regression tests for follow and unfollow through actual login/return/retry, and GET mutation rejection. All **126 tests passed on isolated MySQL 8.4**, including existing E04 coverage. Django system checks, migration consistency and diff checks passed.
+- Independent review found no additional blocking authorization, data or migration issue. The additive migration creates only HotspotFollow with a unique user/hotspot pair; existing rows are not rewritten.
+- PR #62 targets main; existing Travis configuration can deploy production after a successful main build. This entry records local validation before merge, not CI success or completed production deployment/acceptance. US27 notifications remain future work. The login fix should also be synchronized back to develop.
