@@ -1,7 +1,8 @@
 # Connect NYC
 
-**CI — main:** [![Travis CI main](https://app.travis-ci.com/gcivil-nyu-org/team2-mon-fall26.svg?branch=main)](https://app.travis-ci.com/github/gcivil-nyu-org/team2-mon-fall26/builds)
-**Coverage — develop:** [![Coveralls develop](https://coveralls.io/repos/github/gcivil-nyu-org/team2-mon-fall26/badge.svg?branch=develop)](https://coveralls.io/github/gcivil-nyu-org/team2-mon-fall26?branch=develop)
+**Main:** [![build](https://app.travis-ci.com/gcivil-nyu-org/team2-mon-fall26.svg?branch=main)](https://app.travis-ci.com/github/gcivil-nyu-org/team2-mon-fall26/builds) [![coverage](https://coveralls.io/repos/github/gcivil-nyu-org/team2-mon-fall26/badge.svg)](https://coveralls.io/github/gcivil-nyu-org/team2-mon-fall26)
+
+**Develop:** [![build](https://app.travis-ci.com/gcivil-nyu-org/team2-mon-fall26.svg?branch=develop)](https://app.travis-ci.com/github/gcivil-nyu-org/team2-mon-fall26/builds) [![coverage](https://coveralls.io/repos/github/gcivil-nyu-org/team2-mon-fall26/badge.svg?branch=develop)](https://coveralls.io/github/gcivil-nyu-org/team2-mon-fall26?branch=develop)
 
 Connect NYC is an English-language web application that helps New York City residents, students, and visitors discover public Wi-Fi hotspots. It brings official NYC location information and clearly labeled community feedback together so people can compare places to connect before they visit.
 
