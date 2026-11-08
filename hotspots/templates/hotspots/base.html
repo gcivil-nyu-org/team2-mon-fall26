@@ -26,6 +26,9 @@
           <a class="nav-link" href="{% url 'hotspots:followed' %}">
             My followed hotspots
           </a>
+          <a class="nav-link inbox-nav-link {% block inbox_nav_class %}{% endblock %}" href="{% url 'notifications:inbox' %}">
+            Inbox{% if unread_notification_count %}<span class="nav-badge"><span class="visually-hidden">, </span>{{ unread_notification_count }}<span class="visually-hidden"> unread</span></span>{% endif %}
+          </a>
         {% endif %}
         <a class="nav-link data-link" href="https://data.cityofnewyork.us/City-Government/NYC-Wi-Fi-Hotspot-Locations/yjub-udmw">About the data <span aria-hidden="true">↗</span></a>
         {% if user_is_administrator %}<a class="nav-link {% block admin_nav_class %}{% endblock %}" href="{% url 'accounts:admin_home' %}" {% block admin_nav_current %}{% endblock %}>Admin</a>{% endif %}

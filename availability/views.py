@@ -5,6 +5,7 @@ from django.views.decorators.http import require_POST
 
 from accounts.roles import is_contributor
 from hotspots.models import Hotspot
+from notifications import services as notify
 
 from .models import AvailabilityReport
 
@@ -20,8 +21,9 @@ def submit_report(request, hotspot_pk):
     if status not in AvailabilityReport.Status.values:
         messages.error(request, "Choose Working or Unavailable.")
         return redirect(destination)
-    AvailabilityReport.objects.create(
+    report = AvailabilityReport.objects.create(
         hotspot=hotspot, reporter=request.user, status=status
     )
+    notify.availability_reported(report)
     messages.success(request, "Thanks. Your availability report has been saved.")
     return redirect(destination)

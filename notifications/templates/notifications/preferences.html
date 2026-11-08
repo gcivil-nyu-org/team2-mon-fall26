@@ -1,0 +1,21 @@
+{% extends "hotspots/base.html" %}
+
+{% block title %}Notification preferences · Connect NYC{% endblock %}
+
+{% block content %}
+<section class="auth-card" aria-labelledby="prefs-title">
+  <h1 id="prefs-title">Notification preferences</h1>
+  <p class="auth-intro">Notifications appear in your Inbox. Choose which updates about hotspots you follow you want to receive. Notices about your own reviews and flags, and about followed hotspots being removed, are always sent.</p>
+  <form method="post" class="auth-form" novalidate>
+    {% csrf_token %}
+    <fieldset class="preference-options">
+      <legend class="visually-hidden">Followed-hotspot updates</legend>
+      {% for field in form %}
+        <label class="preference-option" for="{{ field.id_for_label }}">{{ field }}<span>{{ field.label }}</span></label>
+      {% endfor %}
+    </fieldset>
+    <button type="submit" class="button button-primary auth-submit">Save preferences</button>
+  </form>
+  <p class="auth-switch"><a href="{% url 'notifications:inbox' %}">Back to Inbox</a></p>
+</section>
+{% endblock %}

@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "accounts.apps.AccountsConfig",
     "moderation.apps.ModerationConfig",
     "forum.apps.ForumConfig",
+    "notifications.apps.NotificationsConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -78,6 +79,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "accounts.context_processors.roles",
+                "notifications.context_processors.notifications",
             ]
         },
     }
