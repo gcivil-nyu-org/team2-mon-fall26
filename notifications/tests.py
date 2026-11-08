@@ -1,7 +1,10 @@
 """E07 US27 (#37): notifications for followed hotspots and moderation decisions."""
 
+from datetime import timedelta
+
 from django.contrib.contenttypes.models import ContentType
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.utils import timezone
 from django.urls import reverse
 
 from accounts.tests import make_administrator, make_user
@@ -54,20 +57,33 @@ class FollowedHotspotTests(TestCase):
 
     def test_new_review_notifies_followers_only(self):
         self.post_review(self.author)
-        review = Review.objects.get(author=self.author)
         notification = inbox(self.follower).get()
         self.assertEqual(notification.kind, Kind.FOLLOWED_REVIEW)
-        self.assertEqual(notification.object_id, review.pk)
         self.assertEqual(
-            notification.text, "author rated Bryant Park 4/5 and wrote a review."
+            notification.text, "1 new rating or review on Bryant Park. Select to view."
         )
         self.assertFalse(inbox(self.other).exists())
         self.assertFalse(inbox(self.author).exists())
 
-    def test_rating_only_review_notifies_and_opens_reviews_section(self):
+    def test_reviews_are_summarized_while_unread(self):
+        self.post_review(self.author)
+        self.post_review(self.other, body="")
+        notification = inbox(self.follower).get()
+        self.assertEqual(notification.count, 2)
+        self.assertEqual(
+            notification.text,
+            "2 new ratings and reviews on Bryant Park. Select to view.",
+        )
+        services.mark_read(inbox(self.follower))
+        self.post_review(make_user("third"), body="")
+        self.assertEqual(inbox(self.follower).count(), 2)
+        self.assertEqual(
+            inbox(self.follower).filter(read_at__isnull=True).get().count, 1
+        )
+
+    def test_review_summary_opens_reviews_section(self):
         self.post_review(self.author, body="")
         notification = inbox(self.follower).get()
-        self.assertEqual(notification.text, "author rated Bryant Park 4/5.")
         self.client.force_login(self.follower)
         response = self.client.get(
             reverse("notifications:open", args=[notification.pk])
@@ -105,9 +121,7 @@ class FollowedHotspotTests(TestCase):
         review = Review.objects.get(author=self.author)
         moderation.hold(REVIEW, review, [(Reason.SPAM, "test")])
         moderation.approve(REVIEW, review, make_administrator())
-        self.assertEqual(
-            inbox(self.follower).filter(kind=Kind.FOLLOWED_REVIEW).count(), 1
-        )
+        self.assertEqual(inbox(self.follower).get().count, 1)
 
     def test_preference_can_switch_off_review_updates(self):
         NotificationPreference.objects.create(
@@ -191,6 +205,7 @@ class FollowedHotspotTests(TestCase):
             user=self.follower,
             followed_reviews=False,
             followed_availability=False,
+            followed_availability_alerts=False,
             followed_discussions=False,
         )
         self.client.force_login(make_administrator())
@@ -219,6 +234,116 @@ class FollowedHotspotTests(TestCase):
             hotspot=self.hotspot, reporter=self.author, status="working"
         )
         self.assertEqual(services.availability_reported(report), 0)
+
+
+class AvailabilityAlertTests(TestCase):
+    """Alerts fire when a followed hotspot enters or leaves the "may be down" state."""
+
+    def setUp(self):
+        self.hotspot = make_hotspot()
+        self.follower = make_user("follower")
+        follow(self.follower, self.hotspot)
+        self.people = [make_user(f"p{index}") for index in range(8)]
+
+    def report(self, user, status, hours_ago=0):
+        report = AvailabilityReport.objects.create(
+            hotspot=self.hotspot,
+            reporter=user,
+            status=status,
+            created_at=timezone.now() - timedelta(hours=hours_ago),
+        )
+        services.availability_reported(report)
+
+    def alerts(self, kind=Kind.AVAILABILITY_ALERT):
+        return inbox(self.follower).filter(kind=kind)
+
+    def test_burst_of_unavailable_reports_sends_one_alert(self):
+        for person in self.people[:2]:
+            self.report(person, "unavailable")
+        self.assertFalse(self.alerts().exists())
+        self.report(self.people[2], "unavailable")
+        alert = self.alerts().get()
+        self.assertEqual(
+            alert.text,
+            "Bryant Park may be down: 3 people reported it unavailable "
+            "in the last 24 hours.",
+        )
+        self.assertEqual(alert.category, "Availability alert")
+        self.report(self.people[3], "unavailable")
+        self.assertEqual(self.alerts().count(), 1)  # No repeat while still down.
+        # Routine reports are still summarized separately.
+        self.assertEqual(
+            inbox(self.follower).get(kind=Kind.FOLLOWED_AVAILABILITY).count, 4
+        )
+
+    def test_old_unavailable_reports_do_not_count_as_a_burst(self):
+        for person in self.people[:2]:
+            self.report(person, "working")
+        for person in self.people[2:4]:
+            self.report(person, "unavailable", hours_ago=30)
+        self.report(self.people[4], "unavailable")
+        # 2 of 5 working = 40%: alert for low reliability, not a burst.
+        self.assertEqual(
+            self.alerts().get().text,
+            "Bryant Park may be down: its reliability score dropped to 40%.",
+        )
+
+    def test_reliability_needs_three_reporters_before_alerting(self):
+        self.report(self.people[0], "unavailable", hours_ago=48)
+        self.report(self.people[1], "unavailable", hours_ago=48)
+        self.assertFalse(self.alerts().exists())
+
+    def test_recovery_needs_the_higher_threshold(self):
+        for person in self.people[:3]:
+            self.report(person, "unavailable", hours_ago=30)  # 0%: alert
+        self.assertTrue(self.alerts().exists())
+        # People change their reports to Working; newest per person counts.
+        self.report(self.people[0], "working")  # 33%
+        self.report(self.people[1], "working")  # 67%: above 50 but below 70
+        self.assertFalse(self.alerts(Kind.AVAILABILITY_RECOVERED).exists())
+        self.report(self.people[2], "working")  # 100%
+        recovered = self.alerts(Kind.AVAILABILITY_RECOVERED).get()
+        self.assertEqual(
+            recovered.text,
+            "Bryant Park looks to be working again: "
+            "its reliability score is back to 100%.",
+        )
+        self.client.force_login(self.follower)
+        response = self.client.get(reverse("notifications:open", args=[recovered.pk]))
+        self.assertRedirects(
+            response,
+            f"{self.hotspot.get_absolute_url()}#availability",
+            fetch_redirect_response=False,
+        )
+        # A new outage can alert again after recovery.
+        for person in self.people[3:6]:
+            self.report(person, "unavailable")
+        self.assertEqual(self.alerts().count(), 2)
+
+    def test_alerts_have_their_own_preference(self):
+        NotificationPreference.objects.create(
+            user=self.follower, followed_availability=False
+        )
+        for person in self.people[:3]:
+            self.report(person, "unavailable")
+        self.assertEqual(
+            list(inbox(self.follower).values_list("kind", flat=True)),
+            [Kind.AVAILABILITY_ALERT],
+        )
+        NotificationPreference.objects.filter(user=self.follower).update(
+            followed_availability_alerts=False
+        )
+        for person in self.people[:3]:
+            self.report(person, "working")
+        self.assertFalse(self.alerts(Kind.AVAILABILITY_RECOVERED).exists())
+
+    @override_settings(
+        AVAILABILITY_ALERT_UNAVAILABLE_REPORTS=2, AVAILABILITY_ALERT_WINDOW_HOURS=6
+    )
+    def test_thresholds_come_from_settings(self):
+        self.report(self.people[0], "unavailable")
+        self.report(self.people[1], "unavailable")
+        self.assertIn("in the last 6 hours", self.alerts().get().text)
 
 
 class ModerationNotificationTests(TestCase):
@@ -328,10 +453,14 @@ class InboxViewTests(TestCase):
         self.user = make_user("reader")
         self.author = make_user("author")
         follow(self.user, self.hotspot)
-        self.review = Review.objects.create(
-            hotspot=self.hotspot, author=self.author, rating=5, body="Great."
+        self.post = ForumPost.objects.create(
+            author=self.author,
+            topic_type="question",
+            title="Busy at lunch?",
+            body="Wondering.",
+            hotspot=self.hotspot,
         )
-        services.review_published(self.review)
+        services.discussion_started(self.post)
         self.notification = inbox(self.user).get()
 
     def test_visitors_are_sent_to_log_in(self):
@@ -342,20 +471,18 @@ class InboxViewTests(TestCase):
     def test_inbox_lists_notifications_and_header_shows_unread_count(self):
         self.client.force_login(self.user)
         response = self.client.get(reverse("notifications:inbox"))
-        self.assertContains(response, "author rated Bryant Park 5/5 and wrote a review")
+        self.assertContains(response, "author started a discussion about Bryant Park")
         self.assertContains(response, 'class="nav-badge"')
         self.assertContains(response, '1<span class="visually-hidden"> unread')
         self.assertContains(response, "Mark all as read")
 
-    def test_opening_marks_read_and_goes_to_review(self):
+    def test_opening_marks_read_and_goes_to_content(self):
         self.client.force_login(self.user)
         response = self.client.get(
             reverse("notifications:open", args=[self.notification.pk])
         )
         self.assertRedirects(
-            response,
-            f"{self.hotspot.get_absolute_url()}#review-{self.review.pk}",
-            fetch_redirect_response=False,
+            response, self.post.get_absolute_url(), fetch_redirect_response=False
         )
         self.notification.refresh_from_db()
         self.assertFalse(self.notification.is_unread)
@@ -363,23 +490,13 @@ class InboxViewTests(TestCase):
         self.assertNotContains(response, 'class="nav-badge"')
 
     def test_opening_deleted_content_returns_to_inbox(self):
-        self.review.delete()
+        self.post.delete()
         self.client.force_login(self.user)
         response = self.client.get(
             reverse("notifications:open", args=[self.notification.pk]), follow=True
         )
         self.assertRedirects(response, reverse("notifications:inbox"))
         self.assertContains(response, "no longer available")
-
-    def test_opening_review_that_became_held_returns_to_inbox(self):
-        moderation.hold(REVIEW, self.review, [(Reason.SPAM, "test")])
-        self.client.force_login(self.user)
-        response = self.client.get(
-            reverse("notifications:open", args=[self.notification.pk])
-        )
-        self.assertRedirects(
-            response, reverse("notifications:inbox"), fetch_redirect_response=False
-        )
 
     def test_users_cannot_open_other_users_notifications(self):
         self.client.force_login(self.author)
@@ -393,7 +510,7 @@ class InboxViewTests(TestCase):
     def test_unread_filter_and_mark_all_read(self):
         self.client.force_login(self.user)
         response = self.client.get(reverse("notifications:inbox") + "?show=unread")
-        self.assertContains(response, "author rated Bryant Park")
+        self.assertContains(response, "author started a discussion")
         self.assertEqual(
             self.client.get(reverse("notifications:mark_all_read")).status_code, 405
         )
@@ -411,7 +528,7 @@ class InboxViewTests(TestCase):
     def test_preferences_default_on_and_save(self):
         self.client.force_login(self.user)
         response = self.client.get(reverse("notifications:preferences"))
-        self.assertContains(response, "checked", count=3)
+        self.assertContains(response, "checked", count=4)
         self.assertFalse(NotificationPreference.objects.exists())
         self.client.post(
             reverse("notifications:preferences"), {"followed_discussions": "on"}
@@ -419,6 +536,7 @@ class InboxViewTests(TestCase):
         preference = NotificationPreference.objects.get(user=self.user)
         self.assertFalse(preference.followed_reviews)
         self.assertFalse(preference.followed_availability)
+        self.assertFalse(preference.followed_availability_alerts)
         self.assertTrue(preference.followed_discussions)
 
     def test_inbox_paginates(self):

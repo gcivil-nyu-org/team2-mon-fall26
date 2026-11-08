@@ -5,21 +5,40 @@ Story: [US27 / #37](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/37
 ## Channel, timing and preferences
 
 - **Channel:** in-app only — the **Inbox** page (`/inbox/`) and an unread count in the header for signed-in contributors. No email or push: the app has no mail configuration and the Story only needs in-app delivery.
-- **Timing:** a notification is created immediately, when the content becomes publicly visible. A review held by the automated checks notifies followers only when an administrator approves it. There are no digests.
-- **Preferences:** `/inbox/preferences/`. Each followed-hotspot update type (reviews, availability reports, discussions) can be switched off. Everything is on by default; no preference row means all on. Moderation notices and hotspot retirement are always sent.
+- **Timing:** notifications are created immediately, when the content becomes publicly visible (a held review counts only once approved). Routine followed-hotspot activity is folded into one unread summary per hotspot; there are no timed digests.
+- **Preferences:** `/inbox/preferences/`. Each followed-hotspot type (review summaries, availability-report summaries, availability alerts, discussions) can be switched off. Everything is on by default; no preference row means all on. Moderation notices and hotspot retirement are always sent.
 - **Never notified:** about your own actions, about activity on retired hotspots, or about demo reviews.
 
 ## Followed hotspots (sent to each follower)
 
-| Event | Text example | Opens | Opt-out |
+Routine activity is **summarized**, not sent per item: while a follower has an unread summary for a hotspot, each new item increases its count and moves it to the top. After it is read, the next item starts a new summary. Availability **alerts** are the exception: they are sent individually, because they are what a follower most needs to see.
+
+| Notification | Text example | Opens | Opt-out |
 | --- | --- | --- | --- |
-| New rating/review published (on save, or on approval of a held review) | sam rated Bryant Park 4/5 and wrote a review. | The review (`#review-<id>`); rating-only → `#reviews` | Yes |
-| New Working/Unavailable report | 3 new availability reports on Bryant Park. Latest: unavailable. | `#availability` | Yes |
-| New discussion topic linked to the hotspot | ana started a discussion about Bryant Park: “…”. | The topic | Yes |
+| Ratings and reviews summary | 3 new ratings and reviews on Bryant Park. Select to view. | `#reviews` | Yes |
+| Availability reports summary | 3 new availability reports on Bryant Park. Latest: unavailable. | `#availability` | Yes |
+| **Availability alert** — the hotspot may be down | Bryant Park may be down: 3 people reported it unavailable in the last 24 hours. | `#availability` | Yes (separately from the summary) |
+| **Working again** — the alert has cleared | Bryant Park looks to be working again: its reliability score is back to 80%. | `#availability` | Same as alerts |
+| New discussion linked to the hotspot | ana started a discussion about Bryant Park: “…”. | The topic | Yes |
 | Hotspot retired by an administrator (E04) | Bryant Park was removed from the public hotspot list. | My followed hotspots | No |
 
-- Editing a review does not notify. A review is announced at most once, even if it is later hidden by flags and approved again.
-- Availability reports are **batched**: while a follower has an unread availability notification for a hotspot, new reports update that one (count and latest status) instead of adding more.
+- A rating or review counts when it becomes public: on save, or when an administrator approves a held review. Edits never count, and each review counts once even if it is later hidden by flags and approved again.
+
+### Availability alert rules
+
+Settings in `config/settings.py`; the values are proposals for the team.
+
+- **May be down** when either:
+  - **Burst:** at least `AVAILABILITY_ALERT_UNAVAILABLE_REPORTS` (3) different people's latest reports from the last `AVAILABILITY_ALERT_WINDOW_HOURS` (24) say Unavailable. This catches a sudden outage even at a hotspot with many old Working reports.
+  - **Low reliability:** the E06 reliability score (30-day window, newest report per person, at least 3 people) is below `AVAILABILITY_ALERT_BELOW` (50%).
+- **Working again** when there is no burst and the reliability score is at least `AVAILABILITY_RECOVER_AT` (70%).
+- Alerts are sent only when the hotspot **changes state**, never on every report, so a hotspot that stays down produces one alert. The gap between 50% and 70% stops it flipping between "down" and "working again" on every report.
+
+### Why these choices (how other systems do it)
+
+- **Summaries instead of per-item notices.** Notification services recommend grouping similar notifications per item (here, per hotspot) so users are not flooded, while letting urgent alerts bypass batching ([SuprSend](https://docs.suprsend.com/docs/best-practices-for-batching-digest)).
+- **Alert on a spike from several people, not one report.** Downdetector reports an incident only when problem reports are significantly above the normal level, and counts each person once ([Downdetector help guide, third-party copy](https://1-12b.pages.dev/help/guides/how-does-downdetector-determine-if-theres-an-incident); no official page was found). Our version is simpler: a fixed count of distinct people within 24 hours, plus the existing reliability score.
+- **Separate start and clear thresholds.** Nagios uses a high threshold to start "flapping" and a lower one to stop, and sends one notice when the state starts and one when it ends ([Nagios](https://assets.nagios.com/downloads/nagioscore/docs/nagioscore/4/en/flapping.html)). Our 50% / 70% pair and the "may be down" / "working again" pair follow the same pattern.
 
 ## Moderation (sent to the author or flagger; always on)
 

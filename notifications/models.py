@@ -5,8 +5,10 @@ Agreed rules (see docs/E07-NOTIFICATIONS.md):
 - Channel: in-app only (Inbox page and an unread count in the header).
 - Timing: created as soon as the event happens, when the content becomes public.
 - Followed-hotspot updates go to every follower except the person who acted, and can
-  be switched off per type in ``NotificationPreference``. Moderation notices about a
-  user's own content or flags are always sent.
+  be switched off per type in ``NotificationPreference``. Routine updates (reviews,
+  availability reports) are batched into one summary per hotspot while unread;
+  availability alerts are sent individually. Moderation notices about a user's own
+  content or flags are always sent.
 
 Text is built from snapshot fields at display time, so a notification still reads
 correctly after its review, discussion or hotspot is deleted or retired.
@@ -21,7 +23,7 @@ from django.utils import timezone
 
 class Notification(models.Model):
     class Kind(models.TextChoices):
-        FOLLOWED_REVIEW = "followed_review", "New review on a followed hotspot"
+        FOLLOWED_REVIEW = "followed_review", "New reviews on a followed hotspot"
         FOLLOWED_AVAILABILITY = (
             "followed_availability",
             "New availability reports on a followed hotspot",
@@ -31,6 +33,11 @@ class Notification(models.Model):
             "New discussion about a followed hotspot",
         )
         FOLLOWED_RETIRED = "followed_retired", "Followed hotspot removed"
+        AVAILABILITY_ALERT = "availability_alert", "Followed hotspot may be down"
+        AVAILABILITY_RECOVERED = (
+            "availability_recovered",
+            "Followed hotspot working again",
+        )
         REVIEW_HELD = "review_held", "Review waiting for a moderator"
         REVIEW_HIDDEN = "review_hidden", "Review hidden after community flags"
         REVIEW_APPROVED = "review_approved", "Review approved"
@@ -42,6 +49,8 @@ class Notification(models.Model):
         Kind.FOLLOWED_AVAILABILITY,
         Kind.FOLLOWED_DISCUSSION,
         Kind.FOLLOWED_RETIRED,
+        Kind.AVAILABILITY_ALERT,
+        Kind.AVAILABILITY_RECOVERED,
     }
 
     recipient = models.ForeignKey(
@@ -91,6 +100,8 @@ class Notification(models.Model):
 
     @property
     def category(self):
+        if self.kind == self.Kind.AVAILABILITY_ALERT:
+            return "Availability alert"
         return "Followed hotspot" if self.kind in self.FOLLOWED_KINDS else "Moderation"
 
     @property
@@ -98,7 +109,9 @@ class Notification(models.Model):
         hotspot = self.hotspot_name or "a hotspot"
         kind = self.Kind
         if self.kind == kind.FOLLOWED_REVIEW:
-            return f"{self.actor_name} rated {hotspot} {self.detail}."
+            if self.count == 1:
+                return f"1 new rating or review on {hotspot}. Select to view."
+            return f"{self.count} new ratings and reviews on {hotspot}. Select to view."
         if self.kind == kind.FOLLOWED_AVAILABILITY:
             if self.count == 1:
                 return f"{self.actor_name} reported {hotspot} as {self.detail.lower()}."
@@ -106,6 +119,10 @@ class Notification(models.Model):
                 f"{self.count} new availability reports on {hotspot}. "
                 f"Latest: {self.detail.lower()}."
             )
+        if self.kind == kind.AVAILABILITY_ALERT:
+            return f"{hotspot} may be down: {self.detail}."
+        if self.kind == kind.AVAILABILITY_RECOVERED:
+            return f"{hotspot} looks to be working again: {self.detail}."
         if self.kind == kind.FOLLOWED_DISCUSSION:
             return f"{self.actor_name} started a discussion about {hotspot}: “{self.detail}”."
         if self.kind == kind.FOLLOWED_RETIRED:
@@ -152,9 +169,39 @@ class NotificationPreference(models.Model):
     followed_availability = models.BooleanField(
         "New availability reports on hotspots I follow", default=True
     )
+    followed_availability_alerts = models.BooleanField(
+        "Alerts when a hotspot I follow may be down, and when it recovers",
+        default=True,
+    )
     followed_discussions = models.BooleanField(
         "New discussions about hotspots I follow", default=True
     )
 
     def __str__(self):
         return f"Notification preferences for {self.user_id}"
+
+
+class ReviewAnnouncement(models.Model):
+    """Reviews already counted in followers' summaries, so each is counted once.
+
+    A review can become public more than once (hidden by flags, then approved).
+    """
+
+    review = models.OneToOneField(
+        "reviews.Review", on_delete=models.CASCADE, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class AvailabilityAlertState(models.Model):
+    """Whether a hotspot is currently in the "may be down" state.
+
+    Alerts fire on the change into that state and recovery notices on the change
+    out of it, never on every report (see ``services.availability_reported``).
+    """
+
+    hotspot = models.OneToOneField(
+        "hotspots.Hotspot", on_delete=models.CASCADE, related_name="+"
+    )
+    is_alerting = models.BooleanField(default=False)
+    changed_at = models.DateTimeField(default=timezone.now)

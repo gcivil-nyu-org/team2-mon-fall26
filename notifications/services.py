@@ -5,6 +5,9 @@ saved: E03 reviews, E05 moderation, E06 availability reports, E08 discussions an
 E04 hotspot retirement. See docs/E07-NOTIFICATIONS.md for the rules.
 """
 
+from datetime import timedelta
+
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import F
 from django.urls import reverse
@@ -60,73 +63,144 @@ def _create(recipient_ids, kind, hotspot=None, obj=None, **fields):
 # --- Followed hotspots (E07) ----------------------------------------------------
 
 
-def _review_detail(review):
-    rating = f"{review.rating}/5"
-    return f"{rating} and wrote a review" if review.body else rating
+def _batch(recipients, kind, hotspot, **fields):
+    """Fold one more event into each follower's unread summary for this hotspot.
+
+    Followers with an unread notification of this kind for the hotspot get its
+    count increased and moved to the top; everyone else gets a new one. Once read,
+    the next event starts a new summary.
+    """
+    unread = Notification.objects.filter(
+        kind=kind, hotspot=hotspot, recipient_id__in=recipients, read_at__isnull=True
+    )
+    batched = set(unread.values_list("recipient_id", flat=True))
+    unread.update(count=F("count") + 1, updated_at=timezone.now(), **fields)
+    return len(batched) + _create(
+        [pk for pk in recipients if pk not in batched], kind, hotspot, **fields
+    )
 
 
 def review_published(review):
     """A rating or review became public on a hotspot (on save, or on approval).
 
-    Edits never notify. A review that was already announced (for example, one that
-    was hidden by flags and then approved) is not announced again.
+    Followers get one summary per hotspot ("3 new ratings and reviews on ..."), not
+    one notification per review. Edits never count. Each review is counted once,
+    even if it is later hidden by flags and approved again.
     """
+    from .models import ReviewAnnouncement
+
     hotspot = review.hotspot
     if review.is_demo or review.is_held or not hotspot.is_active:
         return 0
-    recipients = set(
-        _followers(hotspot, "followed_reviews", exclude_user_id=review.author_id)
-    )
-    if not recipients:
+    _, created = ReviewAnnouncement.objects.get_or_create(review=review)
+    if not created:
         return 0
-    already = Notification.objects.filter(
-        kind=Kind.FOLLOWED_REVIEW, **_target(review), recipient_id__in=recipients
-    ).values_list("recipient_id", flat=True)
-    return _create(
-        recipients - set(already),
-        Kind.FOLLOWED_REVIEW,
-        hotspot,
-        review,
-        actor_name=review.author.username,
-        detail=_review_detail(review),
+    recipients = _followers(
+        hotspot, "followed_reviews", exclude_user_id=review.author_id
     )
+    return _batch(recipients, Kind.FOLLOWED_REVIEW, hotspot) if recipients else 0
 
 
 def availability_reported(report):
     """A Working/Unavailable report was submitted (E06).
 
-    Reports are batched: while a follower has an unread availability notification for
-    the hotspot, new reports update it ("3 new availability reports") instead of
-    adding more.
+    Two separate things happen:
+
+    - Routine updates: reports are batched into one unread summary per hotspot
+      ("3 new availability reports ... Latest: unavailable").
+    - Alerts: when the hotspot enters the "may be down" state (see
+      ``_alert_condition``) followers get an individual alert, and when it
+      recovers, a "working again" notice. Alerts fire only on those changes of
+      state, never on every report.
     """
     hotspot = report.hotspot
     if not hotspot.is_active:
         return 0
+    count = _update_alert_state(hotspot, report.reporter_id)
     recipients = _followers(
         hotspot, "followed_availability", exclude_user_id=report.reporter_id
     )
-    if not recipients:
+    if recipients:
+        count += _batch(
+            recipients,
+            Kind.FOLLOWED_AVAILABILITY,
+            hotspot,
+            detail=report.get_status_display(),
+            actor_name=report.reporter.username,
+        )
+    return count
+
+
+# Alert thresholds. Like the E06 reliability rules, they are proposals for the team
+# and can be tuned in settings. The gap between ALERT_BELOW and RECOVER_AT stops a
+# hotspot from flapping between "down" and "working again" on every report.
+def _alert_setting(name, default):
+    return getattr(settings, name, default)
+
+
+def _alert_condition(hotspot):
+    """Return ``(is_down, is_recovered, detail)`` for the hotspot's current reports.
+
+    Down when either:
+    - a burst: at least AVAILABILITY_ALERT_UNAVAILABLE_REPORTS different people's
+      latest reports in the last AVAILABILITY_ALERT_WINDOW_HOURS say Unavailable; or
+    - the reliability score (E06 US23: 30 days, newest report per person, at least
+      3 people) is below AVAILABILITY_ALERT_BELOW percent.
+
+    Recovered when there is no burst and the score is at least
+    AVAILABILITY_RECOVER_AT percent.
+    """
+    from availability.models import AvailabilityReport
+    from availability.services import hotspot_availability, hotspot_reports
+
+    score = hotspot_availability(hotspot)["score"]
+    hours = _alert_setting("AVAILABILITY_ALERT_WINDOW_HOURS", 24)
+    window = timezone.now() - timedelta(hours=hours)
+    recent_unavailable = sum(
+        1
+        for report in hotspot_reports(hotspot)
+        if report.status == AvailabilityReport.Status.UNAVAILABLE
+        and report.created_at >= window
+    )
+    burst = recent_unavailable >= _alert_setting(
+        "AVAILABILITY_ALERT_UNAVAILABLE_REPORTS", 3
+    )
+    low = score is not None and score < _alert_setting("AVAILABILITY_ALERT_BELOW", 50)
+    if burst:
+        detail = (
+            f"{recent_unavailable} people reported it unavailable "
+            f"in the last {hours} hours"
+        )
+    elif low:
+        detail = f"its reliability score dropped to {score}%"
+    else:
+        detail = f"its reliability score is back to {score}%"
+    recovered = (
+        not burst
+        and score is not None
+        and score >= _alert_setting("AVAILABILITY_RECOVER_AT", 70)
+    )
+    return burst or low, recovered, detail
+
+
+def _update_alert_state(hotspot, actor_id):
+    from .models import AvailabilityAlertState
+
+    state, _ = AvailabilityAlertState.objects.get_or_create(hotspot=hotspot)
+    is_down, recovered, detail = _alert_condition(hotspot)
+    if not state.is_alerting and is_down:
+        state.is_alerting, kind = True, Kind.AVAILABILITY_ALERT
+    elif state.is_alerting and recovered:
+        state.is_alerting, kind = False, Kind.AVAILABILITY_RECOVERED
+    else:
         return 0
-    status = report.get_status_display()
-    unread = Notification.objects.filter(
-        kind=Kind.FOLLOWED_AVAILABILITY,
-        hotspot=hotspot,
-        recipient_id__in=recipients,
-        read_at__isnull=True,
-    )
-    batched = set(unread.values_list("recipient_id", flat=True))
-    unread.update(
-        count=F("count") + 1,
-        detail=status,
-        actor_name=report.reporter.username,
-        updated_at=timezone.now(),
-    )
-    return len(batched) + _create(
-        [pk for pk in recipients if pk not in batched],
-        Kind.FOLLOWED_AVAILABILITY,
+    state.changed_at = timezone.now()
+    state.save(update_fields=["is_alerting", "changed_at"])
+    return _create(
+        _followers(hotspot, "followed_availability_alerts", exclude_user_id=actor_id),
+        kind,
         hotspot,
-        actor_name=report.reporter.username,
-        detail=status,
+        detail=detail,
     )
 
 
@@ -261,7 +335,11 @@ def target_url(notification):
             return url
     if hotspot is None or not hotspot.is_active:
         return None
-    if kind == Kind.FOLLOWED_AVAILABILITY:
+    if kind in (
+        Kind.FOLLOWED_AVAILABILITY,
+        Kind.AVAILABILITY_ALERT,
+        Kind.AVAILABILITY_RECOVERED,
+    ):
         return f"{hotspot.get_absolute_url()}#availability"
     if kind == Kind.REVIEW_REMOVED:
         return f"{hotspot.get_absolute_url()}#contribute"

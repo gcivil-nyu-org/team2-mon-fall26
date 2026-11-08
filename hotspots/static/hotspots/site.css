@@ -571,6 +571,7 @@ dd { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; overflow-wr
 .inbox-category { border-radius: 4px; padding: 3px 7px; font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: .3px; }
 .inbox-category-followed { color: #1558ac; background: #eaf3ff; }
 .inbox-category-moderation { color: #7a5d16; background: #fff8e9; }
+.inbox-category-alert { color: #a52222; background: #fdecec; }
 .inbox-text { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
 .preference-options { border: 0; margin: 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .preference-option { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; line-height: 1.4; cursor: pointer; }

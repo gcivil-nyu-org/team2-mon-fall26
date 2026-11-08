@@ -30,7 +30,7 @@
           <span class="inbox-dot" aria-hidden="true"></span>
           <span class="inbox-body">
             <span class="inbox-meta">
-              <span class="inbox-category inbox-category-{% if notification.category == 'Moderation' %}moderation{% else %}followed{% endif %}">{{ notification.category }}</span>
+              <span class="inbox-category inbox-category-{% if notification.category == 'Moderation' %}moderation{% elif notification.category == 'Availability alert' %}alert{% else %}followed{% endif %}">{{ notification.category }}</span>
               <time datetime="{{ notification.updated_at|date:'c' }}">{{ notification.updated_at|timesince }} ago</time>
               {% if notification.is_unread %}<span class="visually-hidden">Unread</span>{% endif %}
             </span>
