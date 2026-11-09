@@ -1,0 +1,62 @@
+{% extends "hotspots/base.html" %}
+
+{% block title %}Inbox · Connect NYC{% endblock %}
+{% block inbox_nav_class %}is-current{% endblock %}
+
+{% block content %}
+<section class="page-intro" aria-labelledby="page-title">
+  <div>
+    <h1 id="page-title">Inbox</h1>
+    <p>Updates on hotspots you follow and decisions about your reviews and flags.</p>
+  </div>
+  <div class="inbox-actions">
+    <a class="button button-secondary button-small" href="{% url 'notifications:preferences' %}">Preferences</a>
+    {% if has_unread %}
+      <form method="post" action="{% url 'notifications:mark_all_read' %}">{% csrf_token %}<button type="submit" class="button button-primary button-small">Mark all as read</button></form>
+    {% endif %}
+  </div>
+</section>
+
+<nav class="inbox-filter" aria-label="Filter notifications">
+  <a href="{% url 'notifications:inbox' %}"{% if not show_unread %} aria-current="page"{% endif %}>All</a>
+  <a href="{% url 'notifications:inbox' %}?show=unread"{% if show_unread %} aria-current="page"{% endif %}>Unread</a>
+</nav>
+
+{% if page.object_list %}
+  <ul class="inbox-list" aria-label="Notifications">
+    {% for notification in page.object_list %}
+      <li class="inbox-item{% if notification.is_unread %} is-unread{% endif %}">
+        <a href="{% url 'notifications:open' notification.pk %}">
+          <span class="inbox-dot" aria-hidden="true"></span>
+          <span class="inbox-body">
+            <span class="inbox-meta">
+              <span class="inbox-category inbox-category-{% if notification.category == 'Moderation' %}moderation{% elif notification.category == 'Availability alert' %}alert{% else %}followed{% endif %}">{{ notification.category }}</span>
+              <time datetime="{{ notification.updated_at|date:'c' }}">{{ notification.updated_at|timesince }} ago</time>
+              {% if notification.is_unread %}<span class="visually-hidden">Unread</span>{% endif %}
+            </span>
+            <span class="inbox-text">{{ notification.text }}</span>
+          </span>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+  {% if page.has_other_pages %}
+    <nav class="manage-pagination" aria-label="Inbox pages">
+      {% if page.has_previous %}<a class="button button-secondary" href="?{% if show_unread %}show=unread&amp;{% endif %}page={{ page.previous_page_number }}">Previous</a>{% endif %}
+      <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+      {% if page.has_next %}<a class="button button-secondary" href="?{% if show_unread %}show=unread&amp;{% endif %}page={{ page.next_page_number }}">Next</a>{% endif %}
+    </nav>
+  {% endif %}
+{% else %}
+  <section class="empty-state" role="status">
+    {% if show_unread %}
+      <h2>You're all caught up</h2>
+      <p>You have no unread notifications.</p>
+    {% else %}
+      <h2>No notifications yet</h2>
+      <p>Follow a hotspot to hear about new reviews, availability reports and discussions. Decisions about your reviews and flags also appear here.</p>
+      <a href="{% url 'hotspots:followed' %}" class="button button-primary">My followed hotspots</a>
+    {% endif %}
+  </section>
+{% endif %}
+{% endblock %}

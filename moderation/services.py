@@ -6,6 +6,8 @@ from django.db import transaction
 from django.db.models import Count, Max
 from django.utils import timezone
 
+from notifications import services as notify
+
 from .models import ContentFlag, ModerationRecord, Reason
 from .registry import all_types
 
@@ -59,6 +61,7 @@ def hold(flaggable, obj, reasons):
     """
     reason = reasons[0][0] if reasons else Reason.OTHER
     note = "; ".join(detail for _, detail in reasons)[:500]
+    was_held = flaggable.describe(obj)["is_held"]
     with transaction.atomic():
         flaggable.set_held(obj, True)
         existing = (
@@ -75,6 +78,9 @@ def hold(flaggable, obj, reasons):
                 reason=reason,
                 note=note,
             )
+        if not was_held:
+            # E07 US27: tell the author once, not again on each edit while held.
+            notify.content_held(flaggable.describe(obj), obj)
 
 
 def auto_hide_if_widely_flagged(flaggable, obj):
@@ -85,6 +91,7 @@ def auto_hide_if_widely_flagged(flaggable, obj):
     )
     if user_flags >= threshold and not flaggable.describe(obj)["is_held"]:
         flaggable.set_held(obj, True)
+        notify.content_hidden(flaggable.describe(obj), obj)
         return True
     return False
 
@@ -211,6 +218,15 @@ def _record(flaggable, obj, action, moderator, reason="", note="", new_status=No
     return record
 
 
+def _flagger_ids(flaggable, obj):
+    """Users whose open flags on the item a decision is about to close."""
+    return list(
+        open_flags_for(flaggable, obj.pk)
+        .filter(flagged_by__isnull=False)
+        .values_list("flagged_by_id", flat=True)
+    )
+
+
 def _lock(flaggable, obj):
     """Re-read the item under a row lock, so decisions and author edits serialize.
 
@@ -232,6 +248,8 @@ def remove_content(flaggable, obj, moderator, reason, note=""):
         obj = _lock(flaggable, obj)
         if obj is None:
             return None
+        flaggers = _flagger_ids(flaggable, obj)
+        info = flaggable.describe(obj)
         record = _record(
             flaggable,
             obj,
@@ -241,6 +259,7 @@ def remove_content(flaggable, obj, moderator, reason, note=""):
             note,
             ContentFlag.Status.REMOVED,
         )
+        notify.content_removed(info, obj, Reason(reason).label, flaggers)
         obj.delete()
     return record
 
@@ -251,13 +270,17 @@ def dismiss_flags(flaggable, obj, moderator):
         obj = _lock(flaggable, obj)
         if obj is None:
             return None
-        return _record(
+        flaggers = _flagger_ids(flaggable, obj)
+        record = _record(
             flaggable,
             obj,
             ModerationRecord.Action.DISMISSED,
             moderator,
             new_status=ContentFlag.Status.DISMISSED,
         )
+        # The author was never told about the flags, so only flaggers hear back.
+        notify.flags_resolved(flaggers, obj, removed=False)
+        return record
 
 
 def approve(flaggable, obj, moderator, version=None):
@@ -273,6 +296,7 @@ def approve(flaggable, obj, moderator, version=None):
             return None
         if version is not None and flaggable.describe(obj)["version"] != version:
             return None
+        flaggers = _flagger_ids(flaggable, obj)
         record = _record(
             flaggable,
             obj,
@@ -281,4 +305,5 @@ def approve(flaggable, obj, moderator, version=None):
             new_status=ContentFlag.Status.DISMISSED,
         )
         flaggable.set_held(obj, False)
+        notify.content_approved(flaggable.describe(obj), obj, flaggers)
     return record

@@ -42,6 +42,15 @@ MODERATION_BURST_LIMIT = (
 )
 MODERATION_BURST_MINUTES = 10
 
+# E07 US27 availability alerts for followers (proposed; see docs/E07-NOTIFICATIONS.md).
+# A hotspot "may be down" when this many different people report it Unavailable within
+# the window, or when its E06 reliability score falls below ALERT_BELOW percent. It
+# counts as working again at RECOVER_AT percent; the gap prevents repeated alerts.
+AVAILABILITY_ALERT_UNAVAILABLE_REPORTS = 3
+AVAILABILITY_ALERT_WINDOW_HOURS = 24
+AVAILABILITY_ALERT_BELOW = 50
+AVAILABILITY_RECOVER_AT = 70
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -55,6 +64,7 @@ INSTALLED_APPS = [
     "accounts.apps.AccountsConfig",
     "moderation.apps.ModerationConfig",
     "forum.apps.ForumConfig",
+    "notifications.apps.NotificationsConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -78,6 +88,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "accounts.context_processors.roles",
+                "notifications.context_processors.notifications",
             ]
         },
     }

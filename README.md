@@ -8,7 +8,7 @@ Connect NYC is an English-language web application that helps New York City resi
 
 ## Project description
 
-The core user journey is to browse a map, search or filter locations, and open a hotspot profile to see its provider, access information, ratings, and reviews. Public browsing does not require an account. Signed-in users can share and manage hotspot reviews, report availability, follow hotspots, and open their personal followed-hotspot list. Community availability reports support reliability indicators and sorting. Contributors can flag inappropriate reviews, and administrators can inspect and moderate them. The public discussion forum supports Wi-Fi questions and conversations, threaded replies and helpful upvotes. Notifications remain a planned extension.
+The core user journey is to browse a map, search or filter locations, and open a hotspot profile to see its provider, access information, ratings, and reviews. Public browsing does not require an account. Signed-in users can share and manage hotspot reviews, report availability, follow hotspots, and open their personal followed-hotspot list, and get in-app notifications about followed hotspots and moderation decisions. Community availability reports support reliability indicators and sorting. Contributors can flag inappropriate reviews, and administrators can inspect and moderate them. The public discussion forum supports Wi-Fi questions and conversations, threaded replies and helpful upvotes.
 
 The application uses **Python 3.13, Django 5.2, and MySQL 8.4**. The frontend is built with Django templates, HTML, CSS, and JavaScript; Leaflet and OpenStreetMap provide the map. The current local demo runs as one web application and one database through Docker Compose.
 
@@ -16,7 +16,7 @@ For current implementation status, remaining work, and dated development history
 
 ## Implemented demo
 
-The demo includes hotspot discovery, account access, hotspot reviews, administrator data maintenance, moderation, availability reports, hotspot following and a public discussion forum:
+The demo includes hotspot discovery, account access, hotspot reviews, administrator data maintenance, moderation, availability reports, hotspot following with notifications and a public discussion forum:
 
 | Story | Demo behavior |
 | --- | --- |
@@ -28,10 +28,11 @@ The demo includes hotspot discovery, account access, hotspot reviews, administra
 | [US16–US17 / #26–#27](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) (E04) | Administrators import official CSV data, browse/search stored records, edit fields and confirm removal from public discovery while retaining reviews and votes. |
 | [US19–US21 / #29–#31](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) (E05) | Contributors flag inappropriate written reviews. Administrators inspect reports, confirm removal and review the moderation log. |
 | [US22–US24 / #32–#34](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) (E06) | Contributors report Working or Unavailable. Profiles show recent reports and reliability when sufficient reports exist; discovery supports rating/reliability sorting. |
-| [US25–US26 / #35–#36](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) (E07) | Signed-in users follow/unfollow an active hotspot and access their own list through My followed hotspots. If a session expires, login returns to the hotspot profile so the user can retry the action. Notifications remain future scope. |
+| [US25–US26 / #35–#36](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) (E07) | Signed-in users follow/unfollow an active hotspot and access their own list through My followed hotspots. If a session expires, login returns to the hotspot profile so the user can retry the action. |
+| [US27 / #37](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/37) (E07) | An in-app Inbox with an unread count in the header. Followers get one summary per hotspot for new ratings/reviews and for availability reports, an alert when a followed hotspot may be down (and when it recovers), and notices about linked discussions and retirement. Authors and flaggers get moderation decisions. Selecting a notification opens the related hotspot, review or discussion. Rules: [docs/E07-NOTIFICATIONS.md](docs/E07-NOTIFICATIONS.md) (proposed, pending team agreement). |
 | [US28–US30 / #38–#40](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) (E08) | Visitors browse public topics and comments; contributors create discussions, post threaded replies and toggle helpful upvotes on posts and comments. Optional hotspot links do not create reviews or affect ratings. |
 
-The profile includes a small rating aggregation service for its dependency on US12 / #22 under E03; that story remains owned by Jiahao. US18 / #28 retains its E04 parent and is integrated into the E01 interface. Rating and review contributions (E03: create, edit, delete, helpful upvotes) are implemented. Notifications (E07 US27) remain unimplemented. Implementation, issue closure and production acceptance are tracked separately in the progress record.
+The profile includes a small rating aggregation service for its dependency on US12 / #22 under E03; that story remains owned by Jiahao. US18 / #28 retains its E04 parent and is integrated into the E01 interface. Rating and review contributions (E03: create, edit, delete, helpful upvotes) are implemented. Implementation, issue closure and production acceptance are tracked separately in the progress record.
 
 ## Upgrading existing review data
 
@@ -148,6 +149,16 @@ The full policy and the acceptance criteria for these extensions are in [docs/E0
 - **Inspect (administrators):** **Admin → Open moderation** or `/manage/moderation/` opens on **Held for review** (why each item was held, Approve/Remove, select-all, bulk approve, and bulk remove with a confirmation step). The other tabs are flagged public content (type, link to the original, flag count, reasons, notes), recent ratings and reviews, and the moderation log. Contributors get 403.
 - **Remove (administrators):** Confirm and choose a moderation reason. The review is deleted from public pages and the hotspot average updates; the log keeps a snapshot of the text, the reason, the note and the administrator. Administrators never edit text. **Dismiss flags** closes flags without changing the content.
 
+## Notifications (E07 US27)
+
+In-app only: the **Inbox** (`/inbox/`) and an unread count in the header. Notifications are created when content becomes public; there is no email.
+
+- **Followed hotspots:** one unread summary per hotspot for new ratings/reviews and for availability reports (the count grows until it is read), linked discussions, and retirement. An **availability alert** is sent when a followed hotspot may be down (3 people report Unavailable within 24 hours, or reliability falls below 50%), and a "working again" notice at 70%. Alerts fire only on those changes of state.
+- **Moderation:** authors hear when their review is held, hidden by flags, approved or removed (with the reason, never the flagger). Flaggers hear the outcome.
+- Users are never notified about their own actions. Followed-hotspot types can be switched off in `/inbox/preferences/`; moderation notices and retirement are always sent. Alert thresholds are `AVAILABILITY_ALERT_*` settings in `config/settings.py`.
+
+The full rules and the reasoning behind them are in [docs/E07-NOTIFICATIONS.md](docs/E07-NOTIFICATIONS.md) (proposed, pending team agreement).
+
 ## Project structure and integration points
 
 ```text
@@ -158,6 +169,7 @@ hotspots/           Official location model, importer, public views and map API
 reviews/            Review model, shared rating summary and demo seed command
 accounts/           E02 sign-up/login/logout, roles, shared access checks, admin area
 moderation/         E05 content flags, administrator moderation view, removal log
+notifications/      E07 US27 Inbox, notification rules, preferences and availability alerts
 templates/          Project-wide templates (403 page)
 data/               Team-provided official CSV sample and data verification script
 scripts/            Local environment generation and MySQL test helper
@@ -187,6 +199,10 @@ Public routes:
 | `/manage/moderation/bulk/` | POST-only: approve or remove the selected items |
 | `/manage/moderation/review/<id>/remove/` | Confirmation and removal with a moderation reason |
 | `/manage/moderation/review/<id>/dismiss/` | POST-only flag dismissal |
+| `/inbox/` | Signed-in user's notifications (`?show=unread` filter) |
+| `/inbox/<id>/open/` | Mark one notification read and open its hotspot, review or discussion |
+| `/inbox/mark-all-read/` | POST-only: mark all notifications read |
+| `/inbox/preferences/` | Choose which followed-hotspot notifications to receive |
 
 `/` and `/api/hotspots/` accept the same optional query parameters: `q` (location search), `borough`, `neighborhood`, `provider` and `type` (official access type). For example, `/api/hotspots/?q=library&borough=Brooklyn`.
 
