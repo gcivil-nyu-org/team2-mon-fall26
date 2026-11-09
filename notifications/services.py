@@ -9,6 +9,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
 from django.db.models import F
 from django.urls import reverse
 from django.utils import timezone
@@ -63,6 +64,7 @@ def _create(recipient_ids, kind, hotspot=None, obj=None, **fields):
 # --- Followed hotspots (E07) ----------------------------------------------------
 
 
+@transaction.atomic
 def _batch(recipients, kind, hotspot, **fields):
     """Fold one more event into each follower's unread summary for this hotspot.
 
@@ -70,11 +72,20 @@ def _batch(recipients, kind, hotspot, **fields):
     count increased and moved to the top; everyone else gets a new one. Once read,
     the next event starts a new summary.
     """
-    unread = Notification.objects.filter(
+    from hotspots.models import Hotspot
+
+    # Serialize the first summary too, when no Notification row exists to lock.
+    Hotspot.objects.select_for_update().get(pk=hotspot.pk)
+    unread = Notification.objects.select_for_update().filter(
         kind=kind, hotspot=hotspot, recipient_id__in=recipients, read_at__isnull=True
     )
-    batched = set(unread.values_list("recipient_id", flat=True))
-    unread.update(count=F("count") + 1, updated_at=timezone.now(), **fields)
+    rows = list(unread.values_list("pk", "recipient_id"))
+    batched = {recipient_id for _, recipient_id in rows}
+    # Keep the selected rows locked until the write completes, including against
+    # mark-read requests, so an event cannot disappear between selection/update.
+    Notification.objects.filter(pk__in=[pk for pk, _ in rows]).update(
+        count=F("count") + 1, updated_at=timezone.now(), **fields
+    )
     return len(batched) + _create(
         [pk for pk in recipients if pk not in batched], kind, hotspot, **fields
     )
@@ -183,10 +194,13 @@ def _alert_condition(hotspot):
     return burst or low, recovered, detail
 
 
+@transaction.atomic
 def _update_alert_state(hotspot, actor_id):
     from .models import AvailabilityAlertState
 
-    state, _ = AvailabilityAlertState.objects.get_or_create(hotspot=hotspot)
+    state, _ = AvailabilityAlertState.objects.select_for_update().get_or_create(
+        hotspot=hotspot
+    )
     is_down, recovered, detail = _alert_condition(hotspot)
     if not state.is_alerting and is_down:
         state.is_alerting, kind = True, Kind.AVAILABILITY_ALERT
