@@ -281,6 +281,19 @@ class HotspotReadExperienceTests(TestCase):
         self.assertEqual(response.context["map_data"], [])
         self.assertEqual(response.context["hotspot_count"], 0)
 
+    def test_map_loads_pin_clustering_before_map_script(self):
+        response = self.client.get(reverse("hotspots:map"))
+        html = response.content.decode()
+        cluster_js = "vendor/leaflet.markercluster/leaflet.markercluster.js"
+        self.assertIn(cluster_js, html)
+        self.assertIn("vendor/leaflet.markercluster/MarkerCluster.css", html)
+        self.assertLess(html.index("vendor/leaflet/leaflet.js"), html.index(cluster_js))
+        self.assertLess(html.index(cluster_js), html.index("hotspots/map.js"))
+
+    def test_profile_map_does_not_load_pin_clustering(self):
+        response = self.client.get(self.hotspot.get_absolute_url())
+        self.assertNotContains(response, "leaflet.markercluster")
+
 
 @override_settings(DEMO_MODE=False)
 class SearchAndFilterTests(TestCase):

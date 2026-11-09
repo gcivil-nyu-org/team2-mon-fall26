@@ -164,6 +164,10 @@ dd { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; overflow-wr
 .map-pin { display: block; width: 19px; height: 19px; border-radius: 50% 50% 50% 0; background: var(--brand); border: 2px solid var(--white); transform: rotate(-45deg); box-shadow: 0 1px 5px #16345b55; position: relative; }
 .map-pin::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--white); }
 .hotspot-marker.is-selected .map-pin { background: #073b8a; box-shadow: 0 0 0 5px #5e9bfa5c, 0 1px 5px #16345b55; }
+.hotspot-cluster { background: transparent; border: 0; }
+.hotspot-cluster span { display: flex; align-items: center; justify-content: center; box-sizing: border-box; width: 100%; height: 100%; border-radius: 50%; border: 3px solid var(--white); background: var(--brand); color: var(--white); font-weight: 700; font-size: 0.9rem; box-shadow: 0 0 0 4px #5e9bfa5c, 0 1px 5px #16345b55; }
+.hotspot-cluster-md span { background: var(--brand-hover); }
+.hotspot-cluster-lg span { background: #073b8a; font-size: 1rem; }
 .leaflet-popup-content-wrapper { border-radius: 7px; box-shadow: 0 3px 15px #16345b26; }
 .leaflet-popup-content { margin: 14px 16px; color: var(--ink); font-size: 12px; line-height: 1.5; }
 .hotspot-popup-title { font-size: 13px; font-weight: 650; margin-bottom: 5px; }

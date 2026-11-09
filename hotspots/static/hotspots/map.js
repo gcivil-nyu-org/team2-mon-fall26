@@ -13,6 +13,7 @@
   const markers = new Map();
   let map;
   let selectedMarker;
+  let clusterLayer;
 
   function showNotice(message) {
     if (!notice) return;
@@ -59,8 +60,11 @@
     selectedMarker = markers.get(String(hotspot.id));
     if (selectedMarker?.getElement()) selectedMarker.getElement().classList.add("is-selected");
     if (map && selectedMarker && panToMarker) {
-      map.setView(selectedMarker.getLatLng(), Math.max(map.getZoom(), 14), { animate: false });
-      selectedMarker.openPopup();
+      const target = selectedMarker;
+      map.setView(target.getLatLng(), Math.max(map.getZoom(), 14), { animate: false });
+      // A clustered marker has no element until its cluster opens, so reveal it first.
+      if (clusterLayer) clusterLayer.zoomToShowLayer(target, () => target.openPopup());
+      else target.openPopup();
     }
   }
 
@@ -103,6 +107,27 @@
   }
 
   const icon = L.divIcon({ className: "hotspot-marker", html: '<span class="map-pin"></span>', iconSize: [28, 32], iconAnchor: [14, 28], popupAnchor: [0, -22] });
+  // Merge nearby pins into numbered clusters on the full map; the single-profile map keeps plain markers.
+  if (!profileOnly && typeof L.markerClusterGroup === "function") {
+    // The cluster layer reads the map's zoom when it is added, so give the map a starting view first.
+    map.setView([40.73, -73.97], 11);
+    clusterLayer = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      maxClusterRadius: 45,
+      chunkedLoading: true,
+      iconCreateFunction(cluster) {
+        const count = cluster.getChildCount();
+        const tier = count < 10 ? "sm" : count < 100 ? "md" : "lg";
+        const size = { sm: 34, md: 42, lg: 50 }[tier];
+        return L.divIcon({
+          className: `hotspot-cluster hotspot-cluster-${tier}`,
+          html: `<span role="img" aria-label="${count} hotspots">${count}</span>`,
+          iconSize: [size, size],
+        });
+      },
+    }).addTo(map);
+  }
+  const markerLayer = clusterLayer || map;
   const groups = new Map();
   for (const hotspot of hotspots) {
     const latitude = Number(hotspot.latitude);
@@ -116,7 +141,12 @@
   for (const group of groups.values()) {
     const first = group[0];
     const title = group.length > 1 ? `${first.name}: ${group.length} hotspots at this location` : first.name;
-    const marker = L.marker([Number(first.latitude), Number(first.longitude)], { icon, title, alt: title, keyboard: true, riseOnHover: true }).addTo(map);
+    const marker = L.marker([Number(first.latitude), Number(first.longitude)], { icon, title, alt: title, keyboard: true, riseOnHover: true });
+    // Markers leave and re-enter the page as clusters open and close, so reapply the selected style.
+    marker.on("add", () => {
+      if (selectedMarker === marker) marker.getElement()?.classList.add("is-selected");
+    });
+    markerLayer.addLayer(marker);
     const popup = document.createElement("div");
     popup.className = "hotspot-popup";
     const popupTitle = document.createElement("div");

@@ -4,7 +4,9 @@
 {% block map_nav_class %}is-current{% endblock %}
 {% block map_nav_current %}aria-current="page"{% endblock %}
 {% block scripts %}
+  <link rel="stylesheet" href="{% static 'vendor/leaflet.markercluster/MarkerCluster.css' %}">
   <script defer src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
+  <script defer src="{% static 'vendor/leaflet.markercluster/leaflet.markercluster.js' %}"></script>
   <script defer src="{% static 'hotspots/map.js' %}"></script>
   <script defer src="{% static 'hotspots/filters.js' %}"></script>
 {% endblock %}
