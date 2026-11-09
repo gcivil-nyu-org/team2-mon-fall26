@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods
 
 from accounts.permissions import administrator_required
+from notifications import services as notify
 from reviews.models import ReviewVote
 
 from .forms import HotspotEditForm, HotspotImportForm
@@ -107,7 +108,8 @@ def manage_edit(request, pk):
 def manage_retire(request, pk):
     hotspot = get_object_or_404(Hotspot, pk=pk)
     if request.method == "POST" and request.POST.get("confirm") == "yes":
-        Hotspot.objects.filter(pk=pk).update(is_active=False)
+        if Hotspot.objects.filter(pk=pk, is_active=True).update(is_active=False):
+            notify.hotspot_retired(hotspot)
         messages.success(
             request,
             f"Removed {hotspot.display_name} from public discovery. Reviews and helpful votes are retained.",

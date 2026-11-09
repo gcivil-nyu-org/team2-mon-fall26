@@ -4,6 +4,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.permissions import contributor_required
+from notifications import services as notify
 
 from .forms import ForumCommentForm, ForumPostForm
 from .models import ForumComment, ForumPost, ForumVote
@@ -93,6 +94,7 @@ def create_post(request):
         post = form.save(commit=False)
         post.author = request.user
         post.save()
+        notify.discussion_started(post)
         messages.success(request, "Your discussion has been posted.")
         return redirect("forum:detail", pk=post.pk)
     return render(request, "forum/post_form.html", {"form": form})

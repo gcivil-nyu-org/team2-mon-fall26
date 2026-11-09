@@ -8,5 +8,6 @@ urlpatterns = [
     path("", include("moderation.urls")),
     path("", include("availability.urls")),
     path("forum/", include("forum.urls")),
+    path("", include("notifications.urls")),
     path("", include("hotspots.urls")),
 ]

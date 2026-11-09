@@ -9,6 +9,7 @@ from hotspots.models import Hotspot
 from moderation import automod
 from moderation import services as moderation
 from moderation.registry import REVIEW
+from notifications import services as notify
 
 from .forms import ReviewForm
 from .models import Review, ReviewVote
@@ -67,6 +68,7 @@ def create_review(request, hotspot_pk):
             if _check_and_hold(review, is_new=True):
                 messages.info(request, HELD_MESSAGE)
             else:
+                notify.review_published(review)
                 messages.success(request, "Thanks. Your rating has been saved.")
         return redirect(_hotspot_url(hotspot))
     return render(

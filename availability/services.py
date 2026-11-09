@@ -58,6 +58,11 @@ def _summarize(reports):
     }
 
 
+def hotspot_reports(hotspot):
+    """The reports that currently count for one hotspot (newest per person, in window)."""
+    return _current_reports([hotspot.pk])[hotspot.pk]
+
+
 def hotspot_availability(hotspot):
     return _summarize(_current_reports([hotspot.pk])[hotspot.pk])
 

@@ -1,6 +1,6 @@
 # Project progress
 
-Last updated: **November 2, 2026**.
+Last updated: **November 8, 2026**.
 
 This document records implementation progress, remaining work, and development history for Connect NYC. GitHub and ZenHub remain the sources for requirements, assignments, and workflow status. Update this record as work progresses; preserve the dated archive below.
 
@@ -8,11 +8,17 @@ This document records implementation progress, remaining work, and development h
 
 PR #71 merged at `595330032ec5bb890ca25969e73eb9f6cca57cca`. Main and develop have identical file contents; main has two additional merge-history commits. [Main Travis build 279108564](https://app.travis-ci.com/github/gcivil-nyu-org/team2-mon-fall26/builds/279108564) passed all 223 tests and completed the configured production deployment stage. Production read-only checks show following, availability, review flagging, the administrator moderation queue/log and the discussion forum. Full write/decision acceptance remains separate from those observations.
 
-The Week 7 milestone records **6 of 8 Stories closed, 2 in Review/QA and 11 closed points**. E05 US19–US21 and E06 US22–US24 are closed. E07 US25/US26 remain open and unestimated. E08 US28–US30 are merged additional implementation, tracked separately from the eight-story milestone and moved to Review/QA. The original Sprint Planning forecast was not recorded; no retrospective estimate is substituted for it.
+The Week 7 milestone records **8 of 8 Stories closed and 11 closed points**. E05 US19–US21 and E06 US22–US24 are closed. E07 US25/US26 passed production acceptance on November 2 and are closed without point estimates; their GitHub status was rechecked on November 8. E08 US28–US30 are merged additional implementation, tracked separately from the eight-story milestone and moved to Review/QA. The original Sprint Planning forecast was not recorded; no retrospective estimate is substituted for it.
 
 The [Week 7 Sprint Plan](https://github.com/gcivil-nyu-org/team2-mon-fall26/wiki/Week-7-Sprint-Plan) follows the required eight-part presentation order. The README and Wiki show main CI and develop coverage badges. The verified develop badge reports 98%; the main coverage badge returns unknown. Coverage includes tests and migrations under the configured `--source=.` scope.
 
 Week 6 remains accepted and complete: Boqing confirmed production on October 26, all 11 Stories closed, and the nine estimated Stories completed 19 of 19 points. Older review entries below preserve the state at the time they were written.
+
+## E07 US27 notifications — November 8, 2026
+
+US27 in-app notifications merged into `develop` through PR #77 and are being reviewed for production in [PR #78](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/78). Followers receive review/report summaries, availability alerts, linked discussions and retirement notices; authors and flaggers receive moderation decisions. Channel, timing and preference rules are documented in [E07-NOTIFICATIONS.md](E07-NOTIFICATIONS.md).
+
+Review reproduced duplicate summaries and duplicate outage alerts under simultaneous requests. The follow-up fix serializes these writes with MySQL row locks and adds two regression tests. All **266 tests passed on isolated MySQL 8.4**, with Black, Flake8, Django system checks and migration consistency checks passing. The fix still requires an independent PR approval before merging into `develop`; production promotion and acceptance remain pending. US27 is not closed.
 
 ## E07 production PR — November 2, 2026
 
@@ -40,7 +46,7 @@ E04 administrator import/list/edit/retirement (US16–US17, Boqing) is implement
 | [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | PR #54 merged; accepted and closed in Week 6 | Scheduled refresh and restoration remain outside the current increment. |
 | [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | US19–US21 closed; PR #60 promoted to main through #67; production moderation interface visible | Complete the deployed reporting/decision journey. Review-only registration is implemented; shared forum moderation remains separate. |
 | [E06 — Report Availability & Assess Reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) | US22–US24 closed (11 points); implementation and #68 login-return fix merged into main | Complete deployed submission checks. Seating/accessibility tags remain unimplemented. |
-| [E07 — Follow Hotspots & Receive Updates](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) | US25/US26 merged into main through #62; both remain in Review/QA | Complete acceptance and groom US27 notifications, which remain unimplemented. |
+| [E07 — Follow Hotspots & Receive Updates](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) | US25/US26 accepted and closed; US27 merged into develop through #77 | Merge the reviewed notification concurrency fix, complete PR #78 promotion, and verify US27 in production. |
 | [E08 — Discussion Forum & Community Interaction](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) | US28–US30 merged in #64 and synchronized in #66; moved to Review/QA | Complete deployed topic/reply/vote acceptance; E05 reporting/moderation remains a separate dependency. |
 
 ## User Story progress
@@ -100,9 +106,9 @@ Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #
 | E06 | [US22 / #32 — Report Working/Unavailable](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/32) | Story closed (3 points). Working/Unavailable reporting and #68 safe login-return fix are merged into main. Production controls are visible; deployed submission acceptance remains to be completed. |
 | E06 | [US23 / #33 — Reliability and report recency](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/33) | Story closed (5 points). Reliability and report recency are merged into main; the three-reporter threshold and 30-day reporting window are retained. |
 | E06 | [US24 / #34 — Sort by rating/reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/34) | Story closed (3 points). Rating/reliability sorting is merged into main and covered by the integrated test suite. |
-| E07 | [US25 / #35 — Follow/unfollow](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/35) | Review/QA; implemented in PR #57, merged into main through PR #62 with safe login continuation. POST-only and unique per user/hotspot; production acceptance remains separate. |
-| E07 | [US26 / #36 — My followed hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/36) | Review/QA; implemented in PR #57 and merged into main through PR #62. Personal list excludes other users' follows and retired hotspots; production acceptance remains separate. |
-| E07 | [US27 / #37 — Notifications](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/37) | Planned MLP; not implemented. |
+| E07 | [US25 / #35 — Follow/unfollow](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/35) | Accepted in production on November 2 and closed. Follow/unfollow updates only the relationship, preserves the hotspot/reviews, and safely returns visitors after login. |
+| E07 | [US26 / #36 — My followed hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/36) | Accepted in production on November 2 and closed. Verified the personal list, correct profile link and helpful empty state after unfollowing. |
+| E07 | [US27 / #37 — Notifications](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/37) | Merged into develop through PR #77; production promotion is PR #78, pending the reviewed concurrency fix. In-app Inbox at `/inbox/` with header unread count, All/Unread filters, "Mark all as read" and per-type opt-outs at `/inbox/preferences/`. Followers get one unread summary per hotspot for new ratings/reviews (counted once, when public) and for availability reports; a "may be down" alert when 3 people report Unavailable within 24 hours or reliability falls below 50%, and a "working again" notice at 70%; linked discussions; and hotspot retirement. Authors and flaggers get moderation notices (held, hidden by flags, approved, removed with reason; flag outcome). Opening marks read and goes to the content, or back to the Inbox if it is gone. Rules in [E07-NOTIFICATIONS.md](E07-NOTIFICATIONS.md) await team agreement; not estimated. |
 | E08 | [US28 / #38 — Browse/create discussion topics](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/38) | Review/QA; merged into main through PR #64, with integrated CI passing 223 tests. Production write acceptance remains open. Public discussion listing and detail; signed-in contributors create questions or discussion topics, optionally linked to an active hotspot. |
 | E08 | [US29 / #39 — Comments and replies](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/39) | Review/QA; merged into main through PR #64, with integrated CI passing 223 tests. Production write acceptance remains open. Contributors add comments and threaded replies; public visitors can read them. |
 | E08 | [US30 / #40 — Forum upvotes](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/40) | Review/QA; merged into main through PR #64, with integrated CI passing 223 tests. Production write acceptance remains open. One toggleable helpful upvote per user on posts/comments; no self-votes or downvotes. Separate from E03 review votes and star ratings. |
@@ -122,12 +128,32 @@ Closed test issue #44 is excluded from product completion progress.
 ## Next development steps
 
 1. Complete the production contribution/moderation and E07/E08 acceptance journeys against the current release. Prepare suitable demonstration content and close Stories only after their acceptance checks pass.
-2. Groom and estimate E07 US27 notifications before committing the next Sprint. Keep follow/list acceptance as carryover work rather than presenting it as unimplemented code.
+2. Obtain independent approval for the US27 concurrency fix, merge it into develop, and recheck PR #78 CI before production promotion. Verify notification preferences, delivery and target links in production before closing US27. US25/US26 are already accepted and closed.
 3. Resolve main-specific Coveralls attribution. The current working coverage badge tracks develop; keep the existing CI formatting, linting and MySQL regression suite.
 4. Record the original forecast and estimates during Sprint Planning. Keep added work explicit, maintain the Wiki/milestone records and add one tab per sprint to the cumulative retrospective report.
 5. Preserve E03 hotspot-review, E08 discussion and E05 shared-moderation boundaries when planning forum reporting integration.
 
 ## Development archive
+
+### November 8, 2026 — PR #78 notification concurrency review
+
+- Reviewed the 28-file develop-to-main notification change, including event hooks, recipient ownership, preferences, moderation visibility, migration and UI links. Both Travis checks passed for original head `142e66a`; all original 264 tests also passed locally on MySQL 8.4.
+- Reproduced two failures with independent MySQL connections: simultaneous reviews created two unread summaries instead of one; simultaneous reports generated two outage alerts for one state change. Added transaction and row locks for summary creation/update and alert transitions, plus two regression tests that fail before the fix and pass afterward.
+- Verified the fixed code with all 266 MySQL tests, Black, Flake8, `manage.py check`, and `makemigrations --check --dry-run`. No migration or notification-policy change is required.
+- Branch rules require a PR and one independent approval for develop. The fix is awaiting that approval; PR #78 and production acceptance remain pending. Reconciled US25/US26 progress against their existing accepted/closed GitHub records.
+
+### November 7, 2026 — US27 follow-up: summaries and availability alerts
+
+- After review, followers no longer get one notification per rating/review. Reviews are folded into one unread summary per hotspot ("3 new ratings and reviews on …"), like availability reports; `ReviewAnnouncement` ensures each review is counted once.
+- Added availability alerts: a hotspot "may be down" when at least 3 different people's latest reports in the last 24 hours say Unavailable, or its E06 reliability score is below 50%; it is "working again" at 70% with no burst. Alerts are sent only on these state changes (`AvailabilityAlertState`) and have their own preference. Thresholds are settings (`AVAILABILITY_ALERT_*`). Rationale and sources are in E07-NOTIFICATIONS.md.
+- The unmerged `notifications/0001` migration was regenerated. Verified with SQLite: all 264 tests pass (41 in `notifications`, 99% coverage of the app); Black, Flake8 and `makemigrations --check` pass. Not yet run on MySQL or CI.
+
+### November 7, 2026 — E07 US27 in-app notifications
+
+- Branched `linj-E07-US27-notifications` from develop `034e762`. Added the `notifications` app: `Notification` (recipient, kind, optional hotspot and generic target, text snapshots, batch count, read time) and `NotificationPreference` (three followed-hotspot opt-outs, default on), migration `notifications/0001`.
+- Triggers are explicit calls after each change is saved: E03 review creation (`reviews/views.py`), E06 availability reports, E08 topic creation with a hotspot, E04 retirement (only on an active → retired change), and the shared E05 services (`hold`, `auto_hide_if_widely_flagged`, `approve`, `dismiss_flags`, `remove_content`). Followers never hear about their own actions; retired hotspots and demo reviews produce nothing.
+- Added the Inbox, open/redirect, mark-all-read (POST) and preference views, the header "Inbox" link with unread badge (context processor), and styles. The signed-in mobile header previously overflowed at 390px width (510px page); it now moves the navigation to its own scrollable row and the page fits (390px) on the map, profile, followed and Inbox pages.
+- Verified locally with Django's SQLite backend (MySQL client not available in this environment): all 258 tests pass (223 existing, 35 new in `notifications/tests.py`, 99% coverage of the app); Black, Flake8, `manage.py check` and `makemigrations --check` pass. Headless-Chrome checks at 1280px and 390px covered the Inbox, preferences, opening a notification and the mobile header. Not yet run against MySQL or in CI, not merged or deployed.
 
 ### November 2, 2026 — PR #67 promotion review and E06 login-return fix
 
