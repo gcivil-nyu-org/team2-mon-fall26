@@ -38,10 +38,12 @@ class Notification(models.Model):
             "availability_recovered",
             "Followed hotspot working again",
         )
-        REVIEW_HELD = "review_held", "Review waiting for a moderator"
-        REVIEW_HIDDEN = "review_hidden", "Review hidden after community flags"
-        REVIEW_APPROVED = "review_approved", "Review approved"
-        REVIEW_REMOVED = "review_removed", "Review removed by a moderator"
+        # The REVIEW_* moderation kinds also cover discussion posts and comments;
+        # ``content_label`` says which. The stored values keep their original names.
+        REVIEW_HELD = "review_held", "Content waiting for a moderator"
+        REVIEW_HIDDEN = "review_hidden", "Content hidden after community flags"
+        REVIEW_APPROVED = "review_approved", "Content approved"
+        REVIEW_REMOVED = "review_removed", "Content removed by a moderator"
         FLAG_RESOLVED = "flag_resolved", "Flag reviewed"
 
     FOLLOWED_KINDS = {
@@ -76,6 +78,10 @@ class Notification(models.Model):
     hotspot_name = models.CharField(max_length=200, blank=True)
     actor_name = models.CharField(max_length=150, blank=True)
     detail = models.CharField(max_length=300, blank=True)
+    # Moderation notices: what the content was ("" for reviews, "post", "comment")
+    # and, for discussion content, the discussion title.
+    content_label = models.CharField(max_length=20, blank=True)
+    subject = models.CharField(max_length=200, blank=True)
     count = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(default=timezone.now)
@@ -105,9 +111,19 @@ class Notification(models.Model):
         return "Followed hotspot" if self.kind in self.FOLLOWED_KINDS else "Moderation"
 
     @property
+    def content_description(self):
+        """What a moderation notice is about, e.g. "review of Bryant Park"."""
+        if self.content_label == "post":
+            return f"discussion post “{self.subject}”"
+        if self.content_label == "comment":
+            return f"comment on “{self.subject}”"
+        return f"review of {self.hotspot_name or 'a hotspot'}"
+
+    @property
     def text(self):
         hotspot = self.hotspot_name or "a hotspot"
         kind = self.Kind
+        what = self.content_description
         if self.kind == kind.FOLLOWED_REVIEW:
             if self.count == 1:
                 return f"1 new rating or review on {hotspot}. Select to view."
@@ -132,25 +148,28 @@ class Notification(models.Model):
             )
         if self.kind == kind.REVIEW_HELD:
             return (
-                f"Your review of {hotspot} is waiting for a moderator. "
+                f"Your {what} is waiting for a moderator. "
                 "Only you can see it until then."
             )
         if self.kind == kind.REVIEW_HIDDEN:
             return (
-                f"Your review of {hotspot} was hidden after several community flags. "
+                f"Your {what} was hidden after several community flags. "
                 "A moderator will review it."
             )
         if self.kind == kind.REVIEW_APPROVED:
-            return f"A moderator approved your review of {hotspot}. It is now public."
+            return f"A moderator approved your {what}. It is now public."
         if self.kind == kind.REVIEW_REMOVED:
-            return (
-                f"A moderator removed your review of {hotspot}. Reason: {self.detail}."
-            )
+            return f"A moderator removed your {what}. Reason: {self.detail}."
         if self.kind == kind.FLAG_RESOLVED:
             outcome = "removed it" if self.detail == "removed" else "decided to keep it"
+            if self.content_label == "post":
+                flagged = f"the discussion post you flagged, “{self.subject}”,"
+            elif self.content_label == "comment":
+                flagged = f"the comment you flagged on “{self.subject}”"
+            else:
+                flagged = f"the review you flagged on {hotspot}"
             return (
-                f"A moderator reviewed the review you flagged on {hotspot} and {outcome}. "
-                "Thanks for helping."
+                f"A moderator reviewed {flagged} and {outcome}. " "Thanks for helping."
             )
         return self.get_kind_display()
 
@@ -189,6 +208,18 @@ class ReviewAnnouncement(models.Model):
 
     review = models.OneToOneField(
         "reviews.Review", on_delete=models.CASCADE, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class DiscussionAnnouncement(models.Model):
+    """Discussion posts already announced to followers, so each is announced once.
+
+    A post can become public more than once (hidden by flags, then approved).
+    """
+
+    post = models.OneToOneField(
+        "forum.ForumPost", on_delete=models.CASCADE, related_name="+"
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

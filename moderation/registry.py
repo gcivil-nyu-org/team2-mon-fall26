@@ -1,10 +1,9 @@
 """E05: the community content types that can be flagged and moderated.
 
 One shared reporting and moderation workflow serves every kind of community
-content (US19-US21). Each kind is registered here once. E03 hotspot reviews are
-registered today; when E08 adds forum posts, comments and replies, each one is a
-new ``FlaggableType`` entry and the flag form, moderation view and removal flow
-work for it unchanged.
+content (US19-US21). Each kind is registered here once: E03 hotspot reviews and
+E08 discussion posts and comments (replies are comments with a parent). The flag
+form, moderation queue, removal flow and notifications work the same for each.
 """
 
 from dataclasses import dataclass
@@ -31,6 +30,8 @@ class FlaggableType:
     held_queryset: Callable = None
     """Items currently hidden while they wait for an administrator."""
     affects_rating: bool = False
+    removal_effect: Callable = None
+    """Optional ``removal_effect(obj)`` sentence about what else removal deletes."""
 
     @property
     def model(self):
@@ -93,8 +94,124 @@ REVIEW = FlaggableType(
     affects_rating=True,
 )
 
-# E08: add forum post, comment and reply types here.
-_TYPES = {REVIEW.key: REVIEW}
+
+# --- E08 discussion forum ----------------------------------------------------
+
+
+def _public_posts():
+    from forum.services import public_posts
+
+    return public_posts()
+
+
+def _describe_post(post):
+    return {
+        "author": post.author.username,
+        "author_id": post.author_id,
+        "text": f"{post.title}\n\n{post.body}",
+        "rating": None,
+        "reference": (
+            f"Discussion: {post.title}"
+            + (f" · {post.hotspot.display_name}" if post.hotspot_id else "")
+        ),
+        "url": "" if post.is_held else post.get_absolute_url(),
+        "created_at": post.created_at,
+        "is_demo": False,
+        "is_held": post.is_held,
+        "is_public": not post.is_held,
+        "version": post.updated_at.isoformat(),
+    }
+
+
+def _held_posts():
+    from forum.models import ForumPost
+
+    return ForumPost.objects.filter(is_held=True)
+
+
+def _set_post_held(post, held):
+    from forum.models import ForumPost
+
+    # Keep updated_at unchanged: it is the version administrators approve.
+    ForumPost.objects.filter(pk=post.pk).update(is_held=held)
+    post.is_held = held
+
+
+def _post_removal_effect(post):
+    count = post.comments.count()
+    if not count:
+        return ""
+    return f"Its {count} comment{'s' if count != 1 else ''} and replies are removed with it."
+
+
+def _public_comments():
+    from forum.services import public_comments
+
+    return public_comments()
+
+
+def _describe_comment(comment):
+    post = comment.post
+    public = not comment.is_held and not post.is_held
+    return {
+        "author": comment.author.username,
+        "author_id": comment.author_id,
+        "text": comment.body,
+        "rating": None,
+        "reference": f"{'Reply' if comment.parent_id else 'Comment'} on “{post.title}”",
+        "url": f"{post.get_absolute_url()}#comment-{comment.pk}" if public else "",
+        "created_at": comment.created_at,
+        "is_demo": False,
+        "is_held": comment.is_held,
+        "is_public": public,
+        # Comments can't be edited, so their creation time identifies the text.
+        "version": comment.created_at.isoformat(),
+    }
+
+
+def _held_comments():
+    from forum.models import ForumComment
+
+    return ForumComment.objects.filter(is_held=True)
+
+
+def _set_comment_held(comment, held):
+    from forum.models import ForumComment
+
+    ForumComment.objects.filter(pk=comment.pk).update(is_held=held)
+    comment.is_held = held
+
+
+def _comment_removal_effect(comment):
+    count = comment.replies.count()
+    if not count:
+        return ""
+    return f"Its {count} repl{'ies' if count != 1 else 'y'} are removed with it."
+
+
+FORUM_POST = FlaggableType(
+    key="post",
+    label="Discussion post",
+    model_label="forum.ForumPost",
+    public_queryset=_public_posts,
+    describe=_describe_post,
+    set_held=_set_post_held,
+    held_queryset=_held_posts,
+    removal_effect=_post_removal_effect,
+)
+
+FORUM_COMMENT = FlaggableType(
+    key="comment",
+    label="Discussion comment",
+    model_label="forum.ForumComment",
+    public_queryset=_public_comments,
+    describe=_describe_comment,
+    set_held=_set_comment_held,
+    held_queryset=_held_comments,
+    removal_effect=_comment_removal_effect,
+)
+
+_TYPES = {flaggable.key: flaggable for flaggable in (REVIEW, FORUM_POST, FORUM_COMMENT)}
 
 
 def all_types():

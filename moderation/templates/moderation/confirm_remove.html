@@ -13,7 +13,7 @@
     </blockquote>
     <div class="manage-retention-note">
       <h2>What happens</h2>
-      <p>The {{ flaggable.label|lower }} is permanently removed from public pages{% if flaggable.affects_rating %} and its rating no longer counts toward the hotspot's average{% endif %}.</p>
+      <p>The {{ flaggable.label|lower }} is permanently removed from public pages{% if flaggable.affects_rating %} and its rating no longer counts toward the hotspot's average{% endif %}.{% if removal_effect %} <strong>{{ removal_effect }}</strong>{% endif %}</p>
       <p>A copy of the text, the reason and your username are kept in the moderation log. {% if open_flags %}Its open flags will be closed.{% endif %}</p>
     </div>
     {% if open_flags %}

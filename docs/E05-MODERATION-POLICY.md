@@ -10,6 +10,10 @@ Code: `moderation/automod.py` (rules), `moderation/services.py` (decisions), `mo
 
 The same reasons are used for user flags (US21) and administrator removals (US20): spam or advertising; harassment, hate or offensive language; false or misleading information; not about the hotspot or its Wi-Fi; shares someone's personal information; something else (details required).
 
+### Content covered
+
+Hotspot reviews (E03), discussion posts, and discussion comments and replies (E08) all follow this policy through one shared workflow (`moderation/registry.py`). Where this page says "review", the same applies to forum content unless noted below.
+
 ### Automated checks on written reviews
 
 The checks run on every new or edited written review, before any user flags. They are tiered so administrators only see the grey area.
@@ -22,6 +26,14 @@ The checks run on every new or edited written review, before any user flags. The
 
 Rating-only entries have no text. They are held only for repeat offenders.
 
+### Discussion posts and comments
+
+- The same block and hold rules run on a new post (title and body) or comment. Duplicates are compared with the author's other posts, or other comments. Comments are held for posting speed only after `MODERATION_COMMENT_BURST_LIMIT` (10) earlier comments in `MODERATION_BURST_MINUTES`, since conversations are faster than reviews.
+- Trust: trusted reviewers, or authors with `MODERATION_TRUSTED_MIN_REVIEWS` (3) public posts/comments at least `MODERATION_TRUSTED_MIN_AGE_HOURS` old and nothing ever removed.
+- A held post is visible only to its author, takes no comments or votes, and is announced to followers of its hotspot only when approved. A held comment is visible only to its author; if it has public replies, others see a "hidden while a moderator reviews it" placeholder so the replies keep their place.
+- Removing a post deletes its comments; removing a comment deletes its replies. The removal page says how many will go.
+- Administrators also get a **Recent discussions** tab (newest posts and comments, with open-flag counts).
+
 ### Community auto-hide
 
 When `MODERATION_AUTO_HIDE_FLAGS` (3) different users have open flags on a public review, it is hidden in the same way as an automated hold.
@@ -31,7 +43,7 @@ When `MODERATION_AUTO_HIDE_FLAGS` (3) different users have open flags on a publi
 - Only administrators approve, remove or dismiss.
 - Removal deletes the item (as author deletion does). The moderation log keeps a copy of the text, the author, the reason, an optional note, the flag count and the administrator. Administrators never edit an author's words.
 - Every approval, removal and dismissal is logged.
-- Authors are not notified; a held author sees "Awaiting moderator approval" on their own review. Notifications are future work (E07 #37).
+- A held author sees "Awaiting moderator approval" on their own content. In-app notices for holds, hides, approvals, removals and flag outcomes are described in `docs/E07-NOTIFICATIONS.md`.
 
 ## Acceptance criteria for the extensions
 
@@ -52,4 +64,4 @@ When `MODERATION_AUTO_HIDE_FLAGS` (3) different users have open flags on a publi
 - Removing an item that no longer exists changes nothing and logs nothing.
 - Visitors are sent to log in and contributors get 403 for every administrator page and action.
 
-Test coverage: `moderation/tests.py` (US19–US21), `moderation/test_automod.py` (rules, holds, auto-hide, bulk), `moderation/test_review_fixes.py` (concurrent edits, stale approvals, bulk confirmation).
+Test coverage: `moderation/tests.py` (US19–US21), `moderation/test_automod.py` (rules, holds, auto-hide, bulk), `moderation/test_review_fixes.py` (concurrent edits, stale approvals, bulk confirmation), `moderation/test_forum.py` (the same rules for discussion posts and comments).

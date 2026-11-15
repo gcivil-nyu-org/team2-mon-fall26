@@ -219,9 +219,18 @@ def _update_alert_state(hotspot, actor_id):
 
 
 def discussion_started(post):
-    """A forum topic linked to a hotspot was created (E08)."""
+    """A forum topic linked to a hotspot became public (E08): on posting, or on approval.
+
+    Held posts are announced only once a moderator approves them, and each post is
+    announced once, even if it is later hidden by flags and approved again.
+    """
+    from .models import DiscussionAnnouncement
+
     hotspot = post.hotspot
-    if hotspot is None or not hotspot.is_active:
+    if post.is_held or hotspot is None or not hotspot.is_active:
+        return 0
+    _, created = DiscussionAnnouncement.objects.get_or_create(post=post)
+    if not created:
         return 0
     return _create(
         _followers(hotspot, "followed_discussions", exclude_user_id=post.author_id),
@@ -241,11 +250,32 @@ def hotspot_retired(hotspot):
 # --- Moderation (E05) -------------------------------------------------------------
 
 
+def _content_fields(obj):
+    """Snapshot fields that say which kind of content a moderation notice is about."""
+    from forum.models import ForumComment, ForumPost
+
+    if isinstance(obj, ForumPost):
+        return {"content_label": "post", "subject": obj.title[:200]}
+    if isinstance(obj, ForumComment):
+        return {"content_label": "comment", "subject": obj.post.title[:200]}
+    return {}
+
+
+def _hotspot_of(obj):
+    from forum.models import ForumComment
+
+    if isinstance(obj, ForumComment):
+        return obj.post.hotspot
+    return getattr(obj, "hotspot", None)
+
+
 def _author_notice(kind, obj, info, **fields):
     author_id = info.get("author_id")
     if not author_id or info.get("is_demo"):
         return 0
-    return _create([author_id], kind, getattr(obj, "hotspot", None), obj, **fields)
+    return _create(
+        [author_id], kind, _hotspot_of(obj), obj, **_content_fields(obj), **fields
+    )
 
 
 def content_held(info, obj):
@@ -260,31 +290,46 @@ def content_hidden(info, obj):
 
 def content_approved(info, obj, flagger_ids):
     """A moderator published held content. Followers hear about it now, if not before."""
-    count = _author_notice(Kind.REVIEW_APPROVED, obj, info)
-    count += flags_resolved(flagger_ids, obj, removed=False)
+    from forum.models import ForumPost
     from reviews.models import Review
 
+    count = _author_notice(Kind.REVIEW_APPROVED, obj, info)
+    count += flags_resolved(flagger_ids, obj, removed=False)
     if isinstance(obj, Review):
         count += review_published(obj)
+    elif isinstance(obj, ForumPost):
+        count += discussion_started(obj)
     return count
 
 
 def content_removed(info, obj, reason_label, flagger_ids):
     """A moderator removed content. The author learns the reason, never who flagged it.
 
-    No content link is stored: the item is deleted, so the notice opens its hotspot.
+    The item is deleted, so the notice opens what is left: a removed comment's
+    discussion, or the hotspot of a removed review.
     """
-    hotspot = getattr(obj, "hotspot", None)
+    from forum.models import ForumComment
+
+    hotspot = _hotspot_of(obj)
+    fields = _content_fields(obj)
+    target = obj.post if isinstance(obj, ForumComment) else None
     count = 0
     if info.get("author_id") and not info.get("is_demo"):
         count += _create(
-            [info["author_id"]], Kind.REVIEW_REMOVED, hotspot, detail=reason_label
+            [info["author_id"]],
+            Kind.REVIEW_REMOVED,
+            hotspot,
+            target,
+            detail=reason_label,
+            **fields,
         )
     count += _create(
         [pk for pk in flagger_ids if pk != info.get("author_id")],
         Kind.FLAG_RESOLVED,
         hotspot,
+        target,
         detail="removed",
+        **fields,
     )
     return count
 
@@ -294,9 +339,10 @@ def flags_resolved(flagger_ids, obj, removed):
     return _create(
         flagger_ids,
         Kind.FLAG_RESOLVED,
-        getattr(obj, "hotspot", None),
+        _hotspot_of(obj),
         obj,
         detail="removed" if removed else "kept",
+        **_content_fields(obj),
     )
 
 
@@ -332,6 +378,40 @@ def _review_url(notification):
     return f"{base}#review-{review.pk}" if review.body else f"{base}#reviews"
 
 
+def _forum_url(notification):
+    """Moderation notices about discussion content.
+
+    Authors can open their own held content; anyone else only public content. When
+    the content is gone the notice opens its discussion, or the discussion list.
+    """
+    from forum.models import ForumComment, ForumPost
+
+    recipient_id = notification.recipient_id
+    model = notification.content_type.model if notification.content_type else ""
+    if model == "forumcomment":
+        comment = (
+            ForumComment.objects.select_related("post")
+            .filter(pk=notification.object_id)
+            .first()
+        )
+        if comment is None:
+            return None
+        post = comment.post
+        own = comment.author_id == recipient_id
+        if (comment.is_held and not own) or (
+            post.is_held and post.author_id != recipient_id
+        ):
+            return None
+        return f"{post.get_absolute_url()}#comment-{comment.pk}"
+    if model == "forumpost":
+        post = ForumPost.objects.filter(pk=notification.object_id).first()
+        if post is None or (post.is_held and post.author_id != recipient_id):
+            return None
+        return post.get_absolute_url()
+    # A removed discussion post has nothing left to open but the discussion list.
+    return reverse("forum:list")
+
+
 def target_url(notification):
     """Where selecting the notification goes, or None if that content is gone."""
     kind = notification.kind
@@ -341,8 +421,12 @@ def target_url(notification):
     if kind == Kind.FOLLOWED_DISCUSSION:
         from forum.models import ForumPost
 
-        post = ForumPost.objects.filter(pk=notification.object_id).first()
+        post = ForumPost.objects.filter(
+            pk=notification.object_id, is_held=False
+        ).first()
         return post.get_absolute_url() if post else None
+    if notification.content_label in ("post", "comment"):
+        return _forum_url(notification)
     if notification.object_id and notification.content_type.model == "review":
         url = _review_url(notification)
         if url or kind != Kind.FLAG_RESOLVED:
