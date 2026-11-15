@@ -536,6 +536,10 @@ dd { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; overflow-wr
 .forum-comment-actions form { margin: 0; }
 .forum-comment-actions a, .forum-inline-vote, .forum-inline-vote-static { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 11px; font-weight: 600; }
 .forum-comment-actions a:hover, .forum-inline-vote:hover, .forum-inline-vote.is-voted { color: var(--brand); }
+.forum-comment-actions .flag-link, .forum-flag .flag-link { margin-left: auto; color: var(--muted); font-weight: 600; }
+.forum-comment-actions .flag-link:hover, .forum-flag .flag-link:hover { color: #b42318; }
+.forum-flag { display: flex; margin: 12px 0 0; font-size: 12px; }
+.forum-comment-hidden .forum-comment-body { margin: 0; color: var(--muted); font-size: 12px; font-style: italic; }
 .forum-inline-vote { cursor: pointer; }
 .forum-inline-vote span { margin-left: 3px; }
 .forum-form-card { max-width: 680px; }

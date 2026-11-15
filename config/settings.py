@@ -41,6 +41,9 @@ MODERATION_BURST_LIMIT = (
     3  # earlier reviews within the window before the next one is held
 )
 MODERATION_BURST_MINUTES = 10
+MODERATION_COMMENT_BURST_LIMIT = (
+    10  # earlier forum comments within the window before the next one is held
+)
 
 # E07 US27 availability alerts for followers (proposed; see docs/E07-NOTIFICATIONS.md).
 # A hotspot "may be down" when this many different people report it Unavailable within

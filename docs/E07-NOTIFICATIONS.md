@@ -52,6 +52,8 @@ Settings in `config/settings.py`; the values are proposals for the team.
 
 Dismissing flags does not notify the author, who was never told the review was flagged.
 
+The same notices are sent for discussion posts and comments (E08), worded for that content ("Your discussion post “…” is waiting for a moderator", "A moderator removed your comment on “…”"). They open the post or comment; once it is removed, a comment notice opens its discussion and a post notice opens the discussion list. A held discussion post linked to a followed hotspot is announced to followers only when it is approved, and each post is announced once (`DiscussionAnnouncement`).
+
 ## Opening a notification
 
 Selecting a notification marks it read and opens the related hotspot, review or discussion. If that content no longer exists or is no longer public (deleted, removed, held, or its hotspot retired), the user returns to the Inbox with an explanation. Users can open only their own notifications (others return 404). The Inbox has All/Unread filters, "Mark all as read" (POST), and 20 notifications per page.
@@ -59,5 +61,4 @@ Selecting a notification marks it read and opens the related hotspot, review or 
 ## Not included (possible follow-ups)
 
 - Replies to your forum posts/comments and helpful votes on your reviews.
-- Moderation notices for E08 forum content: the hooks live in the shared moderation services, so they will fire once forum types are registered, but the wording currently says "review".
 - Email delivery, digests and retention/cleanup of old notifications.

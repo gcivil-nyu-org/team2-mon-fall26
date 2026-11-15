@@ -1,8 +1,16 @@
 from django import forms
 
 from hotspots.models import Hotspot
+from moderation.automod import blocking_problems
 
 from .models import ForumPost, ForumComment
+
+
+def _reject_blocked(text, content):
+    problems = blocking_problems(text, content)
+    if problems:
+        raise forms.ValidationError(problems)
+    return text
 
 
 class ForumPostForm(forms.ModelForm):
@@ -25,6 +33,13 @@ class ForumPostForm(forms.ModelForm):
         self.fields["hotspot"].queryset = Hotspot.objects.filter(is_active=True)
         self.fields["hotspot"].required = False
 
+    # E05 tier 1: clear-cut problems are rejected here and nothing is saved.
+    def clean_title(self):
+        return _reject_blocked(self.cleaned_data["title"], "post")
+
+    def clean_body(self):
+        return _reject_blocked(self.cleaned_data["body"], "post")
+
 
 class ForumCommentForm(forms.ModelForm):
     class Meta:
@@ -35,3 +50,6 @@ class ForumCommentForm(forms.ModelForm):
             "body": forms.Textarea(attrs={"rows": 4, "maxlength": 2000}),
         }
         help_texts = {"body": "Be helpful and respectful. Up to 2,000 characters."}
+
+    def clean_body(self):
+        return _reject_blocked(self.cleaned_data["body"], "comment")

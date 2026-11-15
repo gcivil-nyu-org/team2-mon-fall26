@@ -3,13 +3,16 @@
 Built-in rules only (no external service or API key). Work is tiered so that
 administrators only see the grey area, as on most review sites:
 
-1. Block (``blocking_problems``): clear-cut cases are rejected by the review
-   form with an explanation. Nothing is saved, and no administrator time is
+1. Block (``blocking_problems``): clear-cut cases are rejected by the review,
+   discussion post or comment form with an explanation. Nothing is saved, and no administrator time is
    spent. The author can fix the text and resubmit.
 2. Hold (``hold_reasons``): suspicious but possibly legitimate text is saved but
    hidden from the public and from the average until an administrator approves
    or removes it.
 3. Trust: authors with a good track record skip the soft rules.
+
+Reviews use ``hold_reasons``; discussion posts and comments use
+``forum_hold_reasons``, which applies the same rules to forum text.
 
 Thresholds and word lists can be tuned in settings (see ``config/settings.py``).
 """
@@ -99,22 +102,32 @@ def _blocked_terms():
     ]
 
 
-def blocking_problems(text):
-    """Tier 1: messages explaining why this text can't be posted ([] when acceptable)."""
+_NOUNS = {"review": "Reviews", "post": "Discussion posts", "comment": "Comments"}
+
+
+def blocking_problems(text, content="review"):
+    """Tier 1: messages explaining why this text can't be posted ([] when acceptable).
+
+    ``content`` is ``review``, ``post`` or ``comment`` and only changes the wording.
+    """
     if not text:
         return []
     problems = []
     if _LINK.search(text) or _EMAIL.search(text) or _PHONE.search(text):
         problems.append(
-            "Reviews can't include links, email addresses or phone numbers. "
-            "Please describe your experience in your own words."
+            f"{_NOUNS[content]} can't include links, email addresses or phone numbers. "
+            + (
+                "Please describe your experience in your own words."
+                if content == "review"
+                else "Please write your message in your own words."
+            )
         )
     words = set(_normalize(text.translate(_LEET)).split())
     plain = _normalize(text.translate(_LEET))
     for term in _blocked_terms():
         if (" " in term and term in plain) or term in words:
             problems.append(
-                "This review contains language that isn't allowed on Connect NYC."
+                f"This {content} contains language that isn't allowed on Connect NYC."
             )
             break
     return problems
@@ -156,6 +169,53 @@ def is_trusted(user, exclude_pk=None):
     )
 
 
+def _wording_reasons(text):
+    """Promotional wording and profanity: checked for every author, trusted or not."""
+    reasons = []
+    lowered = text.lower()
+    promo = [phrase for phrase in _PROMO_PHRASES if phrase in lowered]
+    if promo:
+        reasons.append((Reason.SPAM, f"Promotional wording: {', '.join(promo[:3])}"))
+    profanity = _PROFANITY.search(text) or _PROFANITY.search(text.translate(_LEET))
+    if profanity:
+        reasons.append((Reason.OFFENSIVE, "Contains profanity"))
+    return reasons
+
+
+def _style_reasons(text):
+    """Capitals and repetition: skipped for trusted authors."""
+    reasons = []
+    if _is_shouting(text):
+        reasons.append((Reason.OTHER, "Mostly written in capital letters"))
+    if _REPEATED_CHAR.search(text) or _REPEATED_WORD.search(text):
+        reasons.append((Reason.SPAM, "Heavily repeated characters or words"))
+    return reasons
+
+
+def _duplicate_reason(text, author, others, noun):
+    """Same text as another item of this kind (``others`` excludes the item itself)."""
+    normalized = _normalize(text)
+    if len(normalized) < 20:
+        return None
+    if others.filter(author=author, body__iexact=text.strip()).exists() or any(
+        _normalize(body) == normalized
+        for body in others.filter(author=author).values_list("body", flat=True)
+    ):
+        return (Reason.SPAM, f"Same text as another of this author's {noun}s")
+    if others.exclude(author=author).filter(body__iexact=text.strip()).exists():
+        return (Reason.SPAM, f"Same text as a {noun} by another account")
+    return None
+
+
+def _is_burst(queryset, limit_setting, default_limit):
+    window = timezone.now() - timedelta(
+        minutes=_setting("MODERATION_BURST_MINUTES", 10)
+    )
+    return queryset.filter(created_at__gte=window).count() >= _setting(
+        limit_setting, default_limit
+    )
+
+
 def hold_reasons(review, is_new):
     """Tier 2: ``[(Reason, detail), ...]`` explaining why a saved review should be held."""
     from reviews.models import Review
@@ -170,39 +230,81 @@ def hold_reasons(review, is_new):
     if not text:
         return reasons  # A rating with no text has nothing else to check.
 
-    lowered = text.lower()
-    promo = [phrase for phrase in _PROMO_PHRASES if phrase in lowered]
-    if promo:
-        reasons.append((Reason.SPAM, f"Promotional wording: {', '.join(promo[:3])}"))
-    profanity = _PROFANITY.search(text) or _PROFANITY.search(text.translate(_LEET))
-    if profanity:
-        reasons.append((Reason.OFFENSIVE, "Contains profanity"))
-
-    normalized = _normalize(text)
-    if len(normalized) >= 20:
-        others = Review.objects.exclude(pk=review.pk).exclude(body="")
-        if others.filter(author=author, body__iexact=text.strip()).exists() or any(
-            _normalize(body) == normalized
-            for body in others.filter(author=author).values_list("body", flat=True)
-        ):
-            reasons.append(
-                (Reason.SPAM, "Same text as another of this author's reviews")
-            )
-        elif others.exclude(author=author).filter(body__iexact=text.strip()).exists():
-            reasons.append((Reason.SPAM, "Same text as a review by another account"))
+    reasons.extend(_wording_reasons(text))
+    duplicate = _duplicate_reason(
+        text, author, Review.objects.exclude(pk=review.pk).exclude(body=""), "review"
+    )
+    if duplicate:
+        reasons.append(duplicate)
 
     if not is_trusted(author, exclude_pk=review.pk):
-        if _is_shouting(text):
-            reasons.append((Reason.OTHER, "Mostly written in capital letters"))
-        if _REPEATED_CHAR.search(text) or _REPEATED_WORD.search(text):
-            reasons.append((Reason.SPAM, "Heavily repeated characters or words"))
-        if is_new:
-            window = timezone.now() - timedelta(
-                minutes=_setting("MODERATION_BURST_MINUTES", 10)
-            )
-            recent = Review.objects.filter(
-                author=author, created_at__gte=window
-            ).exclude(pk=review.pk)
-            if recent.count() >= _setting("MODERATION_BURST_LIMIT", 3):
-                reasons.append((Reason.SPAM, "Posting many reviews in a short time"))
+        reasons.extend(_style_reasons(text))
+        if is_new and _is_burst(
+            Review.objects.filter(author=author).exclude(pk=review.pk),
+            "MODERATION_BURST_LIMIT",
+            3,
+        ):
+            reasons.append((Reason.SPAM, "Posting many reviews in a short time"))
+    return reasons
+
+
+# --- Discussion forum (E08 content, same tiers) --------------------------------
+
+
+def is_trusted_in_forum(user):
+    """Trusted reviewers, or authors with enough settled public forum contributions.
+
+    The same thresholds apply as for reviews: count and age from settings, and no
+    removed content of any kind.
+    """
+    from forum.models import ForumComment, ForumPost
+
+    if is_trusted(user):
+        return True
+    settled_before = timezone.now() - timedelta(
+        hours=_setting("MODERATION_TRUSTED_MIN_AGE_HOURS", 24)
+    )
+    published = (
+        ForumPost.objects.filter(
+            author=user, is_held=False, created_at__lte=settled_before
+        ).count()
+        + ForumComment.objects.filter(
+            author=user, is_held=False, created_at__lte=settled_before
+        ).count()
+    )
+    return (
+        published >= _setting("MODERATION_TRUSTED_MIN_REVIEWS", 3)
+        and _removed_count(user) == 0
+    )
+
+
+def forum_hold_reasons(item, is_new=True):
+    """Tier 2 for a saved ``ForumPost`` or ``ForumComment`` (title and body are checked)."""
+    from forum.models import ForumPost
+
+    is_post = isinstance(item, ForumPost)
+    noun = "post" if is_post else "comment"
+    model = type(item)
+    author = item.author
+    reasons = []
+    if _removed_count(author) >= _setting("MODERATION_REPEAT_OFFENDER_REMOVALS", 2):
+        reasons.append(
+            (Reason.SPAM, "Author has had several contributions removed by moderators")
+        )
+    text = f"{item.title}\n{item.body}" if is_post else item.body
+    reasons.extend(_wording_reasons(text))
+    duplicate = _duplicate_reason(
+        item.body, author, model.objects.exclude(pk=item.pk), noun
+    )
+    if duplicate:
+        reasons.append(duplicate)
+
+    if not is_trusted_in_forum(author):
+        reasons.extend(_style_reasons(text))
+        if is_new and _is_burst(
+            model.objects.filter(author=author).exclude(pk=item.pk),
+            ("MODERATION_BURST_LIMIT" if is_post else "MODERATION_COMMENT_BURST_LIMIT"),
+            3 if is_post else 10,
+        ):
+            reasons.append((Reason.SPAM, f"Posting many {noun}s in a short time"))
     return reasons
