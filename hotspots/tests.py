@@ -9,6 +9,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.templatetags.static import static
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -282,13 +283,15 @@ class HotspotReadExperienceTests(TestCase):
         self.assertEqual(response.context["hotspot_count"], 0)
 
     def test_map_loads_pin_clustering_before_map_script(self):
-        response = self.client.get(reverse("hotspots:map"))
-        html = response.content.decode()
-        cluster_js = "vendor/leaflet.markercluster/leaflet.markercluster.js"
+        # static() gives the hashed names used with ManifestStaticFilesStorage in CI.
+        html = self.client.get(reverse("hotspots:map")).content.decode()
+        leaflet_js = static("vendor/leaflet/leaflet.js")
+        cluster_js = static("vendor/leaflet.markercluster/leaflet.markercluster.js")
+        map_js = static("hotspots/map.js")
         self.assertIn(cluster_js, html)
-        self.assertIn("vendor/leaflet.markercluster/MarkerCluster.css", html)
-        self.assertLess(html.index("vendor/leaflet/leaflet.js"), html.index(cluster_js))
-        self.assertLess(html.index(cluster_js), html.index("hotspots/map.js"))
+        self.assertIn(static("vendor/leaflet.markercluster/MarkerCluster.css"), html)
+        self.assertLess(html.index(leaflet_js), html.index(cluster_js))
+        self.assertLess(html.index(cluster_js), html.index(map_js))
 
     def test_profile_map_does_not_load_pin_clustering(self):
         response = self.client.get(self.hotspot.get_absolute_url())
