@@ -1,11 +1,19 @@
+  {% if comment.hidden_for_viewer %}
+  <article class="forum-comment-card forum-comment-hidden">
+    <p class="forum-comment-body">This comment is hidden while a moderator reviews it.</p>
+  </article>
+  {% else %}
   <article class="forum-comment-card">
     <div class="forum-comment-head">
       <strong>{{ comment.author.username }}</strong>
+      {% if comment.is_held %}<span class="held-badge">Awaiting moderator approval</span>{% endif %}
       <time datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|date:"M j, Y · g:i A" }}</time>
     </div>
     <div class="forum-comment-body">{{ comment.body|linebreaks }}</div>
     <div class="forum-comment-actions">
-      {% if user.is_authenticated and comment.author_id != user.pk %}
+      {% if comment.is_held %}
+        <span class="held-note">Only you can see this until a moderator approves it.</span>
+      {% elif user.is_authenticated and comment.author_id != user.pk %}
         <form method="post" action="{% url 'forum:comment_vote' comment.pk %}">
           {% csrf_token %}
           <button class="forum-inline-vote{% if comment.user_vote_count %} is-voted{% endif %}" type="submit" aria-pressed="{% if comment.user_vote_count %}true{% else %}false{% endif %}">▲ Helpful <span>{{ comment.vote_count }}</span></button>
@@ -17,8 +25,12 @@
           <a class="forum-inline-vote-static" href="{% url 'accounts:login' %}?next={{ post.get_absolute_url|urlencode }}">▲ Helpful {{ comment.vote_count }} · Sign in to vote</a>
         {% endif %}
       {% endif %}
-      {% if user.is_authenticated %}
+      {% if user.is_authenticated and not comment.is_held %}
         <a href="{{ post.get_absolute_url }}?reply_to={{ comment.pk }}#comment-form">Reply</a>
+        {% if comment.author_id != user.pk %}
+          {% if comment.pk in flagged_comment_ids %}<span class="flag-state">Flagged for review</span>{% else %}<a class="flag-link" href="{% url 'moderation:flag' 'comment' comment.pk %}" aria-label="Flag comment by {{ comment.author.username }} as inappropriate">Flag</a>{% endif %}
+        {% endif %}
       {% endif %}
     </div>
   </article>
+  {% endif %}

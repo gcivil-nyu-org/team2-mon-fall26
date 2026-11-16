@@ -5,7 +5,7 @@
 {% block content %}
   <a class="back-link" href="{% url 'accounts:admin_home' %}">← Administration</a>
   <section class="page-intro" aria-labelledby="moderation-title">
-    <div><h1 id="moderation-title">Community moderation</h1><p>Approve or remove reviews held by the automated checks, handle content flagged by contributors, and inspect recent ratings and reviews. Every decision is logged.</p></div>
+    <div><h1 id="moderation-title">Community moderation</h1><p>Approve or remove reviews and discussion content held by the automated checks, handle content flagged by contributors, and inspect recent ratings, reviews and discussions. Every decision is logged.</p></div>
     <span class="role-badge role-administrator">Administrator</span>
   </section>
 
@@ -21,7 +21,7 @@
     <h2 id="moderation-tab-title" class="visually-hidden">{{ tab_label }}</h2>
 
     {% if tab == "held" or tab == "flagged" %}
-      <p class="moderation-help">{% if tab == "held" %}These reviews are hidden from the public and from average ratings until you approve or remove them. They were held by the automated checks, or hidden after several users flagged them.{% else %}These reviews are still public. Contributors flagged them; remove them or dismiss the flags.{% endif %}</p>
+      <p class="moderation-help">{% if tab == "held" %}These reviews, discussion posts and comments are hidden from the public (and reviews from average ratings) until you approve or remove them. They were held by the automated checks, or hidden after several users flagged them.{% else %}This content is still public. Contributors flagged it; remove it or dismiss the flags.{% endif %}</p>
       {% if items %}
       <form method="post" action="{% url 'moderation:bulk' %}" id="bulk-form" class="moderation-bulk">
         {% csrf_token %}
@@ -39,7 +39,7 @@
         {% for item in items %}
           {% include "moderation/_item.html" %}
         {% empty %}
-        <div class="no-reviews">{% if tab == "held" %}<h4>Nothing is waiting for approval</h4><p>Reviews held by the automated checks or hidden by community flags appear here.</p>{% else %}<h4>No flagged content</h4><p>Public content flagged by contributors will appear here.</p>{% endif %}</div>
+        <div class="no-reviews">{% if tab == "held" %}<h4>Nothing is waiting for approval</h4><p>Reviews and discussion content held by the automated checks or hidden by community flags appear here.</p>{% else %}<h4>No flagged content</h4><p>Public content flagged by contributors will appear here.</p>{% endif %}</div>
         {% endfor %}
       </div>
       <script>
@@ -69,6 +69,28 @@
               <td><div class="manage-row-actions"><a class="manage-remove-link" href="{% url 'moderation:remove' 'review' review.pk %}" aria-label="Remove {{ review.author.username }}'s rating for {{ review.hotspot.display_name }}">Remove</a></div></td>
             </tr>
             {% endwith %}{% empty %}<tr><td colspan="7">No ratings or reviews yet.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% include "moderation/_pagination.html" %}
+
+    {% elif tab == "discussions" %}
+      <div class="manage-table-scroll" role="region" aria-label="Recent discussions" tabindex="0">
+        <table class="admin-table manage-table">
+          <caption class="visually-hidden">Most recent discussion posts and comments, newest first</caption>
+          <thead><tr><th scope="col">Discussion</th><th scope="col">Type</th><th scope="col">Author</th><th scope="col">Text</th><th scope="col">Posted</th><th scope="col">Open flags</th><th scope="col">Actions</th></tr></thead>
+          <tbody>
+            {% for row in discussion_rows %}
+            <tr>
+              <th scope="row">{% if row.info.url %}<a href="{{ row.info.url }}">{{ row.info.reference }}</a>{% else %}{{ row.info.reference }}{% endif %}</th>
+              <td>{{ row.type.label }}{% if row.info.is_held %}<span class="manage-secondary held-text">Held for review</span>{% endif %}</td>
+              <td>{{ row.info.author }}</td>
+              <td class="moderation-review-cell">{{ row.item.body|truncatechars:160 }}</td>
+              <td><time datetime="{{ row.info.created_at|date:'c' }}">{{ row.info.created_at|date:"M j, Y" }}</time></td>
+              <td>{% if row.open_flags %}<span class="moderation-flag-count">{{ row.open_flags }}</span>{% else %}0{% endif %}</td>
+              <td><div class="manage-row-actions"><a class="manage-remove-link" href="{% url 'moderation:remove' row.type.key row.item.pk %}" aria-label="Remove {{ row.info.author }}'s {{ row.type.label|lower }}">Remove</a></div></td>
+            </tr>
+            {% empty %}<tr><td colspan="7">No discussion posts or comments yet.</td></tr>{% endfor %}
           </tbody>
         </table>
       </div>

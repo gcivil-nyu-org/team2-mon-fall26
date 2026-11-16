@@ -6,23 +6,29 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from accounts.permissions import administrator_required, contributor_required
+from forum.models import ForumComment, ForumPost
 from reviews.models import Review
 
 from . import services
 from .forms import FlagForm, RemovalForm
 from .models import ContentFlag, ModerationRecord, Reason
-from .registry import REVIEW, get_type
+from .registry import FORUM_COMMENT, FORUM_POST, REVIEW, get_type
 
 TABS = {
     "held": "Held for review",
     "flagged": "Flagged content",
     "recent": "Recent ratings and reviews",
+    "discussions": "Recent discussions",
     "log": "Moderation log",
 }
 
 
 def _back_to(info):
     return info["url"] or "/"
+
+
+def _removal_effect(flaggable, obj):
+    return flaggable.removal_effect(obj) if flaggable.removal_effect else ""
 
 
 @contributor_required
@@ -76,7 +82,7 @@ def flag_content(request, kind, pk):
 @administrator_required
 @require_GET
 def moderation_queue(request):
-    """US19: administrators inspect flagged content, recent ratings/reviews and past decisions."""
+    """US19: administrators inspect held and flagged content, recent contributions and past decisions."""
     tab = request.GET.get("tab", "held")
     if tab not in TABS:
         tab = "held"
@@ -108,11 +114,46 @@ def moderation_queue(request):
             {"review": review, "open_flags": counts.get(review.pk, 0)}
             for review in page
         ]
+    elif tab == "discussions":
+        context.update(_recent_discussions(request.GET.get("page")))
     else:
         context["page_obj"] = Paginator(
             ModerationRecord.objects.select_related("moderator"), 50
         ).get_page(request.GET.get("page"))
     return render(request, "moderation/queue.html", context)
+
+
+def _recent_discussions(page_number):
+    """Newest discussion posts and comments together, 50 per page, with open-flag counts.
+
+    Covers the newest 500 posts and 500 comments; older items are still reachable
+    from their discussion pages and the Django admin.
+    """
+    posts = list(
+        ForumPost.objects.select_related("author").order_by("-created_at", "-pk")[:500]
+    )
+    comments = list(
+        ForumComment.objects.select_related("author", "post").order_by(
+            "-created_at", "-pk"
+        )[:500]
+    )
+    rows = [{"type": FORUM_POST, "item": post} for post in posts] + [
+        {"type": FORUM_COMMENT, "item": comment} for comment in comments
+    ]
+    rows.sort(key=lambda row: (row["item"].created_at, row["item"].pk), reverse=True)
+    page = Paginator(rows, 50).get_page(page_number)
+    post_flags = services.open_flag_counts(
+        FORUM_POST, [row["item"].pk for row in page if row["type"] is FORUM_POST]
+    )
+    comment_flags = services.open_flag_counts(
+        FORUM_COMMENT,
+        [row["item"].pk for row in page if row["type"] is FORUM_COMMENT],
+    )
+    for row in page:
+        counts = post_flags if row["type"] is FORUM_POST else comment_flags
+        row["open_flags"] = counts.get(row["item"].pk, 0)
+        row["info"] = row["type"].describe(row["item"])
+    return {"page_obj": page, "discussion_rows": page}
 
 
 @administrator_required
@@ -152,6 +193,7 @@ def remove_content(request, kind, pk):
             "info": info,
             "pk": obj.pk,
             "open_flags": open_flags,
+            "removal_effect": _removal_effect(flaggable, obj),
         },
     )
 
@@ -174,7 +216,7 @@ def dismiss_flags(request, kind, pk):
 
 
 STALE_APPROVAL = (
-    "Not published: the author edited this review after you opened the queue, or it was "
+    "Not published: the author edited this item after you opened the queue, or it was "
     "already handled. Check the current text before approving."
 )
 
@@ -283,6 +325,7 @@ def bulk_action(request):
             "pk": obj.pk,
             "info": flaggable.describe(obj),
             "value": f"{flaggable.key}:{obj.pk}|{version}",
+            "effect": _removal_effect(flaggable, obj),
         }
         for flaggable, obj, version in selected
     ]

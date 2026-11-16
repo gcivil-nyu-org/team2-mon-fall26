@@ -44,10 +44,10 @@ E04 administrator import/list/edit/retirement (US16–US17, Boqing) is implement
 | [E02 — Account Registration & Access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) | Accepted and closed in Week 6; production confirmed by Boqing on October 26 | Preserve account and permission regressions. |
 | [E03 — Rate & Review Hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/3) | Accepted and closed in Week 6, including helpful votes | Preserve rating/review ownership and moderation behavior. |
 | [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | PR #54 merged; accepted and closed in Week 6 | Scheduled refresh and restoration remain outside the current increment. |
-| [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | US19–US21 closed; PR #60 promoted to main through #67; production moderation interface visible | Complete the deployed reporting/decision journey. Review-only registration is implemented; shared forum moderation remains separate. |
+| [E05 — Moderate Community Content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) | US19–US21 closed; PR #60 promoted to main through #67; production moderation interface visible | Complete the deployed reporting/decision journey. Reviews, discussion posts and comments are registered (forum moderation added Nov 15 on `linj-E05-forum-moderation`, not yet merged). |
 | [E06 — Report Availability & Assess Reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) | US22–US24 closed (11 points); implementation and #68 login-return fix merged into main | Complete deployed submission checks. Seating/accessibility tags remain unimplemented. |
 | [E07 — Follow Hotspots & Receive Updates](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) | US25/US26 accepted and closed; US27 merged into develop through #77 | Merge the reviewed notification concurrency fix, complete PR #78 promotion, and verify US27 in production. |
-| [E08 — Discussion Forum & Community Interaction](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) | US28–US30 merged in #64 and synchronized in #66; moved to Review/QA | Complete deployed topic/reply/vote acceptance; E05 reporting/moderation remains a separate dependency. |
+| [E08 — Discussion Forum & Community Interaction](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) | US28–US30 merged in #64 and synchronized in #66; moved to Review/QA | Complete deployed topic/reply/vote acceptance. E05 flagging/holds/moderation for posts and comments implemented Nov 15 (unmerged). |
 
 ## User Story progress
 
@@ -134,6 +134,15 @@ Closed test issue #44 is excluded from product completion progress.
 5. Preserve E03 hotspot-review, E08 discussion and E05 shared-moderation boundaries when planning forum reporting integration.
 
 ## Development archive
+
+### November 15, 2026 — E05 moderation for E08 discussion posts and comments
+
+- Synchronized branches locally: `develop` was one PR ahead of `main` (#82 map pin clustering) and `main` had one merge commit not in `develop` (#78, no file changes). Merged `origin/main` into `develop` (`8d0715d`, tree identical to `origin/develop`) and fast-forwarded local `main` to it. Pushing both is still required.
+- Branched `linj-E05-forum-moderation` from the synchronized develop. Registered `ForumPost` and `ForumComment` (replies are comments) as flaggable types, so the existing flag form, Held/Flagged queues, approve/remove/dismiss, bulk actions, moderation log, author-deletion flag withdrawal and community auto-hide all apply to them. Added `is_held` to both (`forum/0002`).
+- Automated checks: forum forms block links/emails/phone numbers/blocked terms (title and body); `automod.forum_hold_reasons` applies the review hold rules (promotional wording, profanity, duplicates, capitals, repetition, posting speed, repeat offenders) with forum trust. Review rules and wording are unchanged. New setting `MODERATION_COMMENT_BURST_LIMIT` (10).
+- Forum views: held posts/comments are visible only to their author (badge and note); held posts take no comments or votes; held comments can't be replied to or voted on, and keep a placeholder only when they have public replies. Comment counts exclude held comments. Flag links on other users' posts and comments.
+- Notifications: the existing moderation notices now cover forum content with matching wording (`Notification.content_label`/`subject`, `notifications/0002`); held discussion posts are announced to followers only on approval, once (`DiscussionAnnouncement`). Removal pages warn how many comments/replies go with a post/comment. Added a **Recent discussions** admin tab.
+- Verified with Django's SQLite backend: all 294 tests pass (268 existing, 26 new in `moderation/test_forum.py`); Black, Flake8 and `makemigrations --check` pass. Not yet run on MySQL or CI; no manual browser check; not pushed, merged or deployed.
 
 ### November 8, 2026 — PR #78 notification concurrency review
 
