@@ -1,8 +1,14 @@
 # Project progress
 
-Last updated: **November 8, 2026**.
+Last updated: **November 16, 2026**.
 
 This document records implementation progress, remaining work, and development history for Connect NYC. GitHub and ZenHub remain the sources for requirements, assignments, and workflow status. Update this record as work progresses; preserve the dated archive below.
+
+## PR #85 release repair — November 16, 2026
+
+PR #85 promoted map clustering and forum moderation to main at `6322569`. Travis PR build #71 and main build #72 each failed one of 294 tests: the map asset-order test expected unhashed filenames, while the correctly rendered page used manifest-hashed static URLs. This prevents successful release validation; merging #85 alone does not establish production deployment.
+
+The repair resolves the test's expected URLs through Django's configured static storage, preserving checks for Leaflet, the clustering plugin, its CSS, and map-script order. The separate profile test still excludes clustering. Runtime code, migrations and CI gates are unchanged. See the dated validation entry below; the repair still needs independent review, merge and successful CI, followed by synchronization to develop and deployment verification.
 
 ## Current release and presentation record — November 2, 2026
 
@@ -40,7 +46,7 @@ E04 administrator import/list/edit/retirement (US16–US17, Boqing) is implement
 
 | Epic | Implementation status | Remaining scope |
 | --- | --- | --- |
-| [E01 — Finding a Wi-Fi Hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/1) | Merged; Epic closed | Preserve discovery behavior while integrating new contributions. |
+| [E01 — Finding a Wi-Fi Hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/1) | Existing scope merged; Epic closed. PR #85 adds map clustering to main. | Merge the manifest-aware asset-test repair, then verify CI and deployment of clustering. |
 | [E02 — Account Registration & Access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) | Accepted and closed in Week 6; production confirmed by Boqing on October 26 | Preserve account and permission regressions. |
 | [E03 — Rate & Review Hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/3) | Accepted and closed in Week 6, including helpful votes | Preserve rating/review ownership and moderation behavior. |
 | [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | PR #54 merged; accepted and closed in Week 6 | Scheduled refresh and restoration remain outside the current increment. |
@@ -57,7 +63,7 @@ E04 administrator import/list/edit/retirement (US16–US17, Boqing) is implement
 
 | Story | Owner | Status and remaining work |
 | --- | --- | --- |
-| [US01 / #8 — Interactive map](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/8) | Boqing | Implemented. Official markers, matching preview/profile links, and distinct selection for records sharing coordinates. |
+| [US01 / #8 — Interactive map](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/8) | Boqing | Implemented. Official markers, matching preview/profile links, distinct selection for shared coordinates, and clustering promoted in PR #85. The asset-order test is repaired for hashed static URLs; successful CI and deployment verification remain pending. |
 | [US02 / #9 — Location search](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/9) | Jiahao | Merged in PR #48. Free-text `q` search over name, address/description, neighborhood, borough and ZIP; every word must match. Matching markers only, "X of Y hotspots match" count, and a separate no-match message. |
 | [US03 / #10 — Borough/neighborhood filters](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/10) | Jiahao | Merged in PR #48. `borough` and `neighborhood` (2010 NTA name, grouped by borough) filters; each can be selected, changed, or removed with its chip or "Clear all". |
 | [US04 / #11 — Provider filter](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/11) | Jiahao | Merged in PR #48. `provider` filter using the same select/change/remove behavior. |
@@ -134,6 +140,13 @@ Closed test issue #44 is excluded from product completion progress.
 5. Preserve E03 hotspot-review, E08 discussion and E05 shared-moderation boundaries when planning forum reporting integration.
 
 ## Development archive
+
+### November 16, 2026 — PR #85 static-asset test repair
+
+- Reproduced the single failing map-clustering test from Travis builds #71 and #72 against isolated MySQL 8.4 after `collectstatic`, with the pinned project dependencies and production manifest storage.
+- Replaced hard-coded static filenames with Django's resolved static URLs. Retained the script-order, stylesheet-presence and profile-exclusion checks; no application, database or CI configuration changes.
+- The two targeted map/profile tests pass with both production hashed URLs and development URLs. All **294 tests pass on isolated MySQL 8.4** with production manifest storage; Black, Flake8, Django system checks, migration consistency and `collectstatic` pass. Coverage is **98%** across the existing `--source=.` scope, including tests and migrations.
+- Merge and remote CI/deployment remain follow-up steps. Preserve the existing main approval rule and synchronize the repair back to develop after merging.
 
 ### November 15, 2026 — E05 moderation for E08 discussion posts and comments
 
