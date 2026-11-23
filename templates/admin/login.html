@@ -1,0 +1,4 @@
+{% extends "admin/login.html" %}
+{% load static %}
+{% block extrahead %}{{ block.super }}<script defer src="{% static 'accounts/login-cooldown.js' %}"></script>{% endblock %}
+{% block content %}{% include "accounts/_login_cooldown.html" with form_id="login-form" %}{{ block.super }}{% endblock %}

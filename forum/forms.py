@@ -81,3 +81,11 @@ class ForumCommentForm(forms.ModelForm):
 
     def clean_body(self):
         return _reject_blocked(self.cleaned_data["body"], "comment")
+
+
+class ForumPostEditForm(ForumPostForm):
+    """An author can correct their title and text without moving the discussion."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        del self.fields["topic_type"], self.fields["hotspot"]

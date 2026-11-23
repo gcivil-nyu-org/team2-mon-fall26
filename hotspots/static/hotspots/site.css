@@ -88,6 +88,7 @@ dd { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; overflow-wr
 .button svg { width: 17px; height: 17px; }
 .button-primary { background: var(--brand); color: var(--white); }
 .button-primary:hover { text-decoration: none; background: var(--brand-hover); }
+.auth-submit:disabled { cursor: not-allowed; opacity: .6; }
 .dataset-note { display: flex; align-items: flex-start; gap: 12px; margin: 20px 0 0; }
 .dataset-note p { color: var(--muted); font-size: 11px; line-height: 1.65; max-width: 780px; }
 .hotspot-directory { margin-top: 24px; border-top: 1px solid var(--line); font-size: 12px; }

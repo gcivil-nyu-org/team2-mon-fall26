@@ -227,8 +227,7 @@ def _describe_comment(comment):
         "is_demo": False,
         "is_held": comment.is_held,
         "is_public": public,
-        # Comments can't be edited, so their creation time identifies the text.
-        "version": comment.created_at.isoformat(),
+        "version": (comment.edited_at or comment.created_at).isoformat(),
     }
 
 

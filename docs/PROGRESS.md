@@ -91,8 +91,8 @@ Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #
 
 | Story | Status and remaining work |
 | --- | --- |
-| [US06 / #16 — Sign up](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/16) | Accepted and closed. Merged in PR #52. `/accounts/signup/` asks for username, email and password. Clear errors for invalid input, weak passwords, and usernames/emails that already exist (case-insensitive). New accounts join `Contributors` and are signed in. |
-| [US07 / #17 — Log in](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/17) | Accepted and closed. Merged in PR #52. `/accounts/login/` with a single generic error for wrong username, wrong password or inactive account. Header shows "Signed in as …" and a success message. |
+| [US06 / #16 — Sign up](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/16) | Accepted and closed. Merged in PR #52. Sign-up validates the username, email and password, gives specific duplicate-field errors, and signs new contributors in immediately. The team reviewed the resulting account-existence disclosure and closed [#96](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/96) as not planned on November 23. |
+| [US07 / #17 — Log in](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/17) | Accepted and closed. Merged in PR #52. Incorrect credentials receive a generic message. QA follow-up [#95](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/95) adds a two-minute cooldown on the fifth consecutive failure, shared by public and admin login. Local verification complete. Integration acceptance pending. |
 | [US08 / #18 — Log out](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/18) | Accepted and closed. Merged in PR #52. Header Log out button (POST) ends the session, returns to the map with a message, and contribution views redirect to login afterwards. |
 | [US09 / #19 — Sign-in for contributions](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/19) | Accepted and closed. Merged in PR #52 for the E02 side. Public pages stay anonymous. Profiles show a "Rate this hotspot" prompt that sends visitors to log in or sign up and returns them to `#contribute`. `contributor_required` gives any contribution view the same login-and-return behavior. PR #53 integrates the E03 form entry point; registration and return to the hotspot were checked locally on October 26. Report/flag actions belong to E05. |
 | [US10 / #20 — Administrator access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/20) | Accepted and closed. Merged in PR #52. Visitor/contributor/administrator roles (superuser or `Administrators` group). `/manage/` and the Admin header link are administrator-only; contributors get 403 even by direct URL and cannot use Django admin. `set_administrator` command grants or revokes the role. E04/E05 tools should use `administrator_required`. |
@@ -131,6 +131,7 @@ Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #
 | E08 | [US28 / #38 — Browse/create discussion topics](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/38) | Review/QA; merged into main through PR #64, with integrated CI passing 223 tests. Production write acceptance remains open. Public discussion listing and detail; signed-in contributors create questions or discussion topics, optionally linked to an active hotspot. Authors can search active records by name, location or ID, page through matches and keep their draft (#91, #101). Topics retain a retired hotspot's name without linking to its withdrawn profile (#109). |
 | E08 | [US29 / #39 — Comments and replies](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/39) | Review/QA; merged into main through PR #64, with integrated CI passing 223 tests. Production write acceptance remains open. Contributors add comments and threaded replies; public visitors can read them. Invalid comments and replies keep the draft, its parent and an inline error (#88). |
 | E08 | [US30 / #40 — Forum upvotes](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/40) | Review/QA; merged into main through PR #64, with integrated CI passing 223 tests. Production write acceptance remains open. One toggleable helpful upvote per user on posts/comments; no self-votes or downvotes. Separate from E03 review votes and star ratings. |
+| E08 | US28/US29 follow-up [#104 — Manage your own forum content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/104) | Authors can edit their discussion text and comments, or confirm deletion. Existing replies survive. Edits still go through E05 moderation. Verified locally. Integration acceptance pending. |
 
 ## Support and planning
 
@@ -154,6 +155,12 @@ Closed test issue #44 is excluded from product completion progress.
 
 ## Development archive
 
+### November 23, 2026 — Combined testing-party verification for PRs #111 and #112
+
+The combined changes passed all 380 Django tests on MySQL 8.4 with production static-file settings. Coverage was 99% under the repository's CI configuration. Black, Flake8, Django checks and the migration consistency check passed. Upgrading a database that already had the user-settings migration preserved its existing dark-theme preference and applied the login cooldown migration. The 17 focused tests covered the login cooldown, forum author controls and HTTPS configuration.
+
+[PR #111](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/111) tracks eleven distinct reports plus duplicate borough-filter reports #93 and #102. [PR #112](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/112) tracks #95 and #104. The target is `develop` and its integration instance. The individual reports record integration acceptance. The production HTTPS handoff remains with the deployment teammate in [#97](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/97#issuecomment-7114608485). The team retained the US06 signup behavior in #96 and deferred the remaining requests in #105.
+
 ### November 23, 2026 — Testing fixes integrated with the final-presentation features
 
 PR #111 preserves the location and rating sort options, the guest vote return path, and the two-way review votes from #113. The review-reply regression now checks that a new account's flag enters the queue and that three eligible reporters trigger automatic hiding. All 363 Django tests passed on MySQL 8.4 with manifest static files. Black, Flake8 and the migration consistency check passed.
@@ -170,7 +177,7 @@ PR #111 preserves the location and rating sort options, the guest vote return pa
 
 The two focused tests for #90 and #109 failed on the preceding code and passed after the fixes. All 310 Django tests passed on isolated MySQL 8.4 with manifest static files. Black, Flake8, Django system checks and the migration consistency check passed. At a 375-pixel Chrome viewport both navigation links and the guest Follow action were visible and clickable. Chrome also showed the retired hotspot as plain text on the discussion list and detail page.
 
-Five reports still need follow-up. #95 needs login throttling shared across workers. #96 requires reconciling registration privacy with immediate sign-in and the existing duplicate-account feedback. #97 requires HTTPS provisioning on AWS. #104 needs a decision about retaining other people's replies when a forum author deletes their content. For #105, the address prefill report needs the screen and steps. The existing review story allows one editable review per author per hotspot.
+At the time of this second batch, five reports still needed follow-up. #95 needs login throttling shared across workers. #96 requires reconciling registration privacy with immediate sign-in and the existing duplicate-account feedback. #97 requires HTTPS provisioning on AWS. #104 needs a decision about retaining other people's replies when a forum author deletes their content. For #105, the address prefill report needs the screen and steps. The existing review story allows one editable review per author per hotspot.
 
 ### November 23, 2026 — Final-presentation features (replies and votes, settings and dark mode, profiles, Near me)
 
@@ -354,6 +361,15 @@ Five reports still need follow-up. #95 needs login throttling shared across work
 - Added branch-labeled CI/coverage badges and corrected stale README statements that CI, availability and reliability were unimplemented. Public badge responses were checked: main CI passing, develop coverage 98%, main coverage unknown.
 - Updated the Wiki and milestone to the required eight-part presentation sequence, preserving the original E05 goal and recording E06/E07/E08/CI as additional work. Kept the original forecast unrecorded and distinguished 11 closed points from 6/8 closed milestone Stories.
 - Created the cumulative retrospective report with separate Week 4–7 tabs, preserving earlier published retrospective matrices. Added implementation/acceptance notes to open E07/E08 Stories and moved implemented E08 Stories to Review/QA without closing or estimating them.
+
+### November 23, 2026 — Login cooldown, forum authorship and HTTPS
+
+- **#95.** The public and admin login forms share an expiring MySQL counter for each username. A fifth failure returns HTTP 429 with a 120-second retry deadline. Attempts during the cooldown leave the deadline unchanged. A successful sign-in clears the counter, and partial counts expire after 24 hours without a failure. Chrome showed 120 seconds initially, 60 seconds halfway through and an enabled button at expiry. Refreshing the login page preserved the countdown.
+- **#104.** The author can edit or delete a discussion or comment. Removing a discussion preserves the replies in a closed thread and withdraws flags on the removed text. Removing a comment moves its direct replies to its parent. A moderator must review the current version of edited, held content before publishing it.
+- **#96.** The team retained US06's explicit duplicate-field feedback and immediate sign-in, accepted the account-existence disclosure and closed the report as not planned.
+- **#97.** The application can enforce HTTPS, set Secure cookies and send HSTS behind a trusted TLS endpoint. The integration HTTPS probe timed out and the local AWS session had expired. Verify the integration and production listeners and certificates, enable the settings on a working TLS endpoint, then check the live redirects, cookies and HSTS after the team's deployment handoff.
+
+All 318 Django tests passed on MySQL 8.4 with manifest-based static assets. Coverage reported 99%. The suite includes concurrent updates to the login counter, review of edited comments, preservation of replies, and redirects and cookies under the HTTPS configuration. Black, Flake8, Django system checks, and the migration consistency check passed. Both new migrations applied to a local database with existing data.
 
 ### November 23, 2026 — PR #113 review
 
