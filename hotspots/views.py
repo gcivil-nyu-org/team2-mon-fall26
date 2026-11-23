@@ -10,8 +10,9 @@ from django.views.decorators.http import require_GET, require_POST
 
 from availability.models import AvailabilityReport
 from availability.services import availability_by_hotspot, hotspot_availability
-from reviews.models import Review, ReviewVote
-from moderation.registry import REVIEW
+from reviews.forms import ReviewReplyForm
+from reviews.models import Review, ReviewReply, ReviewVote
+from moderation.registry import REVIEW, REVIEW_REPLY
 from moderation.services import flagged_ids
 from reviews.services import rating_summary, visible_reviews
 
@@ -94,6 +95,27 @@ def _map_data(hotspots, sort=None):
     return records
 
 
+def _attach_replies(reviews, user):
+    """Give each written review its replies the viewer may see, oldest first.
+
+    Held replies are shown only to their author (E05), like held discussion comments.
+    """
+    written = {review.pk: review for review in reviews if review.body}
+    for review in reviews:
+        review.reply_list = []
+    if not written:
+        return
+    replies = ReviewReply.objects.filter(review_id__in=list(written)).select_related(
+        "author"
+    )
+    if user.is_authenticated:
+        replies = replies.filter(Q(is_held=False) | Q(author=user))
+    else:
+        replies = replies.filter(is_held=False)
+    for reply in replies:
+        written[reply.review_id].reply_list.append(reply)
+
+
 @require_GET
 def map_view(request):
     active_hotspots = Hotspot.objects.filter(is_active=True)
@@ -125,17 +147,23 @@ def detail(request, pk):
     all_reviews = visible_reviews().filter(hotspot=hotspot)
     summary = rating_summary(all_reviews)
     availability = hotspot_availability(hotspot)
-    reviews = all_reviews.select_related("author").annotate(upvote_count=Count("votes"))
+    reviews = list(
+        all_reviews.select_related("author").annotate(
+            upvote_count=Count("votes", filter=Q(votes__value=ReviewVote.UP)),
+            downvote_count=Count("votes", filter=Q(votes__value=ReviewVote.DOWN)),
+        )
+    )
+    _attach_replies(reviews, request.user)
     voted_ids = set()
+    downvoted_ids = set()
     user_review = None
     user_report = None
     is_following = False
     if request.user.is_authenticated:
-        voted_ids = set(
-            ReviewVote.objects.filter(
-                user=request.user, review__hotspot=hotspot
-            ).values_list("review_id", flat=True)
-        )
+        for review_id, value in ReviewVote.objects.filter(
+            user=request.user, review__hotspot=hotspot
+        ).values_list("review_id", "value"):
+            (voted_ids if value == ReviewVote.UP else downvoted_ids).add(review_id)
         user_review = Review.objects.filter(
             hotspot=hotspot, author=request.user, is_demo=False
         ).first()
@@ -151,7 +179,10 @@ def detail(request, pk):
         "hotspot": hotspot,
         "reviews": reviews,
         "voted_ids": voted_ids,
+        "downvoted_ids": downvoted_ids,
         "flagged_ids": flagged_ids(request.user, REVIEW),
+        "flagged_reply_ids": flagged_ids(request.user, REVIEW_REPLY),
+        "reply_form": ReviewReplyForm(),
         "user_review": user_review,
         "user_report": user_report,
         "is_following": is_following,

@@ -9,17 +9,22 @@ from accounts.views import safe_next_url
 from hotspots.models import Hotspot
 from moderation import automod
 from moderation import services as moderation
-from moderation.registry import REVIEW
+from moderation.registry import REVIEW, REVIEW_REPLY
 from notifications import services as notify
 
-from .forms import ReviewForm
-from .models import Review, ReviewVote
+from .forms import ReviewForm, ReviewReplyForm
+from .models import Review, ReviewReply, ReviewVote
 from .services import visible_reviews
 
 
 def _hotspot_url(hotspot):
     return f"{hotspot.get_absolute_url()}#reviews"
 
+
+REPLY_HELD_MESSAGE = (
+    "Thanks. Your reply was saved and is waiting for a moderator before it appears "
+    "publicly. Only you can see it until then."
+)
 
 HELD_MESSAGE = (
     "Thanks. Your review was saved and is waiting for a moderator before it appears "
@@ -142,21 +147,94 @@ def delete_review(request, pk):
     )
 
 
+def _votable_reviews():
+    """Public written reviews of active hotspots: the ones that take votes and replies."""
+    return (
+        visible_reviews()
+        .select_related("hotspot")
+        .exclude(body="")
+        .filter(hotspot__is_active=True)
+    )
+
+
 @contributor_required
 @require_POST
 def toggle_vote(request, pk):
-    review = get_object_or_404(
-        visible_reviews().select_related("hotspot").exclude(body=""),
-        pk=pk,
-        hotspot__is_active=True,
-    )
+    """Vote a written review up (helpful) or down (not helpful).
+
+    Voting the same way again removes the vote; voting the other way switches it.
+    Votes never change star averages.
+    """
+    review = get_object_or_404(_votable_reviews(), pk=pk)
     destination = safe_next_url(request) or _hotspot_url(review.hotspot)
     if review.author_id == request.user.pk:
-        messages.info(request, "You can't upvote your own review.")
+        messages.info(request, "You can't vote on your own review.")
         return redirect(destination)
-    vote = ReviewVote.objects.filter(review=review, user=request.user)
-    if vote.exists():
-        vote.delete()
-    else:
-        ReviewVote.objects.get_or_create(review=review, user=request.user)
+    value = (
+        ReviewVote.DOWN if request.POST.get("direction") == "down" else ReviewVote.UP
+    )
+    with transaction.atomic():
+        vote = (
+            ReviewVote.objects.select_for_update()
+            .filter(review=review, user=request.user)
+            .first()
+        )
+        if vote is None:
+            ReviewVote.objects.get_or_create(
+                review=review, user=request.user, defaults={"value": value}
+            )
+        elif vote.value == value:
+            vote.delete()
+        else:
+            vote.value = value
+            vote.save(update_fields=["value"])
     return redirect(destination)
+
+
+@contributor_required
+@require_POST
+def add_reply(request, pk):
+    """Reply to a public written review. Replies get the same E05 checks as comments."""
+    # Demo reviews are sample content, so they take no replies.
+    review = get_object_or_404(_votable_reviews().filter(is_demo=False), pk=pk)
+    form = ReviewReplyForm(request.POST)
+    if not form.is_valid():
+        for error in form.errors.get("body", []):
+            messages.error(request, error)
+        return redirect(f"{review.hotspot.get_absolute_url()}#review-{review.pk}")
+    reply = form.save(commit=False)
+    reply.review = review
+    reply.author = request.user
+    with transaction.atomic():
+        # Count this author's replies in order, so the posting-speed rule holds.
+        get_user_model().objects.select_for_update().only("pk").get(pk=request.user.pk)
+        reply.save()
+        reasons = automod.reply_hold_reasons(reply, is_new=True)
+        if reasons:
+            moderation.hold(REVIEW_REPLY, reply, reasons)
+    if reply.is_held:
+        messages.info(request, REPLY_HELD_MESSAGE)
+    else:
+        notify.review_replied(reply)
+        messages.success(request, "Your reply has been posted.")
+    return redirect(f"{review.hotspot.get_absolute_url()}#reply-{reply.pk}")
+
+
+@contributor_required
+def delete_reply(request, pk):
+    reply = get_object_or_404(
+        ReviewReply.objects.select_related("review__hotspot"),
+        pk=pk,
+        author=request.user,
+        review__hotspot__is_active=True,
+    )
+    hotspot = reply.review.hotspot
+    if request.method == "POST":
+        reply.delete()
+        messages.success(request, "Your reply has been deleted.")
+        return redirect(f"{hotspot.get_absolute_url()}#review-{reply.review_id}")
+    return render(
+        request,
+        "reviews/reply_confirm_delete.html",
+        {"reply": reply, "hotspot": hotspot},
+    )

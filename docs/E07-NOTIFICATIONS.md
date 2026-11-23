@@ -6,7 +6,7 @@ Story: [US27 / #37](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/37
 
 - **Channel:** in-app only — the **Inbox** page (`/inbox/`) and an unread count in the header for signed-in contributors. No email or push: the app has no mail configuration and the Story only needs in-app delivery.
 - **Timing:** notifications are created immediately, when the content becomes publicly visible (a held review counts only once approved). Routine followed-hotspot activity is folded into one unread summary per hotspot; there are no timed digests.
-- **Preferences:** `/inbox/preferences/`. Each followed-hotspot type (review summaries, availability-report summaries, availability alerts, discussions) can be switched off. Everything is on by default; no preference row means all on. Moderation notices and hotspot retirement are always sent.
+- **Preferences:** `/inbox/preferences/`. Each followed-hotspot type (review summaries, availability-report summaries, availability alerts, discussions) and replies to your reviews can be switched off. Everything is on by default; no preference row means all on. Moderation notices and hotspot retirement are always sent.
 - **Never notified:** about your own actions, about activity on retired hotspots, or about demo reviews.
 
 ## Followed hotspots (sent to each follower)
@@ -40,6 +40,14 @@ Settings in `config/settings.py`; the values are proposals for the team.
 - **Alert on a spike from several people, not one report.** Downdetector reports an incident only when problem reports are significantly above the normal level, and counts each person once ([Downdetector help guide, third-party copy](https://1-12b.pages.dev/help/guides/how-does-downdetector-determine-if-theres-an-incident); no official page was found). Our version is simpler: a fixed count of distinct people within 24 hours, plus the existing reliability score.
 - **Separate start and clear thresholds.** Nagios uses a high threshold to start "flapping" and a lower one to stop, and sends one notice when the state starts and one when it ends ([Nagios](https://assets.nagios.com/downloads/nagioscore/docs/nagioscore/4/en/flapping.html)). Our 50% / 70% pair and the "may be down" / "working again" pair follow the same pattern.
 
+## Replies to your reviews
+
+| Notification | Text example | Opens | Opt-out |
+| --- | --- | --- | --- |
+| Someone replied to your written review | sam replied to your review of Bryant Park: “Thanks, the outlets…” | The reply (`#reply-<id>`) | Yes |
+
+Sent once per reply, when it becomes public (on posting, or when a moderator approves a held reply). Your own replies to your review, replies to demo reviews and replies on retired hotspots send nothing.
+
 ## Moderation (sent to the author or flagger; always on)
 
 | Event | Recipient | Opens |
@@ -52,7 +60,7 @@ Settings in `config/settings.py`; the values are proposals for the team.
 
 Dismissing flags does not notify the author, who was never told the review was flagged.
 
-The same notices are sent for discussion posts and comments (E08), worded for that content ("Your discussion post “…” is waiting for a moderator", "A moderator removed your comment on “…”"). They open the post or comment; once it is removed, a comment notice opens its discussion and a post notice opens the discussion list. A held discussion post linked to a followed hotspot is announced to followers only when it is approved, and each post is announced once (`DiscussionAnnouncement`).
+The same notices are sent for replies to reviews ("Your reply to sam's review of Bryant Park is waiting for a moderator"); once a reply is removed, its notices open the review it answered. The same notices are also sent for discussion posts and comments (E08), worded for that content ("Your discussion post “…” is waiting for a moderator", "A moderator removed your comment on “…”"). They open the post or comment; once it is removed, a comment notice opens its discussion and a post notice opens the discussion list. A held discussion post linked to a followed hotspot is announced to followers only when it is approved, and each post is announced once (`DiscussionAnnouncement`).
 
 ## Opening a notification
 
@@ -60,5 +68,5 @@ Selecting a notification marks it read and opens the related hotspot, review or 
 
 ## Not included (possible follow-ups)
 
-- Replies to your forum posts/comments and helpful votes on your reviews.
+- Replies to your forum posts/comments, and votes on your reviews.
 - Email delivery, digests and retention/cleanup of old notifications.

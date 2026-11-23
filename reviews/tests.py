@@ -287,7 +287,8 @@ class UpvoteTests(TestCase):
         self.client.post(self.url)
         self.assertEqual(ReviewVote.objects.count(), 1)
         self.assertContains(
-            self.client.get(self.hotspot.get_absolute_url()), "Remove upvote · 1"
+            self.client.get(self.hotspot.get_absolute_url()),
+            "Remove helpful vote, </span>1",
         )
         self.client.post(self.url)
         self.assertEqual(ReviewVote.objects.count(), 0)
@@ -295,7 +296,7 @@ class UpvoteTests(TestCase):
     def test_vote_count_is_shown_and_does_not_change_average(self):
         ReviewVote.objects.create(review=self.review, user=self.voter)
         page = self.client.get(self.hotspot.get_absolute_url())
-        self.assertContains(page, "1 found this helpful")
+        self.assertContains(page, "1 helpful")
         self.assertEqual(rating_summary(Review.objects.all())["average"], 3.0)
 
     def test_votes_are_database_unique(self):

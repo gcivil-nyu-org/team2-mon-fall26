@@ -361,6 +361,27 @@ dd { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; overflow-wr
 .vote-count { color: var(--muted); }
 .vote-button { min-height: 32px; padding: 5px 12px; border: 1px solid #c8d7ea; border-radius: 5px; background: var(--white); color: var(--brand); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 .vote-button:hover, .vote-button.is-voted { border-color: var(--brand); background: #edf3ff; }
+.vote-group { display: inline-flex; gap: 6px; }
+.vote-button.vote-down { color: #8a4b0f; }
+.vote-button.vote-down:hover, .vote-button.vote-down.is-voted { border-color: #b45309; background: #fff4e5; }
+.review-replies { margin-top: 12px; padding-left: 16px; border-left: 2px solid var(--line); }
+.reply-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 10px; }
+.reply { font-size: 13px; line-height: 1.5; }
+.reply.is-held { opacity: .85; }
+.reply p { margin-top: 3px; }
+.reply-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; color: var(--muted); font-size: 12px; }
+.reply-meta strong { color: var(--ink); }
+.reply-author-badge { padding: 1px 6px; border-radius: 4px; background: #edf4ff; color: #3b5b82; font-size: 11px; font-weight: 700; }
+.reply-actions { display: flex; gap: 12px; margin-top: 2px; font-size: 12px; }
+.reply-actions a { font-weight: 600; }
+.reply-actions .flag-link { color: var(--muted); }
+.reply-actions .flag-link:hover { color: #b42318; }
+.reply-compose summary { width: fit-content; color: var(--brand); font-size: 12px; font-weight: 600; cursor: pointer; }
+.reply-form { display: grid; gap: 6px; margin-top: 8px; max-width: 560px; }
+.reply-form label { font-size: 12px; font-weight: 600; }
+.reply-form textarea { width: 100%; padding: 8px 10px; border: 1px solid #c8d7ea; border-radius: 6px; font: inherit; font-size: 13px; color: var(--ink); background: var(--white); resize: vertical; }
+.reply-form .button { justify-self: start; }
+.reply-login { font-size: 12px; }
 .button-danger { background: #c53030; color: var(--white); }
 .button-danger:hover { text-decoration: none; background: #9b2424; }
 .rating-field { border: 0; padding: 0; min-width: 0; }

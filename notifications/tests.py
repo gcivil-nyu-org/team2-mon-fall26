@@ -528,7 +528,7 @@ class InboxViewTests(TestCase):
     def test_preferences_default_on_and_save(self):
         self.client.force_login(self.user)
         response = self.client.get(reverse("notifications:preferences"))
-        self.assertContains(response, "checked", count=4)
+        self.assertContains(response, "checked", count=5)
         self.assertFalse(NotificationPreference.objects.exists())
         self.client.post(
             reverse("notifications:preferences"), {"followed_discussions": "on"}
@@ -538,6 +538,7 @@ class InboxViewTests(TestCase):
         self.assertFalse(preference.followed_availability)
         self.assertFalse(preference.followed_availability_alerts)
         self.assertTrue(preference.followed_discussions)
+        self.assertFalse(preference.review_replies)
 
     def test_inbox_paginates(self):
         for index in range(25):

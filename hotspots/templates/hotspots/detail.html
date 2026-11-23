@@ -67,9 +67,12 @@
           {% if review.body %}<p class="review-body">{{ review.body|linebreaksbr }}</p>{% endif %}
           <div class="review-actions">
             {% if review.body and user_role != "visitor" and review.author_id != user.pk %}
-              <form method="post" action="{% url 'reviews:vote' review.pk %}">{% csrf_token %}<button type="submit" class="vote-button{% if review.pk in voted_ids %} is-voted{% endif %}" aria-pressed="{% if review.pk in voted_ids %}true{% else %}false{% endif %}"><span aria-hidden="true">▲</span> {% if review.pk in voted_ids %}Remove upvote{% else %}Helpful{% endif %} · {{ review.upvote_count }}</button></form>
+              <form method="post" action="{% url 'reviews:vote' review.pk %}" class="vote-group" aria-label="Rate the review by {{ review.author.username }}">{% csrf_token %}
+                <button type="submit" name="direction" value="up" class="vote-button{% if review.pk in voted_ids %} is-voted{% endif %}" aria-pressed="{% if review.pk in voted_ids %}true{% else %}false{% endif %}" title="{% if review.pk in voted_ids %}Remove your helpful vote{% else %}Helpful{% endif %}"><span aria-hidden="true">▲</span> <span class="visually-hidden">{% if review.pk in voted_ids %}Remove helpful vote{% else %}Helpful{% endif %}, </span>{{ review.upvote_count }}</button>
+                <button type="submit" name="direction" value="down" class="vote-button vote-down{% if review.pk in downvoted_ids %} is-voted{% endif %}" aria-pressed="{% if review.pk in downvoted_ids %}true{% else %}false{% endif %}" title="{% if review.pk in downvoted_ids %}Remove your not-helpful vote{% else %}Not helpful{% endif %}"><span aria-hidden="true">▼</span> <span class="visually-hidden">{% if review.pk in downvoted_ids %}Remove not-helpful vote{% else %}Not helpful{% endif %}, </span>{{ review.downvote_count }}</button>
+              </form>
             {% elif review.body %}
-              <span class="vote-count"><span aria-hidden="true">▲</span> {{ review.upvote_count }} found this helpful</span>
+              <span class="vote-count"><span aria-hidden="true">▲</span> {{ review.upvote_count }} helpful · <span aria-hidden="true">▼</span> {{ review.downvote_count }} not helpful</span>
             {% endif %}
             {% if review.author_id == user.pk and not review.is_demo %}
               <a href="{% url 'reviews:edit' review.pk %}">Edit</a>
@@ -79,6 +82,37 @@
               {% if review.pk in flagged_ids %}<span class="flag-state">Flagged for review</span>{% else %}<a class="flag-link" href="{% url 'moderation:flag' 'review' review.pk %}" aria-label="Flag {% if review.body %}review by {{ review.author.username }}{% else %}this rating{% endif %} as inappropriate">Flag</a>{% endif %}
             {% endif %}
           </div>
+          {% if review.body %}
+          <div class="review-replies" aria-label="Replies to {{ review.author.username }}'s review">
+            {% if review.reply_list %}
+            <ul class="reply-list">
+              {% for reply in review.reply_list %}
+              <li class="reply{% if reply.is_held %} is-held{% endif %}" id="reply-{{ reply.pk }}">
+                <div class="reply-meta"><strong>{{ reply.author.username }}</strong>{% if reply.author_id == review.author_id %}<span class="reply-author-badge">Review author</span>{% endif %}<time datetime="{{ reply.created_at|date:'c' }}">{{ reply.created_at|date:"M j, Y" }}</time>{% if reply.is_held %}<span class="held-badge">Awaiting moderator approval</span>{% endif %}</div>
+                <p>{{ reply.body|linebreaksbr }}</p>
+                {% if reply.is_held %}<p class="held-note">Only you can see this reply until a moderator approves it.</p>{% endif %}
+                <div class="reply-actions">
+                  {% if reply.author_id == user.pk %}<a href="{% url 'reviews:delete_reply' reply.pk %}">Delete</a>{% elif user_role != "visitor" and not reply.is_held %}{% if reply.pk in flagged_reply_ids %}<span class="flag-state">Flagged for review</span>{% else %}<a class="flag-link" href="{% url 'moderation:flag' 'reply' reply.pk %}" aria-label="Flag reply by {{ reply.author.username }} as inappropriate">Flag</a>{% endif %}{% endif %}
+                </div>
+              </li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+            {% if user_role != "visitor" and not review.is_held and not review.is_demo %}
+            <details class="reply-compose">
+              <summary>Reply{% if review.reply_list %} · {{ review.reply_list|length }} repl{{ review.reply_list|length|pluralize:"y,ies" }}{% endif %}</summary>
+              <form method="post" action="{% url 'reviews:reply' review.pk %}" class="reply-form">{% csrf_token %}
+                <label for="reply-body-{{ review.pk }}">Reply to {{ review.author.username }}</label>
+                <textarea id="reply-body-{{ review.pk }}" name="body" rows="3" maxlength="1000" required></textarea>
+                <p class="field-help">{{ reply_form.body.help_text }}</p>
+                <button type="submit" class="button button-primary button-small">Post reply</button>
+              </form>
+            </details>
+            {% elif user_role == "visitor" %}
+            <p class="reply-login"><a href="{% url 'accounts:login' %}?next={{ request.path|urlencode }}%23review-{{ review.pk }}">Log in to reply</a></p>
+            {% endif %}
+          </div>
+          {% endif %}
         </article>
         {% empty %}<div class="no-reviews"><p>No one has rated this hotspot yet.</p></div>{% endfor %}
       </div>
