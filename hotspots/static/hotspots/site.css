@@ -261,6 +261,16 @@ dd { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; overflow-wr
 .search-form input:focus-visible, .search-form select:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .search-actions { display: flex; gap: 8px; }
 .search-actions .button { min-height: 40px; padding: 9px 16px; }
+.js .near-me-button { display: inline-flex; align-items: center; gap: 6px; }
+.near-me-button svg { width: 16px; height: 16px; }
+.near-me-button[aria-busy="true"] { opacity: .7; cursor: progress; }
+.near-me-status { margin-top: 12px; color: #8a5300; font-size: 13px; }
+.near-me-active { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 14px; color: var(--ink); font-size: 13px; }
+.near-me-active svg { width: 16px; height: 16px; color: var(--brand); }
+.near-me-active a { font-weight: 600; }
+.preview-heading > p.preview-distance { margin-top: 6px; color: var(--brand); font-size: 13px; font-weight: 650; }
+.legend-you { width: 12px; height: 12px; border-radius: 50%; background: #1a73e8; border: 2px solid #fff; box-shadow: 0 0 0 2px #1a73e855; }
+.you-are-here { width: 18px; height: 18px; border-radius: 50%; background: #1a73e8; border: 3px solid #fff; box-shadow: 0 0 0 6px #1a73e833, 0 1px 4px #16345b66; }
 .button-secondary { background: var(--white); color: var(--brand); border-color: #c8d7ea; }
 .button-secondary:hover { text-decoration: none; border-color: var(--brand); }
 .filter-chips { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 14px 0 0; }

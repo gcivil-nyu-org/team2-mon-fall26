@@ -1,4 +1,5 @@
 from collections import Counter
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.db.models import Avg, Count, Q
@@ -18,7 +19,7 @@ from reviews.services import rating_summary, visible_reviews
 
 from .filters import active_filter_chips, apply_filters, filter_options, read_params
 from .models import Hotspot, HotspotFollow
-from .sorting import SORTS, sort_hotspots
+from .sorting import SORTS, distance_miles, parse_near, sort_hotspots
 
 
 def _map_settings():
@@ -60,7 +61,7 @@ def _serialize_hotspot(hotspot, summary, reliability):
     }
 
 
-def _map_data(hotspots, sort=None):
+def _map_data(hotspots, sort=None, near=None):
     availability = availability_by_hotspot([hotspot.pk for hotspot in hotspots])
     aggregates = {
         row["hotspot_id"]: row
@@ -85,6 +86,13 @@ def _map_data(hotspots, sort=None):
             "has_demo_reviews": bool(row and row["demo_count"]),
         }
         records.append(_serialize_hotspot(hotspot, summary, availability[hotspot.pk]))
+    origin = parse_near(near)
+    for record in records:
+        record["distance_miles"] = (
+            round(distance_miles(origin, record["latitude"], record["longitude"]), 2)
+            if origin
+            else None
+        )
     label_counts = Counter(record["choice_label"] for record in records)
     for record in records:
         label = record["choice_label"]
@@ -116,14 +124,26 @@ def _attach_replies(reviews, user):
         written[reply.review_id].reply_list.append(reply)
 
 
+def _without_location(params, path):
+    """The same results without "Near me": no location and no distance sort."""
+    remaining = {
+        key: value
+        for key, value in read_params(params).items()
+        if key != "near" and not (key == "sort" and value == "nearest")
+    }
+    return f"{path}?{urlencode(remaining)}" if remaining else path
+
+
 @require_GET
 def map_view(request):
     active_hotspots = Hotspot.objects.filter(is_active=True)
     filters = read_params(request.GET)
     hotspots = sort_hotspots(
-        apply_filters(active_hotspots, filters), filters.get("sort")
+        apply_filters(active_hotspots, filters),
+        filters.get("sort"),
+        filters.get("near"),
     )
-    map_data = _map_data(hotspots, filters.get("sort"))
+    map_data = _map_data(hotspots, filters.get("sort"), filters.get("near"))
     total_count = active_hotspots.count()
     context = {
         **_map_settings(),
@@ -133,7 +153,10 @@ def map_view(request):
         "provider_count": len({item["provider"] for item in map_data}),
         "borough_count": len({item["borough"] for item in map_data}),
         "filters": filters,
-        "is_filtered": any(name != "sort" for name in filters),
+        "is_filtered": any(name not in ("sort", "near") for name in filters),
+        "near_without_location": filters.get("sort") == "nearest"
+        and "near" not in filters,
+        "clear_location_url": _without_location(request.GET, request.path),
         "sort_options": SORTS.items(),
         "filter_options": filter_options(active_hotspots) if total_count else {},
         "filter_chips": active_filter_chips(filters, request.path),
@@ -199,8 +222,9 @@ def hotspot_data(request):
     hotspots = sort_hotspots(
         apply_filters(Hotspot.objects.filter(is_active=True), filters),
         filters.get("sort"),
+        filters.get("near"),
     )
-    records = _map_data(hotspots, filters.get("sort"))
+    records = _map_data(hotspots, filters.get("sort"), filters.get("near"))
     return JsonResponse(
         {"count": len(records), "filters": filters, "hotspots": records}
     )

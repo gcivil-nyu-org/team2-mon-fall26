@@ -35,6 +35,12 @@
       setText("preview-type", hotspot.location_type);
       setText("preview-access", hotspot.access_type);
       setText("preview-ssid", hotspot.ssid);
+      const distance = document.getElementById("preview-distance");
+      if (distance) {
+        const hasDistance = typeof hotspot.distance_miles === "number";
+        distance.hidden = !hasDistance;
+        distance.textContent = hasDistance ? `${hotspot.distance_miles.toFixed(1)} mi from you` : "";
+      }
       document.getElementById("preview-profile-link").href = hotspot.profile_url;
       if (chooser) chooser.value = String(hotspot.id);
 
@@ -173,7 +179,25 @@
   }
 
   const uniqueMarkers = [...new Set(markers.values())];
-  if (uniqueMarkers.length === 1) {
+  // "Near me": show the visitor's location and frame it with the closest hotspots.
+  const near = (mapElement.dataset.near || "").split(",").map(Number);
+  const hasNear = !profileOnly && near.length === 2 && near.every(Number.isFinite);
+  if (hasNear) {
+    const youIcon = L.divIcon({ className: "", html: '<span class="you-are-here"></span>', iconSize: [18, 18], iconAnchor: [9, 9] });
+    L.marker(near, { icon: youIcon, title: "Your location", alt: "Your location", keyboard: false, zIndexOffset: 1000 })
+      .bindPopup("Your location")
+      .addTo(map);
+  }
+  const nearestPoints = hasNear
+    ? hotspots
+        .filter((hotspot) => typeof hotspot.distance_miles === "number")
+        .sort((a, b) => a.distance_miles - b.distance_miles)
+        .slice(0, 5)
+        .map((hotspot) => [Number(hotspot.latitude), Number(hotspot.longitude)])
+    : [];
+  if (hasNear && nearestPoints.length) {
+    map.fitBounds(L.latLngBounds([near, ...nearestPoints]), { padding: [45, 45], maxZoom: 16 });
+  } else if (uniqueMarkers.length === 1) {
     map.setView(uniqueMarkers[0].getLatLng(), 15);
   } else if (uniqueMarkers.length > 1) {
     map.fitBounds(L.featureGroup(uniqueMarkers).getBounds(), { padding: [35, 35], maxZoom: 14 });

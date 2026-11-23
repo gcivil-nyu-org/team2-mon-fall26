@@ -10,7 +10,7 @@ from urllib.parse import urlencode
 from django.db.models import Q
 
 from .models import Hotspot
-from .sorting import SORTS
+from .sorting import SORTS, parse_near
 
 # Fields matched by the free-text location search (US02): landmark/site name,
 # provider (also used in display names), address, neighborhood, borough and ZIP.
@@ -48,6 +48,11 @@ def read_params(params):
     sort = params.get("sort", "").strip()
     if sort in SORTS:
         values["sort"] = sort  # US24; not a filter, so it never narrows results
+    # "Near me": the visitor's location, rounded to about 10 m. Like sort, it only
+    # orders results and adds distances; it never narrows them.
+    near = parse_near(params.get("near", ""))
+    if near:
+        values["near"] = f"{near[0]:.4f},{near[1]:.4f}"
     return values
 
 
