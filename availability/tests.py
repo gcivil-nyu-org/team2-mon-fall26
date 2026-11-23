@@ -252,6 +252,17 @@ class SortTests(TestCase):
             ["B Park", "A Library", "D Plaza", "C Kiosk"],
         )
 
+    def test_lowest_rating_first_keeps_unrated_hotspots_last(self):
+        Review.objects.create(hotspot=self.c, author=self.users[0], rating=5)
+        Review.objects.create(hotspot=self.a, author=self.users[1], rating=2)
+        self.assertEqual(
+            self.names(sort="rating_asc"), ["A Library", "C Kiosk", "D Plaza", "B Park"]
+        )
+        self.assertContains(
+            self.client.get(reverse("hotspots:map"), {"sort": "rating_asc"}),
+            '<option value="rating_asc" selected>Lowest rating</option>',
+        )
+
     def test_sorting_works_together_with_filters(self):
         for user in self.users:
             report(self.a, user, UNAVAILABLE)

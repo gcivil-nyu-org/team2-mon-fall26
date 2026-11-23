@@ -11,7 +11,7 @@ from unittest import mock
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from accounts.tests import make_administrator, make_user
+from accounts.tests import make_administrator, make_established_user, make_user
 from hotspots.tests import make_hotspot
 from reviews import views as review_views
 from reviews.models import Review, ReviewVote
@@ -61,7 +61,7 @@ class ConcurrentAuthorEditTests(TestCase):
                 ContentFlag.objects.create(
                     content_type=services.content_type_for(REVIEW),
                     object_id=review.pk,
-                    flagged_by=make_user(name),
+                    flagged_by=make_established_user(name),
                     reason=Reason.OFFENSIVE,
                 )
             self.assertTrue(services.auto_hide_if_widely_flagged(REVIEW, review))

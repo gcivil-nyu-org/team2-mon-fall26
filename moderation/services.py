@@ -1,9 +1,10 @@
 from collections import Counter, defaultdict
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from django.db.models import Count, Max
+from django.db.models import Count, F, Max
 from django.utils import timezone
 
 from notifications import services as notify
@@ -84,10 +85,15 @@ def hold(flaggable, obj, reasons):
 
 
 def auto_hide_if_widely_flagged(flaggable, obj):
-    """Community auto-hide: enough distinct users flagging a visible item hides it."""
+    """All flags enter the queue. Account age at submission determines auto-hide."""
     threshold = getattr(settings, "MODERATION_AUTO_HIDE_FLAGS", 3)
+    minimum_age = timedelta(hours=settings.MODERATION_FLAGGER_MIN_AGE_HOURS)
     user_flags = (
-        open_flags_for(flaggable, obj.pk).filter(flagged_by__isnull=False).count()
+        open_flags_for(flaggable, obj.pk)
+        .filter(
+            flagged_by__date_joined__lte=F("created_at") - minimum_age,
+        )
+        .count()
     )
     if user_flags >= threshold and not flaggable.describe(obj)["is_held"]:
         flaggable.set_held(obj, True)

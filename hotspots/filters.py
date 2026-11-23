@@ -45,6 +45,19 @@ def read_params(params):
         value = params.get(name, "").strip()
         if value:
             values[name] = value
+    if "borough" in values and "neighborhood" in values:
+        # A shared link or a borough change can carry the previous neighborhood.
+        boroughs = (
+            Hotspot.objects.filter(
+                is_active=True, neighborhood_name__iexact=values["neighborhood"]
+            )
+            .order_by()
+            .values_list("borough", flat=True)
+            .distinct()
+        )
+        owners = {borough.casefold() for borough in boroughs}
+        if owners and values["borough"].casefold() not in owners:
+            del values["neighborhood"]
     sort = params.get("sort", "").strip()
     if sort in SORTS:
         values["sort"] = sort  # US24; not a filter, so it never narrows results
@@ -73,9 +86,8 @@ def apply_filters(queryset, values):
     return queryset
 
 
-def filter_options(queryset):
-    """Choices for each dropdown, built from every active hotspot (not only the
-    current results) so a filter can always be changed to another value."""
+def filter_options(queryset, borough=None):
+    """Neighborhoods belong to the selected borough; other choices stay citywide."""
 
     def distinct(field):
         return list(
@@ -85,9 +97,10 @@ def filter_options(queryset):
             .distinct()
         )
 
+    locations = queryset.filter(borough__iexact=borough) if borough else queryset
     neighborhoods = {}
     for borough, neighborhood in (
-        queryset.exclude(neighborhood_name="")
+        locations.exclude(neighborhood_name="")
         .order_by("borough", "neighborhood_name")
         .values_list("borough", "neighborhood_name")
         .distinct()

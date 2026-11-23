@@ -31,7 +31,7 @@
         <h1 id="discussion-title">{{ post.title }}{% if post.is_held %} <span class="held-badge">Awaiting moderator approval</span>{% endif %}</h1>
         {% if post.is_held %}<p class="held-note">Only you can see this discussion until a moderator approves it. Nobody can comment on it yet.</p>{% endif %}
         <div class="forum-post-body">{{ post.body|linebreaks }}</div>
-        {% if post.hotspot %}<p class="forum-related">Related hotspot: <a href="{{ post.hotspot.get_absolute_url }}">{{ post.hotspot.display_name }}</a></p>{% endif %}
+        {% include "forum/_related_hotspot.html" %}
         {% if user.is_authenticated and post.author_id != user.pk and not post.is_held %}
           <p class="forum-flag">{% if flagged_post %}<span class="flag-state">Flagged for review</span>{% else %}<a class="flag-link" href="{% url 'moderation:flag' 'post' post.pk %}" aria-label="Flag discussion post by {{ post.author.username }} as inappropriate">Flag</a>{% endif %}</p>
         {% endif %}
@@ -42,7 +42,7 @@
       <h2 id="comments-title">Comments <span>{{ comment_count }}</span></h2>
       {% if post.is_held %}
       {% elif user.is_authenticated %}
-        <form id="comment-form" class="forum-comment-form" method="post" action="{% url 'forum:comment' post.pk %}">
+        <form id="comment-form" class="forum-comment-form" method="post" action="{% url 'forum:comment' post.pk %}#comment-form">
           {% csrf_token %}
           {% if reply_to %}
             <div class="forum-replying">Replying to <strong>{{ reply_to.author.username }}</strong> · <a href="{{ post.get_absolute_url }}#comment-form">Cancel</a></div>

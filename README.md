@@ -143,10 +143,10 @@ One shared reporting and moderation workflow for community content. Hotspot revi
 
 | Tier | What triggers it | Result |
 | --- | --- | --- |
-| Block | Links (except `.gov`/`.edu`-style official sites), email addresses, phone numbers, and terms in `MODERATION_BLOCKED_TERMS` | Form error; nothing saved. The author can fix and resubmit. |
+| Block | External links, email addresses, phone numbers, and terms in `MODERATION_BLOCKED_TERMS`. Official `.gov`, `.edu` and `nypl.org` sources are allowed. | The form explains the error and keeps the author's draft. |
 | Hold | Promotional wording, profanity, duplicate text, ALL-CAPS, heavy repetition, more than 3 reviews in 10 minutes, or an author with 2+ removed reviews | Saved but hidden from the public and the average until an administrator approves or removes it. The author sees "Awaiting moderator approval". Edits are re-checked, and a held review stays held after editing. |
 | Trust | 3+ published reviews at least 24 hours old, none ever removed | Skips the caps, repetition and posting-speed rules. Spam, profanity and duplicate checks still apply. |
-| Community auto-hide | 3 different users flag a visible review | Hidden until an administrator decides. |
+| Community auto-hide | 3 distinct reporters whose accounts were at least 24 hours old when they flagged a public item | Hidden until an administrator decides. Flags from newer accounts also reach the queue. |
 
 The full policy and acceptance criteria are in [docs/E05-MODERATION-POLICY.md](docs/E05-MODERATION-POLICY.md) (proposed, pending team agreement). Star-only ratings follow the same posting-speed and account-history rules as written reviews. Thresholds live in `config/settings.py`. The optional `MODERATION_BLOCKED_TERMS` environment setting accepts a comma-separated list.
 
@@ -209,7 +209,7 @@ Public routes:
 | `/inbox/mark-all-read/` | POST-only: mark all notifications read |
 | `/inbox/preferences/` | Choose which followed-hotspot notifications to receive |
 
-`/` and `/api/hotspots/` accept the same optional query parameters: `q` (location search), `borough`, `neighborhood`, `provider` and `type` (official access type). For example, `/api/hotspots/?q=library&borough=Brooklyn`.
+The map and `/api/hotspots/` accept `q`, `borough`, `neighborhood`, `provider`, `type` and `sort`. Choosing a borough narrows the neighborhood list and clears an earlier neighborhood from another borough. Use `sort=rating` for highest ratings first, `sort=rating_asc` for lowest first, or `sort=reliability`. Unrated hotspots appear after rated ones in either rating order.
 
 Jiahao can extend the active-hotspot queryset and map interface for search/filter stories. The data team can continue supplying compatible CSVs and refining the ERD without changing hotspot IDs. New review-writing workflows should reuse the `Review` model and shared summary service.
 

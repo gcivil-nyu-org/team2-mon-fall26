@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
@@ -48,24 +48,29 @@ def flag_content(request, kind, pk):
         return redirect(_back_to(info))
     form = FlagForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
-        try:
-            with transaction.atomic():
-                ContentFlag.objects.create(
-                    content_type=services.content_type_for(flaggable),
-                    object_id=obj.pk,
-                    flagged_by=request.user,
-                    reason=form.cleaned_data["reason"],
-                    note=form.cleaned_data["note"],
-                )
-        except IntegrityError:
-            messages.info(
-                request, "You already flagged this. An administrator will review it."
+        with transaction.atomic():
+            # Serialize the visibility check and decision with other flags and moderation.
+            obj = get_object_or_404(
+                flaggable.public_queryset().select_for_update(), pk=pk
             )
-        else:
-            # Community auto-hide: enough separate flags hide the item until an admin decides.
-            services.auto_hide_if_widely_flagged(flaggable, obj)
+            _, created = ContentFlag.objects.get_or_create(
+                content_type=services.content_type_for(flaggable),
+                object_id=obj.pk,
+                flagged_by=request.user,
+                defaults={
+                    "reason": form.cleaned_data["reason"],
+                    "note": form.cleaned_data["note"],
+                },
+            )
+            if created:
+                services.auto_hide_if_widely_flagged(flaggable, obj)
+        if created:
             messages.success(
                 request, "Thanks for flagging this. An administrator will review it."
+            )
+        else:
+            messages.info(
+                request, "You already flagged this. An administrator will review it."
             )
         return redirect(_back_to(info))
     return render(

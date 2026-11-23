@@ -1,0 +1,5 @@
+{% if post.hotspot_id %}
+  <p class="forum-related">Related hotspot:
+    {% if post.hotspot.is_active %}<a href="{{ post.hotspot.get_absolute_url }}">{{ post.hotspot.display_name }}</a>{% else %}{{ post.hotspot.display_name }} (no longer listed){% endif %}
+  </p>
+{% endif %}

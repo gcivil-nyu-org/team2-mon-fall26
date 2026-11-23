@@ -31,18 +31,13 @@ def _map_settings():
 
 
 def _serialize_hotspot(hotspot, summary, reliability):
-    name = hotspot.display_name
-    location = hotspot.location_description
-    choice_name = name
-    if location and hotspot.name == name and name.casefold() != location.casefold():
-        choice_name = f"{name} — {location}"
     return {
         "id": hotspot.pk,
-        "name": name,
-        "choice_label": f"{choice_name} — {hotspot.borough}",
+        "name": hotspot.display_name,
+        "choice_label": hotspot.choice_label,
         "latitude": float(hotspot.latitude),
         "longitude": float(hotspot.longitude),
-        "location": location,
+        "location": hotspot.location_description,
         "borough": hotspot.borough,
         "neighborhood": hotspot.neighborhood_name,
         "provider": hotspot.provider,
@@ -160,7 +155,13 @@ def map_view(request):
         and "near" not in filters,
         "clear_location_url": _without_location(request.GET, request.path),
         "sort_options": SORTS.items(),
-        "filter_options": filter_options(active_hotspots) if total_count else {},
+        "filter_options": (
+            filter_options(active_hotspots, filters.get("borough"))
+            if total_count
+            else {}
+        ),
+        "neighborhood_cleared": bool(request.GET.get("neighborhood", "").strip())
+        and "neighborhood" not in filters,
         "filter_chips": active_filter_chips(filters, request.path),
     }
     return render(request, "hotspots/map.html", context)

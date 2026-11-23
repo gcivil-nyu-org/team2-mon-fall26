@@ -28,14 +28,14 @@
         <label for="filter-borough">Borough</label>
         <select id="filter-borough" name="borough" data-autosubmit>
           <option value="">All boroughs</option>
-          {% for value in filter_options.borough %}<option value="{{ value }}"{% if value == filters.borough %} selected{% endif %}>{{ value }}</option>{% endfor %}
+          {% for value in filter_options.borough %}<option value="{{ value }}"{% if value|lower == filters.borough|lower %} selected{% endif %}>{{ value }}</option>{% endfor %}
         </select>
       </div>
       <div class="filter-field">
         <label for="filter-neighborhood">Neighborhood</label>
         <select id="filter-neighborhood" name="neighborhood" data-autosubmit>
           <option value="">All neighborhoods</option>
-          {% for group in filter_options.neighborhood %}<optgroup label="{{ group.borough }}">{% for value in group.names %}<option value="{{ value }}"{% if value == filters.neighborhood %} selected{% endif %}>{{ value }}</option>{% endfor %}</optgroup>{% endfor %}
+          {% for group in filter_options.neighborhood %}<optgroup label="{{ group.borough }}">{% for value in group.names %}<option value="{{ value }}"{% if value|lower == filters.neighborhood|lower %} selected{% endif %}>{{ value }}</option>{% endfor %}</optgroup>{% endfor %}
         </select>
       </div>
       <div class="filter-field">
@@ -66,6 +66,7 @@
         {% if is_filtered %}<a class="button button-secondary" href="{% url 'hotspots:map' %}">Clear all</a>{% endif %}
       </div>
     </form>
+    {% if neighborhood_cleared %}<p class="field-help" role="status">The previous neighborhood is outside the selected borough, so its filter was cleared.</p>{% endif %}
     <p id="near-me-status" class="near-me-status" role="status"{% if not near_without_location %} hidden{% endif %}>{% if near_without_location %}Choose <strong>Near me</strong> and allow location access to sort hotspots by distance.{% endif %}</p>
     {% if filters.near %}
     <p class="near-me-active"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3" fill="currentColor"/><circle cx="10" cy="10" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 1.5v2.5M10 16v2.5M1.5 10H4M16 10h2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Showing distances from your location{% if filters.sort == "nearest" %}, nearest first{% endif %}.</span> <a href="{{ clear_location_url }}">Stop using my location</a></p>
