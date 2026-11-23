@@ -616,9 +616,12 @@ dd { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; overflow-wr
 
 /* Settings page and light/dark switch */
 .theme-toggle-form { margin: 0; }
-.theme-toggle { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--white); color: var(--brand); cursor: pointer; }
-.theme-toggle:hover { border-color: var(--brand); }
-.theme-toggle svg { width: 18px; height: 18px; }
+.theme-toggle, .icon-button { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--white); color: var(--brand); cursor: pointer; }
+.theme-toggle:hover, .icon-button:hover { border-color: var(--brand); text-decoration: none; }
+.theme-toggle svg, .icon-button svg { width: 18px; height: 18px; }
+.icon-button.is-current { border-color: var(--brand); background: var(--canvas); }
+/* The header gained two buttons: on laptop widths drop "Signed in as" (avatar and name stay). */
+@media (max-width: 1400px) { .account-prefix { display: none; } .account-nav { gap: 12px; } }
 .theme-icon-sun, :root[data-theme="dark"] .theme-icon-moon { display: none; }
 :root[data-theme="dark"] .theme-icon-sun { display: block; }
 .settings-page { max-width: 760px; margin: 0 auto; }
