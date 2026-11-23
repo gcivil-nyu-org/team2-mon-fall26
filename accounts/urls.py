@@ -11,4 +11,5 @@ urlpatterns = [
     path("manage/", views.admin_home, name="admin_home"),
     path("settings/", views.settings_view, name="settings"),
     path("settings/theme/", views.set_theme, name="set_theme"),
+    path("users/<str:username>/", views.profile, name="profile"),
 ]

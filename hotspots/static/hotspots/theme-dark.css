@@ -91,3 +91,9 @@
 :root[data-theme="dark"] .inbox-category-followed { color: #a4c3ea; background: #18293f; }
 :root[data-theme="dark"] .inbox-category-moderation { color: #e6d4a8; background: #3f3218; }
 :root[data-theme="dark"] .inbox-category-alert { color: #e4a9a9; background: #3b1c1c; }
+:root[data-theme="dark"] .user-profile-avatar { background: #18253f; color: #b2c4dc; }
+:root[data-theme="dark"] .user-profile-own-note { background: #18273f; color: #aac3e4; }
+:root[data-theme="dark"] .profile-badge { border: 1px solid #3e506a; background: #18253f; }
+:root[data-theme="dark"] .profile-badge strong { color: #a4c3ea; }
+:root[data-theme="dark"] .profile-badge-moderator { border-color: #486052; background: #24332a; }
+:root[data-theme="dark"] .profile-badge-moderator strong { color: #b2dccd; }

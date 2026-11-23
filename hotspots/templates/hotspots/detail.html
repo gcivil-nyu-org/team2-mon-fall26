@@ -59,7 +59,7 @@
           <div class="review-header">
             <span class="review-avatar" aria-hidden="true">{% if review.body %}{{ review.author.first_name|default:review.author.username|slice:":1"|upper }}{% else %}★{% endif %}</span>
             <div>
-              <h4>{% if review.body %}{{ review.author.get_full_name|default:review.author.username }}{% elif review.author_id == user.pk %}Your rating{% else %}Rating only{% endif %}</h4>
+              <h4>{% if review.body %}{% if review.is_demo %}{{ review.author.get_full_name|default:review.author.username }}{% else %}<a class="author-link" href="{% url 'accounts:profile' review.author.username %}">{{ review.author.get_full_name|default:review.author.username }}</a>{% endif %}{% elif review.author_id == user.pk %}Your rating{% else %}Rating only{% endif %}</h4>
               <div class="review-meta"><span class="review-rating"><span aria-hidden="true">★</span> {{ review.rating }} / 5</span><time datetime="{{ review.created_at|date:'c' }}">{{ review.created_at|date:"M j, Y" }}</time></div>
             </div>
             {% if review.is_demo %}<span class="review-demo-badge">Demo review</span>{% endif %}
@@ -88,7 +88,7 @@
             <ul class="reply-list">
               {% for reply in review.reply_list %}
               <li class="reply{% if reply.is_held %} is-held{% endif %}" id="reply-{{ reply.pk }}">
-                <div class="reply-meta"><strong>{{ reply.author.username }}</strong>{% if reply.author_id == review.author_id %}<span class="reply-author-badge">Review author</span>{% endif %}<time datetime="{{ reply.created_at|date:'c' }}">{{ reply.created_at|date:"M j, Y" }}</time>{% if reply.is_held %}<span class="held-badge">Awaiting moderator approval</span>{% endif %}</div>
+                <div class="reply-meta"><a class="author-link" href="{% url 'accounts:profile' reply.author.username %}"><strong>{{ reply.author.username }}</strong></a>{% if reply.author_id == review.author_id %}<span class="reply-author-badge">Review author</span>{% endif %}<time datetime="{{ reply.created_at|date:'c' }}">{{ reply.created_at|date:"M j, Y" }}</time>{% if reply.is_held %}<span class="held-badge">Awaiting moderator approval</span>{% endif %}</div>
                 <p>{{ reply.body|linebreaksbr }}</p>
                 {% if reply.is_held %}<p class="held-note">Only you can see this reply until a moderator approves it.</p>{% endif %}
                 <div class="reply-actions">

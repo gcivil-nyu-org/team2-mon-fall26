@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.views import LoginView, LogoutView
 from django.db.models import Count, Q
-from django.shortcuts import redirect, render, resolve_url
+from django.shortcuts import get_object_or_404, redirect, render, resolve_url
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.generic import FormView
@@ -18,6 +18,7 @@ from notifications.models import NotificationPreference
 
 from .forms import LoginForm, SignUpForm, ThemeForm
 from .models import UserSettings
+from .profiles import profile_context
 from .permissions import administrator_required, contributor_required
 from .roles import ADMINISTRATOR, ROLE_LABELS, role_for
 
@@ -173,3 +174,9 @@ def set_theme(request):
         settings_row.theme = theme
         settings_row.save()
     return redirect(safe_next_url(request) or "accounts:settings")
+
+
+def profile(request, username):
+    """A contributor's public profile: totals, badges and recent public activity."""
+    user = get_object_or_404(User, username=username, is_active=True)
+    return render(request, "accounts/profile.html", profile_context(user, request.user))
