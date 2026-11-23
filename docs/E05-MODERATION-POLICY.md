@@ -14,17 +14,17 @@ The same reasons are used for user flags (US21) and administrator removals (US20
 
 Hotspot reviews (E03), discussion posts, and discussion comments and replies (E08) all follow this policy through one shared workflow (`moderation/registry.py`). Where this page says "review", the same applies to forum content unless noted below.
 
-### Automated checks on written reviews
+### Automated checks on ratings and written reviews
 
-The checks run on every new or edited written review, before any user flags. They are tiered so administrators only see the grey area.
+The checks run when a contributor submits or edits a rating or written review.
 
 | Tier | Triggers | Outcome |
 | --- | --- | --- |
 | Block | A link, except official domains such as `.gov`/`.edu`; an email address; a phone number; a term listed in `MODERATION_BLOCKED_TERMS` (empty by default; set as a comma-separated environment value) | The form shows an error and nothing is saved. |
-| Hold | Promotional wording; profanity; text identical to another review; mostly capital letters; heavily repeated characters or words; more than `MODERATION_BURST_LIMIT` (3) earlier reviews within `MODERATION_BURST_MINUTES` (10) minutes; an author with `MODERATION_REPEAT_OFFENDER_REMOVALS` (2) or more removed reviews | Saved but hidden from the public, the map API and average ratings until an administrator approves or removes it. |
+| Hold | Promotional wording; profanity; text identical to another review; mostly capital letters; heavily repeated characters or words; at least `MODERATION_BURST_LIMIT` (3) earlier reviews within `MODERATION_BURST_MINUTES` (10) minutes; an author with `MODERATION_REPEAT_OFFENDER_REMOVALS` (2) or more removed reviews | Saved but hidden from the public, the map API and average ratings until an administrator approves or removes it. |
 | Trust | `MODERATION_TRUSTED_MIN_REVIEWS` (3) published reviews at least `MODERATION_TRUSTED_MIN_AGE_HOURS` (24) hours old, with none ever removed | The capitals, repetition and posting-speed rules are skipped. Spam, profanity and duplicate rules still apply. |
 
-Rating-only entries have no text. They are held only for repeat offenders.
+Star-only ratings count toward the same posting limit as written reviews. The account-history and trust rules also apply. Contributors can flag another person's published rating from its hotspot profile. Held ratings enter the public average after approval.
 
 ### Discussion posts and comments
 
@@ -50,7 +50,7 @@ When `MODERATION_AUTO_HIDE_FLAGS` (3) different users have open flags on a publi
 **Automated checks**
 - A review containing a link, email address, phone number or configured blocked term is rejected with an explanation and nothing is saved.
 - A review matching a hold rule is saved, hidden from the public page, the map API and the average, and listed under **Held for review** with the rule that triggered it.
-- The author sees their held review marked "Awaiting moderator approval"; other users and visitors do not see it, and it cannot be flagged or upvoted.
+- The author sees their held review marked "Awaiting moderator approval"; other users and visitors do not see it, and it cannot be flagged, voted on or replied to.
 - An edit is re-checked. An edit never publishes a held review, and it never clears a hold or restores a removed review, even when the hold or removal happens while the author is editing.
 - A trusted author is not held for capitals, repetition or posting speed.
 
@@ -64,4 +64,8 @@ When `MODERATION_AUTO_HIDE_FLAGS` (3) different users have open flags on a publi
 - Removing an item that no longer exists changes nothing and logs nothing.
 - Visitors are sent to log in and contributors get 403 for every administrator page and action.
 
-Test coverage: `moderation/tests.py` (US19–US21), `moderation/test_automod.py` (rules, holds, auto-hide, bulk), `moderation/test_review_fixes.py` (concurrent edits, stale approvals, bulk confirmation), `moderation/test_forum.py` (the same rules for discussion posts and comments).
+**Replies to reviews**
+- A reply to a written review uses the discussion-comment rules: blocked text is rejected and nothing is saved; promotional wording, profanity, duplicates, capitals, repetition, posting speed and repeat offenders hold it. Held replies are shown only to their author.
+- Contributors can flag other people's public replies; three distinct flags hide a reply. Administrators approve, remove or dismiss replies from the same queues, as **Review reply**. Removing a review also removes its replies, and the confirmation page says how many.
+
+Test coverage: `reviews/test_replies.py` (replies, votes and their moderation), `moderation/tests.py` (US19–US21), `moderation/test_automod.py` (rules, holds, auto-hide, bulk), `moderation/test_review_fixes.py` (concurrent edits, stale approvals, bulk confirmation), `moderation/test_forum.py` (the same rules for discussion posts and comments).

@@ -11,4 +11,6 @@ class PreferenceForm(forms.ModelForm):
             "followed_availability",
             "followed_availability_alerts",
             "followed_discussions",
+            "review_replies",
+            "flag_outcomes",
         ]

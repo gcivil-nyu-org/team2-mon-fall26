@@ -59,11 +59,17 @@
           {% for value, label in sort_options %}<option value="{{ value }}"{% if value == filters.sort %} selected{% endif %}>{{ label }}</option>{% endfor %}
         </select>
       </div>
+      <input type="hidden" id="filter-near" name="near" value="{{ filters.near|default:'' }}">
       <div class="search-actions">
         <button type="submit" class="button button-primary">Search</button>
+        <button type="button" class="button button-secondary near-me-button js-only" id="near-me" data-near-me><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3" fill="currentColor"/><circle cx="10" cy="10" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 1.5v2.5M10 16v2.5M1.5 10H4M16 10h2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Near me</button>
         {% if is_filtered %}<a class="button button-secondary" href="{% url 'hotspots:map' %}">Clear all</a>{% endif %}
       </div>
     </form>
+    <p id="near-me-status" class="near-me-status" role="status"{% if not near_without_location %} hidden{% endif %}>{% if near_without_location %}Choose <strong>Near me</strong> and allow location access to sort hotspots by distance.{% endif %}</p>
+    {% if filters.near %}
+    <p class="near-me-active"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3" fill="currentColor"/><circle cx="10" cy="10" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 1.5v2.5M10 16v2.5M1.5 10H4M16 10h2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Showing distances from your location{% if filters.sort == "nearest" %}, nearest first{% endif %}.</span> <a href="{{ clear_location_url }}">Stop using my location</a></p>
+    {% endif %}
     {% if filter_chips %}
     <ul class="filter-chips" aria-label="Active search and filters">
       {% for chip in filter_chips %}<li><span>{{ chip.label }}: <strong>{{ chip.value }}</strong></span><a href="{{ chip.remove_url }}" aria-label="Remove {{ chip.label|lower }} {{ chip.value }}">×</a></li>{% endfor %}
@@ -79,22 +85,22 @@
       <div class="hotspot-chooser js-only">
         <label for="hotspot-select">Choose a hotspot</label>
         <select id="hotspot-select">
-          {% for hotspot in hotspots %}<option value="{{ hotspot.pk }}">{{ hotspot.display_name }} — {{ hotspot.borough }}</option>{% endfor %}
+          {% for hotspot in map_data %}<option value="{{ hotspot.id }}">{% if hotspot.distance_miles is not None %}{{ hotspot.distance_miles|floatformat:1 }} mi · {% endif %}{{ hotspot.choice_label }}</option>{% endfor %}
         </select>
       </div>
     </div>
     <div class="explorer-body">
       <div class="map-column">
-        <div id="hotspot-map" class="main-map" role="region" aria-label="Map of public Wi-Fi hotspot locations" data-tile-url="{{ tile_url }}" data-tile-attribution="{{ tile_attribution }}"></div>
+        <div id="hotspot-map" class="main-map" role="region" aria-label="Map of public Wi-Fi hotspot locations" data-tile-url="{{ tile_url }}" data-tile-attribution="{{ tile_attribution }}"{% if filters.near %} data-near="{{ filters.near }}"{% endif %}></div>
         <p id="map-notice" class="map-notice" role="status" hidden></p>
         <noscript><p class="map-notice">The interactive map needs JavaScript. Browse the hotspot profiles below to view location information.</p></noscript>
-        <div class="map-caption"><span class="map-key"><span class="legend-pin" aria-hidden="true"></span>Official hotspot location</span><span>Choose a marker to see details</span></div>
+        <div class="map-caption"><span class="map-key"><span class="legend-pin" aria-hidden="true"></span>Official hotspot location</span>{% if filters.near %}<span class="map-key"><span class="legend-you" aria-hidden="true"></span>Your location</span>{% endif %}<span>Choose a marker to see details</span></div>
       </div>
 
       <aside class="hotspot-preview" aria-label="Selected hotspot">
         {% with first=map_data.0 %}
         <div class="preview-topline"><span class="source-badge official-badge"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m2 6 6-4 6 4M3 7h10M4 8v5m4-5v5m4-5v5M2 14h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Official data</span><span class="preview-caption">Selected hotspot</span></div>
-        <div class="preview-heading" aria-live="polite" aria-atomic="true"><span id="preview-borough" class="location-kicker">{{ first.borough }}</span><h2 id="preview-name">{{ first.name }}</h2><p id="preview-location">{{ first.location|default:"Location details not provided" }}</p></div>
+        <div class="preview-heading" aria-live="polite" aria-atomic="true"><span id="preview-borough" class="location-kicker">{{ first.borough }}</span><h2 id="preview-name">{{ first.name }}</h2><p id="preview-location">{{ first.location|default:"Location details not provided" }}</p><p id="preview-distance" class="preview-distance"{% if first.distance_miles is None %} hidden{% endif %}>{% if first.distance_miles is not None %}{{ first.distance_miles|floatformat:1 }} mi from you{% endif %}</p></div>
         <dl class="preview-facts">
           <div><dt>Provider</dt><dd id="preview-provider">{{ first.provider|default:"Not provided" }}</dd></div>
           <div><dt>Hotspot type</dt><dd id="preview-type">{{ first.location_type|default:"Not provided" }}</dd></div>
@@ -111,7 +117,7 @@
   <div class="dataset-note"><span class="source-badge official-badge">NYC Open Data</span><p>{% if demo_mode %}This demo shows a {{ total_count }}-record sample of official hotspot locations. {% endif %}Location information comes from the NYC Open Data hotspot dataset. Open a profile to see its source dates.</p></div>
   <details class="hotspot-directory">
     <summary>{% if is_filtered %}Browse {{ hotspot_count }} matching hotspot profile{{ hotspot_count|pluralize }}{% else %}Browse all {{ hotspot_count }} hotspot profiles{% endif %}</summary>
-    <ul>{% for hotspot in hotspots %}<li><a href="{{ hotspot.get_absolute_url }}"><span>{{ hotspot.display_name }}</span><span>{{ hotspot.borough }} · {{ hotspot.provider|default:"Provider not provided" }} · Record {{ hotspot.pk }}</span></a></li>{% endfor %}</ul>
+    <ul>{% for hotspot in map_data %}<li><a href="{{ hotspot.profile_url }}"><span>{{ hotspot.choice_label }}</span><span>{% if hotspot.distance_miles is not None %}{{ hotspot.distance_miles|floatformat:1 }} mi · {% endif %}{{ hotspot.provider|default:"Provider not provided" }} · Record {{ hotspot.id }}</span></a></li>{% endfor %}</ul>
   </details>
   {{ map_data|json_script:"map-data" }}
   {% elif is_filtered %}

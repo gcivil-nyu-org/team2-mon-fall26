@@ -5,8 +5,8 @@
     <h1 id="flag-title">Flag this {{ flaggable.label|lower }}</h1>
     <p class="auth-intro">Flag content that breaks the community guidelines or is misleading. An administrator will review it. The author is not told who flagged it.</p>
     <blockquote class="moderation-excerpt">
-      <p class="moderation-excerpt-meta">{{ info.author }}{% if info.rating %} · {{ info.rating }} / 5{% endif %} · {{ info.reference }}</p>
-      <p>{{ info.text|truncatechars:400|linebreaksbr }}</p>
+      <p class="moderation-excerpt-meta">{% if info.rating and not info.text %}Rating only{% else %}{{ info.author }}{% endif %}{% if info.rating %} · {{ info.rating }} / 5{% endif %} · {{ info.reference }}</p>
+      {% if info.text %}<p>{{ info.text|truncatechars:400|linebreaksbr }}</p>{% endif %}
     </blockquote>
     <form method="post" class="auth-form" novalidate>
       {% csrf_token %}

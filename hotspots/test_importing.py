@@ -58,6 +58,19 @@ class SharedHotspotImportTests(TestCase):
         )
         self.assertTrue(ReviewVote.objects.filter(pk=vote.pk, review=review).exists())
 
+    def test_startup_cannot_overwrite_a_record_inserted_after_the_empty_check(self):
+        corrected = dict(self.row, name="Current official name")
+        new_date = date(2026, 11, 22)
+        import_hotspots(self.csv_source([corrected]), new_date)
+        result = import_hotspots(
+            self.csv_source([self.row]), date(2026, 10, 14), create_only=True
+        )
+        self.assertEqual(result, {"total": 1, "created": 0, "updated": 0})
+        record = Hotspot.objects.get()
+        self.assertEqual(
+            (record.name, record.source_acquired_on), (corrected["name"], new_date)
+        )
+
     def test_extra_or_missing_row_values_reject_the_file(self):
         for values in [
             list(self.row.values()) + ["extra"],

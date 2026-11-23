@@ -26,10 +26,14 @@ The demo includes hotspot discovery, account access, hotspot reviews, administra
 | [US02–US05 / #9–#12](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/9) | Search by location, address or landmark, and filter by borough/neighborhood, provider and access type. Filters combine, can be removed one at a time, and show a message when nothing matches. |
 | [US06–US10 / #16–#20](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) (E02) | Sign up, log in and log out. Visitors keep public browsing and are asked to sign in only to contribute, then returned to the hotspot they started from. Administrators get an admin-only area that contributors and visitors cannot open, even by direct URL. |
 | [US16–US17 / #26–#27](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) (E04) | Administrators import official CSV data, browse/search stored records, edit fields and confirm removal from public discovery while retaining reviews and votes. |
-| [US19–US21 / #29–#31](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) (E05) | Contributors flag inappropriate written reviews. Administrators inspect reports, confirm removal and review the moderation log. |
+| [US19–US21 / #29–#31](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/5) (E05) | Contributors flag inappropriate ratings and written reviews. Administrators inspect reports, confirm removal and review the moderation log. |
 | [US22–US24 / #32–#34](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) (E06) | Contributors report Working or Unavailable. Profiles show recent reports and reliability when sufficient reports exist; discovery supports rating/reliability sorting. |
 | [US25–US26 / #35–#36](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) (E07) | Signed-in users follow/unfollow an active hotspot and access their own list through My followed hotspots. If a session expires, login returns to the hotspot profile so the user can retry the action. |
 | [US27 / #37](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/37) (E07) | An in-app Inbox with an unread count in the header. Followers get one summary per hotspot for new ratings/reviews and for availability reports, an alert when a followed hotspot may be down (and when it recovers), and notices about linked discussions and retirement. Authors and flaggers get moderation decisions. Selecting a notification opens the related hotspot, review or discussion. Rules: [docs/E07-NOTIFICATIONS.md](docs/E07-NOTIFICATIONS.md) (proposed, pending team agreement). |
+| Review replies and votes (added for the final presentation) | Contributors vote written reviews helpful (▲) or not helpful (▼), and reply to them on the hotspot profile. Votes never change star averages. Replies use the same E05 checks, flags, holds and removals as discussion comments, and the review's author gets an in-app notice (can be switched off). |
+| Settings and dark mode (added for the final presentation) | Signed-in users open **Settings** from the header to switch each notification category on or off (followed-hotspot updates, replies to their reviews, outcomes of content they flagged) and choose Light, Dark or Match my device. A sun/moon button in the header switches theme from any page. The dark stylesheet is generated from `site.css` by `scripts/build_dark_theme.py`. |
+| Public user profiles (added for the final presentation) | Every contributor has a public page at `/users/<username>/`, linked from their name on reviews, replies, availability reports, discussions and the header. It shows totals (written reviews, helpful votes received, replies, availability reports, discussions, comments), earned badges and recent public activity. Held, removed and demo content never appears, and star-only ratings stay anonymous: only the owner sees their rating count. |
+| Near me (added for the final presentation) | **Near me** on the map asks the browser for your location, then sorts hotspots nearest first, shows each one's distance in miles and marks your position on the map, framed with the five closest hotspots. "Nearest to me" is also a Sort option and works with every filter; `/api/hotspots/?sort=nearest&near=<lat>,<lng>` returns `distance_miles`. The results URL includes coordinates rounded to about 10 m. Sharing that URL shares the location, and the URL can appear in browser history and server access logs. Browsers share location only over HTTPS or on localhost. |
 | [US28–US30 / #38–#40](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) (E08) | Visitors browse public topics and comments; contributors create discussions, post threaded replies and toggle helpful upvotes on posts and comments. Optional hotspot links do not create reviews or affect ratings. |
 
 The profile includes a small rating aggregation service for its dependency on US12 / #22 under E03; that story remains owned by Jiahao. US18 / #28 retains its E04 parent and is integrated into the E01 interface. Rating and review contributions (E03: create, edit, delete, helpful upvotes) are implemented. Implementation, issue closure and production acceptance are tracked separately in the progress record.
@@ -45,7 +49,6 @@ Prerequisites: Docker Desktop running and Python 3 available on the host. MySQL 
 ```sh
 python3 scripts/create_env.py
 docker compose up --build --wait
-docker compose exec web python manage.py import_hotspots
 docker compose exec web python manage.py seed_demo_reviews
 ```
 
@@ -59,6 +62,8 @@ Suggested walkthrough:
 4. Visit [Union Square](http://localhost:8000/hotspots/1343/) for the empty-rating/review state.
 
 All viewing works without signing in. A profile directory remains available without JavaScript. Hotspots sharing coordinates remain distinct records and can be selected from the map popup or the chooser. If external map tiles cannot load, profile access and official data remain available.
+
+Search accepts provider names such as **City Tech** and the full name displayed for a hotspot. Map choices include the room or street location when available. A record number distinguishes choices that still have identical labels.
 
 ```sh
 # Rebuild after editing source files; the default demo does not bind-mount code.
@@ -85,7 +90,7 @@ The importer follows the team's [E01 data and field mapping](https://github.com/
 - Borough comes from `boroname`; neighborhood comes from the 2010 NTA fields. `type` is access type, while `location_t` is the physical location type.
 - Missing names receive a display fallback. Blank/zero source references and the `9999-09-09` activation sentinel become null.
 
-To import another compatible CSV, first copy it into the container:
+Container startup seeds the bundled sample only when the hotspot catalog is empty. A restart preserves staff corrections and the source date. To deliberately refresh official data, use the administrator upload or run the import command. For another compatible CSV, first copy it into the container:
 
 ```sh
 docker compose cp /absolute/path/hotspots.csv web:/tmp/hotspots.csv
@@ -134,7 +139,7 @@ Tests cover stable imports and review relationships, invalid-file rollback, shar
 
 One shared reporting and moderation workflow for community content. Hotspot reviews are supported today; E08 forum posts, comments and replies plug in by adding a `FlaggableType` entry in `moderation/registry.py`.
 
-**Automated checks** (`moderation/automod.py`, built-in rules, no external service) run on every new or edited written review, before any user flags. They are tiered so administrators only see the grey area:
+**Automated checks** (`moderation/automod.py`, built-in rules, no external service) run when a user submits or edits a rating or written review. Administrators can then review held contributions.
 
 | Tier | What triggers it | Result |
 | --- | --- | --- |
@@ -143,9 +148,9 @@ One shared reporting and moderation workflow for community content. Hotspot revi
 | Trust | 3+ published reviews at least 24 hours old, none ever removed | Skips the caps, repetition and posting-speed rules. Spam, profanity and duplicate checks still apply. |
 | Community auto-hide | 3 different users flag a visible review | Hidden until an administrator decides. |
 
-The full policy and the acceptance criteria for these extensions are in [docs/E05-MODERATION-POLICY.md](docs/E05-MODERATION-POLICY.md) (proposed, pending team agreement). Rating-only entries have no text and are only held for repeat offenders. Thresholds are settings in `config/settings.py`; add blocked terms as a comma-separated `MODERATION_BLOCKED_TERMS` environment value (empty by default).
+The full policy and acceptance criteria are in [docs/E05-MODERATION-POLICY.md](docs/E05-MODERATION-POLICY.md) (proposed, pending team agreement). Star-only ratings follow the same posting-speed and account-history rules as written reviews. Thresholds live in `config/settings.py`. The optional `MODERATION_BLOCKED_TERMS` environment setting accepts a comma-separated list.
 
-- **Flag (contributors):** On a hotspot profile, signed-in users see **Flag** on other people's written reviews, choose a reason and optionally add details. Each user can flag an item once; authors cannot flag their own content; visitors are sent to log in.
+- Signed-in contributors can flag another person's published rating or written review from the hotspot profile. They choose a reason and may add details. Each user can flag an item once. Public star-only entries omit the rater's name. Helpful votes apply to written reviews.
 - **Inspect (administrators):** **Admin → Open moderation** or `/manage/moderation/` opens on **Held for review** (why each item was held, Approve/Remove, select-all, bulk approve, and bulk remove with a confirmation step). The other tabs are flagged public content (type, link to the original, flag count, reasons, notes), recent ratings and reviews, and the moderation log. Contributors get 403.
 - **Remove (administrators):** Confirm and choose a moderation reason. The review is deleted from public pages and the hotspot average updates; the log keeps a snapshot of the text, the reason, the note and the administrator. Administrators never edit text. **Dismiss flags** closes flags without changing the content.
 

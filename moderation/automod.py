@@ -12,7 +12,8 @@ administrators only see the grey area, as on most review sites:
 3. Trust: authors with a good track record skip the soft rules.
 
 Reviews use ``hold_reasons``; discussion posts and comments use
-``forum_hold_reasons``, which applies the same rules to forum text.
+``forum_hold_reasons``, which applies the same rules to forum text; replies to
+reviews use ``reply_hold_reasons`` (the forum comment rules).
 
 Thresholds and word lists can be tuned in settings (see ``config/settings.py``).
 """
@@ -102,13 +103,23 @@ def _blocked_terms():
     ]
 
 
-_NOUNS = {"review": "Reviews", "post": "Discussion posts", "comment": "Comments"}
+_NOUNS = {
+    "review": "Reviews",
+    "post": "Discussion posts",
+    "comment": "Comments",
+    "reply": "Replies",
+}
+
+
+def _plural(noun):
+    return "replies" if noun == "reply" else f"{noun}s"
 
 
 def blocking_problems(text, content="review"):
     """Tier 1: messages explaining why this text can't be posted ([] when acceptable).
 
-    ``content`` is ``review``, ``post`` or ``comment`` and only changes the wording.
+    ``content`` is ``review``, ``post``, ``comment`` or ``reply`` and only changes
+    the wording.
     """
     if not text:
         return []
@@ -149,7 +160,7 @@ def _removed_count(user):
     ).count()
 
 
-def is_trusted(user, exclude_pk=None):
+def is_trusted(user, exclude_pk=None, *, reviews=None):
     """Established authors: enough published reviews that have stood for a while, none removed.
 
     Requiring older reviews stops a new account from posting a few clean reviews in
@@ -160,7 +171,9 @@ def is_trusted(user, exclude_pk=None):
     settled_before = timezone.now() - timedelta(
         hours=_setting("MODERATION_TRUSTED_MIN_AGE_HOURS", 24)
     )
-    published = Review.objects.filter(
+    if reviews is None:
+        reviews = Review.objects.all()
+    published = reviews.filter(
         author=user, is_held=False, is_demo=False, created_at__lte=settled_before
     ).exclude(pk=exclude_pk)
     return (
@@ -201,7 +214,7 @@ def _duplicate_reason(text, author, others, noun):
         _normalize(body) == normalized
         for body in others.filter(author=author).values_list("body", flat=True)
     ):
-        return (Reason.SPAM, f"Same text as another of this author's {noun}s")
+        return (Reason.SPAM, f"Same text as another of this author's {_plural(noun)}")
     if others.exclude(author=author).filter(body__iexact=text.strip()).exists():
         return (Reason.SPAM, f"Same text as a {noun} by another account")
     return None
@@ -227,15 +240,16 @@ def hold_reasons(review, is_new):
             (Reason.SPAM, "Author has had several reviews removed by moderators")
         )
     text = review.body
-    if not text:
-        return reasons  # A rating with no text has nothing else to check.
-
-    reasons.extend(_wording_reasons(text))
-    duplicate = _duplicate_reason(
-        text, author, Review.objects.exclude(pk=review.pk).exclude(body=""), "review"
-    )
-    if duplicate:
-        reasons.append(duplicate)
+    if text:
+        reasons.extend(_wording_reasons(text))
+        duplicate = _duplicate_reason(
+            text,
+            author,
+            Review.objects.exclude(pk=review.pk).exclude(body=""),
+            "review",
+        )
+        if duplicate:
+            reasons.append(duplicate)
 
     if not is_trusted(author, exclude_pk=review.pk):
         reasons.extend(_style_reasons(text))
@@ -278,12 +292,16 @@ def is_trusted_in_forum(user):
     )
 
 
-def forum_hold_reasons(item, is_new=True):
-    """Tier 2 for a saved ``ForumPost`` or ``ForumComment`` (title and body are checked)."""
+def forum_hold_reasons(item, is_new=True, noun=None):
+    """Tier 2 for a saved ``ForumPost`` or ``ForumComment`` (title and body are checked).
+
+    Also used for replies to reviews (``ReviewReply``, ``noun="reply"``), which
+    follow the comment rules.
+    """
     from forum.models import ForumPost
 
     is_post = isinstance(item, ForumPost)
-    noun = "post" if is_post else "comment"
+    noun = noun or ("post" if is_post else "comment")
     model = type(item)
     author = item.author
     reasons = []
@@ -306,5 +324,12 @@ def forum_hold_reasons(item, is_new=True):
             ("MODERATION_BURST_LIMIT" if is_post else "MODERATION_COMMENT_BURST_LIMIT"),
             3 if is_post else 10,
         ):
-            reasons.append((Reason.SPAM, f"Posting many {noun}s in a short time"))
+            reasons.append(
+                (Reason.SPAM, f"Posting many {_plural(noun)} in a short time")
+            )
     return reasons
+
+
+def reply_hold_reasons(reply, is_new=True):
+    """Tier 2 for a saved reply to a review: the same rules as discussion comments."""
+    return forum_hold_reasons(reply, is_new=is_new, noun="reply")

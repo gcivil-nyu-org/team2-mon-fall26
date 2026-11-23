@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
+from .models import UserSettings
 from .roles import CONTRIBUTORS_GROUP, add_to_group
 
 User = get_user_model()
@@ -60,3 +61,10 @@ class LoginForm(AuthenticationForm):
         "invalid_login": "The username or password is incorrect. Please try again.",
         "inactive": "The username or password is incorrect. Please try again.",
     }
+
+
+class ThemeForm(forms.ModelForm):
+    class Meta:
+        model = UserSettings
+        fields = ("theme",)
+        widgets = {"theme": forms.RadioSelect}

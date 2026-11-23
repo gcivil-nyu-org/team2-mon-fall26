@@ -133,10 +133,28 @@ class FlagContentTests(ModerationTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(ContentFlag.objects.exists())
 
-    def test_only_visible_written_reviews_can_be_flagged(self):
+    def test_rating_only_can_be_flagged_from_profile_but_cannot_receive_helpful_votes(
+        self,
+    ):
         self.client.force_login(self.reporter)
         rating_only = Review.objects.create(
-            hotspot=self.hotspot, author=self.reporter, rating=4
+            hotspot=self.hotspot, author=make_user("rater"), rating=4
+        )
+        page = self.client.get(self.hotspot.get_absolute_url())
+        self.assertContains(page, flag_url(rating_only))
+        self.assertNotContains(page, "rater")
+        self.assertNotContains(self.client.get(flag_url(rating_only)), "rater")
+        self.assertNotContains(page, reverse("reviews:vote", args=[rating_only.pk]))
+        response = self.client.post(
+            flag_url(rating_only), {"reason": Reason.MISLEADING}, follow=True
+        )
+        self.assertContains(response, "Flagged for review")
+        self.assertEqual(ContentFlag.objects.get().content_object, rating_only)
+
+    def test_hidden_demo_and_retired_reviews_cannot_be_flagged(self):
+        self.client.force_login(self.reporter)
+        held = Review.objects.create(
+            hotspot=self.hotspot, author=self.reporter, rating=4, is_held=True
         )
         demo = Review.objects.create(
             hotspot=self.hotspot,
@@ -151,7 +169,7 @@ class FlagContentTests(ModerationTestCase):
         )
         retired.is_active = False
         retired.save()
-        for review in [rating_only, demo, on_retired]:
+        for review in [held, demo, on_retired]:
             with self.subTest(review=review.pk):
                 self.assertEqual(self.client.get(flag_url(review)).status_code, 404)
         self.assertEqual(

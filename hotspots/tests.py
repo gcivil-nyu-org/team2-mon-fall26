@@ -64,6 +64,26 @@ class ImportHotspotsTests(TestCase):
         )
         self.assertNotEqual(first.pk, second.pk)
 
+    def test_startup_import_preserves_existing_records_and_admin_corrections(self):
+        call_command("import_hotspots", if_empty=True, stdout=StringIO())
+        self.assertEqual(Hotspot.objects.count(), len(self.sample_rows))
+        record = Hotspot.objects.get(pk=999)
+        record.location_description = "Corrected entrance"
+        record.source_acquired_on = date(2026, 11, 22)
+        record.is_active = False
+        record.save()
+
+        call_command("import_hotspots", if_empty=True, stdout=StringIO())
+        record.refresh_from_db()
+        self.assertEqual(record.location_description, "Corrected entrance")
+        self.assertEqual(record.source_acquired_on, date(2026, 11, 22))
+        self.assertFalse(record.is_active)
+
+    def test_startup_skips_a_catalog_containing_only_retired_records(self):
+        make_hotspot(77777, is_active=False)
+        call_command("import_hotspots", if_empty=True, stdout=StringIO())
+        self.assertEqual(list(Hotspot.objects.values_list("pk", flat=True)), [77777])
+
     def test_missing_name_and_source_sentinels_are_normalized(self):
         rows = [dict(self.sample_rows[0]), dict(self.sample_rows[3])]
         self.import_rows(rows)
@@ -172,6 +192,25 @@ class HotspotReadExperienceTests(TestCase):
         )
         self.assertContains(response, self.hotspot.source_url)
 
+    def test_chooser_labels_name_the_room_and_disambiguate_identical_locations(self):
+        for pk, room in [(101, "Gym 1"), (102, "Picnic Area"), (103, "Picnic Area")]:
+            make_hotspot(
+                pk, name="Roy Wilkins", borough="Queens", location_description=room
+            )
+        response = self.client.get(reverse("hotspots:map"), {"q": "Roy Wilkins"})
+        labels = {
+            row["id"]: row["choice_label"] for row in response.context["map_data"]
+        }
+        self.assertEqual(labels[101], "Roy Wilkins — Gym 1 — Queens")
+        for pk in (102, 103):
+            self.assertEqual(
+                labels[pk], f"Roy Wilkins — Picnic Area — Queens (Record {pk})"
+            )
+        for pk, label in labels.items():
+            self.assertContains(
+                response, f'<option value="{pk}">{label}</option>', html=True
+            )
+
     def test_anonymous_profile_separates_sources_and_no_ratings(self):
         response = self.client.get(self.hotspot.get_absolute_url())
         self.assertEqual(response.status_code, 200)
@@ -207,7 +246,8 @@ class HotspotReadExperienceTests(TestCase):
                 "has_demo_reviews": False,
             },
         )
-        self.assertEqual(len(response.context["reviews"]), 2)
+        self.assertEqual(len(response.context["reviews"]), 3)
+        self.assertContains(response, "Rating only")
         self.assertNotContains(response, "Another location")
 
     def test_review_html_is_escaped(self):
@@ -386,6 +426,21 @@ class SearchAndFilterTests(TestCase):
         for query, expected in cases.items():
             with self.subTest(query=query):
                 self.assert_results(expected, q=query)
+
+    def test_search_finds_provider_names_and_provider_address_combinations(self):
+        for pk, name, address in [
+            (617, None, "300 Jay Street"),
+            (618, "0", "186 Jay Street"),
+        ]:
+            make_hotspot(
+                pk, name=name, provider="City Tech", location_description=address
+            )
+        make_hotspot(619, name=None, provider="City Tech", is_active=False)
+        self.assert_results({617, 618}, q="City Tech", sort="rating")
+        self.assert_results({617, 618}, provider="City Tech", sort="rating")
+        self.assert_results({617}, q="City Tech 300 Jay Street")
+        self.assert_results({617}, q="City Tech — 300 Jay Street")
+        self.assert_results({70}, q="Downtown Brooklyn 125")
 
     def test_search_results_identify_location_and_link_to_profile(self):
         response, _ids = self.page_ids(q="Court St")
