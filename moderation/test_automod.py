@@ -6,7 +6,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from accounts.tests import make_administrator, make_user
+from accounts.tests import make_administrator, make_established_user, make_user
 from hotspots.tests import make_hotspot
 from reviews.models import Review
 
@@ -49,6 +49,33 @@ class BlockingRuleTests(TestCase):
         ]:
             with self.subTest(text=text):
                 self.assertEqual(blocking_problems(text), [])
+
+    def test_official_sources_network_names_and_prose_remain_usable(self):
+        make_hotspot(ssid="BryantPark.org")
+        for text in (
+            "The NYPL site nypl.org lists the hours.",
+            "See https://www.nypl.org/locations or https://nyc.gov for hours.",
+            "Worked great.me and my friend both connected.",
+            "Network name is guest.net.",
+            "SSID: BryantPark.org",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(blocking_problems(text), [])
+
+    def test_external_domains_are_checked_regardless_of_capitalization(self):
+        for text in (
+            "Freewifi.com",
+            "FREEWIFI.COM",
+            "example.ai",
+            "example.dev",
+            "example.nyc",
+            "example.tv",
+            "Visit guest.net today",
+            "nypl.org and example.com",
+            "SSID: guest.net/sale",
+        ):
+            with self.subTest(text=text):
+                self.assertTrue(blocking_problems(text))
 
     @override_settings(MODERATION_BLOCKED_TERMS=["badword", "two words"])
     def test_configured_blocked_terms_are_rejected(self):
@@ -295,8 +322,29 @@ class CommunityAutoHideTests(TestCase):
         self.url = reverse("moderation:flag", args=["review", self.review.pk])
 
     def flag(self, username):
-        self.client.force_login(make_user(username))
+        self.client.force_login(make_established_user(username))
         self.client.post(self.url, {"reason": Reason.OFFENSIVE})
+
+    def test_new_flag_reaches_queue_but_only_eligible_flags_hide(self):
+        reporter = make_user("new-reporter")
+        self.client.force_login(reporter)
+        self.client.post(self.url, {"reason": Reason.OFFENSIVE})
+        self.flag("first")
+        self.flag("second")
+        self.review.refresh_from_db()
+        self.assertFalse(self.review.is_held)
+        self.assertEqual(services.open_flags_for(REVIEW, self.review.pk).count(), 3)
+        self.assertEqual(services.open_item_count(), 1)
+        # An account that later ages into eligibility cannot change an earlier flag.
+        reporter.date_joined -= timedelta(days=2)
+        reporter.save(update_fields=["date_joined"])
+        services.open_flags_for(REVIEW, self.review.pk).filter(
+            flagged_by=reporter
+        ).update(created_at=reporter.date_joined + timedelta(hours=1))
+        self.assertFalse(services.auto_hide_if_widely_flagged(REVIEW, self.review))
+        self.flag("third")
+        self.review.refresh_from_db()
+        self.assertTrue(self.review.is_held)
 
     def test_three_separate_flags_hide_the_review(self):
         self.flag("one")

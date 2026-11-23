@@ -292,6 +292,23 @@ class UpvoteTests(TestCase):
         self.client.post(self.url)
         self.assertEqual(ReviewVote.objects.count(), 0)
 
+    def test_helpful_after_session_expiry_returns_to_the_reviews_for_retry(self):
+        self.client.force_login(self.voter)
+        self.client.get(self.hotspot.get_absolute_url())
+        self.client.logout()
+        signed_out = self.client.post(self.url)
+        profile = self.hotspot.get_absolute_url()
+        login = self.client.post(
+            signed_out.url, {"username": self.voter.username, "password": PASSWORD}
+        )
+        self.assertEqual(login.url, f"{profile}#reviews")
+        self.assertContains(self.client.get(login.url), self.review.body)
+        self.assertFalse(ReviewVote.objects.exists())
+        self.client.post(self.url)
+        self.assertTrue(
+            ReviewVote.objects.filter(user=self.voter, review=self.review).exists()
+        )
+
     def test_vote_count_is_shown_and_does_not_change_average(self):
         ReviewVote.objects.create(review=self.review, user=self.voter)
         page = self.client.get(self.hotspot.get_absolute_url())

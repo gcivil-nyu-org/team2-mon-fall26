@@ -1,10 +1,12 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model
+from django.contrib.auth.views import redirect_to_login
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from accounts.permissions import contributor_required
+from accounts.roles import is_contributor
 from accounts.views import safe_next_url
 from hotspots.models import Hotspot
 from moderation import automod
@@ -142,7 +144,6 @@ def delete_review(request, pk):
     )
 
 
-@contributor_required
 @require_POST
 def toggle_vote(request, pk):
     review = get_object_or_404(
@@ -150,6 +151,8 @@ def toggle_vote(request, pk):
         pk=pk,
         hotspot__is_active=True,
     )
+    if not is_contributor(request.user):
+        return redirect_to_login(_hotspot_url(review.hotspot))
     destination = safe_next_url(request) or _hotspot_url(review.hotspot)
     if review.author_id == request.user.pk:
         messages.info(request, "You can't upvote your own review.")

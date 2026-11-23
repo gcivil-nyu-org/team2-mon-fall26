@@ -7,7 +7,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.urls import reverse
 
-from accounts.tests import make_administrator, make_user
+from accounts.tests import make_administrator, make_established_user, make_user
 from availability.models import AvailabilityReport
 from forum.models import ForumPost
 from hotspots.models import HotspotFollow
@@ -382,7 +382,7 @@ class ModerationNotificationTests(TestCase):
 
     def test_community_auto_hide_notifies_author(self):
         for name in ("a", "b", "c"):
-            user = make_user(name)
+            user = make_established_user(name)
             flag(self.review, user)
             moderation.auto_hide_if_widely_flagged(REVIEW, self.review)
         self.assertEqual(

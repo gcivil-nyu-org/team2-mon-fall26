@@ -19,6 +19,7 @@ Thresholds and word lists can be tuned in settings (see ``config/settings.py``).
 
 import re
 from datetime import timedelta
+from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.utils import timezone
@@ -27,13 +28,15 @@ from .models import Reason
 
 # --- Tier 1: blocked outright -------------------------------------------------
 
-# Official and educational domains stay allowed so people can cite city sources.
-# Bare domains are matched in lower case only, so a missing space after a full
-# stop ("Great signal.Me too") is not mistaken for a link.
 _LINK = re.compile(
-    r"(?i:(https?://|www\.)\S+)"
-    r"|\b[a-z0-9-]+(\.[a-z0-9-]+)*\.(com|net|org|io|co|biz|info|xyz|ru|cn|top|shop|store|"
-    r"site|online|click|link|app|me|ly|gg|tk|live|club|vip|win|bet|us)\b(/\S*)?"
+    r"\b(?:https?://|www\.)[^\s<>\"']+"
+    r"|\b(?:[a-z0-9-]+\.)+(?:com|net|org|io|co|biz|info|xyz|ru|cn|top|shop|store|"
+    r"site|online|click|link|app|me|ly|gg|tk|live|club|vip|win|bet|us|ai|dev|nyc|tv|gov|edu)"
+    r"\b(?:[/:?#][^\s<>\"']*)?",
+    re.IGNORECASE,
+)
+_NETWORK_LABEL = re.compile(
+    r"""\b(?:network name|ssid)\s*(?:is\b|[:=])\s*['"]?$""", re.I
 )
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(\.[\w-]+)+")
 _PHONE = re.compile(
@@ -105,6 +108,39 @@ def _blocked_terms():
 _NOUNS = {"review": "Reviews", "post": "Discussion posts", "comment": "Comments"}
 
 
+def _contains_blocked_link(text):
+    for match in _LINK.finditer(text):
+        token = match.group().rstrip(".,;:!?)]}").lower()
+        try:
+            url = urlsplit(
+                token if token.startswith(("http://", "https://")) else "//" + token
+            )
+            host = url.hostname or ""
+        except ValueError:
+            return True
+        if host.endswith((".gov", ".edu", ".nypl.org")) or host == "nypl.org":
+            continue
+        if token == host and not token.startswith("www."):
+            # "Worked great.Me and my friend both connected" is two sentences.
+            if host.endswith(".me") and re.match(
+                r"\s+(?:too\b|and\s+(?:my|our|the|a)\b)", text[match.end() :], re.I
+            ):
+                continue
+            if _NETWORK_LABEL.search(text[: match.start()]):
+                from hotspots.models import Hotspot
+
+                # The reported guest.net example and official SSIDs such as BryantPark.org.
+                if (
+                    host == "guest.net"
+                    or Hotspot.objects.filter(
+                        is_active=True, ssid__iexact=host
+                    ).exists()
+                ):
+                    continue
+        return True
+    return False
+
+
 def blocking_problems(text, content="review"):
     """Tier 1: messages explaining why this text can't be posted ([] when acceptable).
 
@@ -113,7 +149,7 @@ def blocking_problems(text, content="review"):
     if not text:
         return []
     problems = []
-    if _LINK.search(text) or _EMAIL.search(text) or _PHONE.search(text):
+    if _EMAIL.search(text) or _PHONE.search(text) or _contains_blocked_link(text):
         problems.append(
             f"{_NOUNS[content]} can't include links, email addresses or phone numbers. "
             + (

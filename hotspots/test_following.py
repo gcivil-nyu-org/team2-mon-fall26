@@ -22,6 +22,30 @@ class FollowHotspotTests(TestCase):
         self.assertIn("/accounts/login/", response["Location"])
         self.assertFalse(HotspotFollow.objects.exists())
 
+    def test_visitor_can_discover_follow_and_return_to_this_hotspot(self):
+        profile = self.hotspot.get_absolute_url()
+        login_url = f"{reverse('accounts:login')}?next={profile}"
+        self.assertContains(
+            self.client.get(profile),
+            f'<a class="button button-primary" href="{login_url}">Log in to follow hotspot</a>',
+            html=True,
+        )
+        password = "Local-regression-password-924!"
+        self.user.set_password(password)
+        self.user.save(update_fields=["password"])
+        response = self.client.post(
+            login_url,
+            {"username": self.user.username, "password": password},
+            follow=True,
+        )
+        self.assertEqual(response.request["PATH_INFO"], profile)
+        self.assertContains(response, "Follow hotspot")
+        self.assertFalse(HotspotFollow.objects.exists())
+        self.client.post(self.follow_url)
+        self.assertTrue(
+            HotspotFollow.objects.filter(user=self.user, hotspot=self.hotspot).exists()
+        )
+
     def test_signed_in_user_can_follow_hotspot(self):
         self.client.force_login(self.user)
 

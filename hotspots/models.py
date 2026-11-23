@@ -66,6 +66,14 @@ class Hotspot(models.Model):
         return f"{self.provider} — {self.location_description}"
 
     @property
+    def choice_label(self):
+        name = self.display_name
+        location = self.location_description
+        if location and self.name == name and name.casefold() != location.casefold():
+            name = f"{name} — {location}"
+        return f"{name} — {self.borough}"
+
+    @property
     def location(self):
         return self.location_description
 

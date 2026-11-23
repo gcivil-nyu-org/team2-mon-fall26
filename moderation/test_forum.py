@@ -11,7 +11,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from accounts.tests import make_administrator, make_user
+from accounts.tests import make_administrator, make_established_user, make_user
 from forum.models import ForumComment, ForumPost, ForumVote
 from hotspots.models import HotspotFollow
 from hotspots.tests import make_hotspot
@@ -160,7 +160,7 @@ class ForumHoldTests(TestCase):
 
         # Hidden again by flags and approved again: followers are not told twice.
         for name in ("a", "b", "c"):
-            flag(FORUM_POST, post, make_user(name))
+            flag(FORUM_POST, post, make_established_user(name))
         services.auto_hide_if_widely_flagged(FORUM_POST, post)
         post.refresh_from_db()
         self.assertTrue(post.is_held)
@@ -345,7 +345,7 @@ class ForumFlagTests(TestCase):
 
     def test_third_flag_hides_a_post_and_tells_its_author(self):
         for name in ("a", "b", "c"):
-            self.client.force_login(make_user(name))
+            self.client.force_login(make_established_user(name))
             self.client.post(
                 reverse("moderation:flag", args=["post", self.post.pk]),
                 {"reason": Reason.SPAM},

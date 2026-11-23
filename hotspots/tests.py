@@ -468,7 +468,11 @@ class SearchAndFilterTests(TestCase):
     def test_neighborhood_filter(self):
         self.assert_results({53}, neighborhood="Clinton Hill")
         self.assert_results({70}, neighborhood="Brooklyn Heights-Cobble Hill")
-        self.assert_results(set(), borough="Queens", neighborhood="Clinton Hill")
+        page = self.assert_results({80}, borough="Queens", neighborhood="Clinton Hill")
+        self.assertNotIn("neighborhood", page.context["filters"])
+        self.assertContains(page, "previous neighborhood is outside")
+        self.assert_results({53}, borough="Brooklyn", neighborhood="Clinton Hill")
+        self.assert_results(set(), borough="Queens", neighborhood="Not on record")
 
     def test_provider_filter_select_change_and_remove(self):
         self.assert_results({53}, provider="BPL")
@@ -500,13 +504,11 @@ class SearchAndFilterTests(TestCase):
             options["provider"], ["BPL", "Downtown Brooklyn", "Partner", "QPL"]
         )
         self.assertEqual(options["type"], ["Free", "Limited Free", "Partner Site"])
-        self.assertIn(
-            {
-                "borough": "Brooklyn",
-                "names": ["Brooklyn Heights-Cobble Hill", "Clinton Hill"],
-            },
-            options["neighborhood"],
+        self.assertEqual(
+            options["neighborhood"], [{"borough": "Queens", "names": ["Flushing"]}]
         )
+        self.assertNotContains(response, '<option value="Clinton Hill">')
+        self.assertContains(self.page_ids()[0], '<option value="Clinton Hill">')
         self.assertContains(response, '<option value="Queens" selected>')
 
     def test_each_active_filter_can_be_removed_on_its_own(self):

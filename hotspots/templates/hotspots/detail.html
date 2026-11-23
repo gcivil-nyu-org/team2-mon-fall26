@@ -10,14 +10,13 @@
   <section class="profile-intro" aria-labelledby="profile-title">
     <div><div class="location-kicker">{{ hotspot.borough }}{% if hotspot.neighborhood %} / {{ hotspot.neighborhood }}{% endif %}</div><h1 id="profile-title">{{ hotspot.display_name }}</h1><p>{{ hotspot.location|default:"Location details not provided" }}</p></div>
     {% if user.is_authenticated %}
-  <form method="post"
-        action="{% if is_following %}{% url 'hotspots:unfollow' hotspot.pk %}{% else %}{% url 'hotspots:follow' hotspot.pk %}{% endif %}">
-    {% csrf_token %}
-    <button type="submit" class="button button-primary">
-      {% if is_following %}Unfollow hotspot{% else %}Follow hotspot{% endif %}
-    </button>
-  </form>
-{% endif %}
+      <form method="post" action="{% if is_following %}{% url 'hotspots:unfollow' hotspot.pk %}{% else %}{% url 'hotspots:follow' hotspot.pk %}{% endif %}">
+        {% csrf_token %}
+        <button type="submit" class="button button-primary">{% if is_following %}Unfollow hotspot{% else %}Follow hotspot{% endif %}</button>
+      </form>
+    {% else %}
+      <a class="button button-primary" href="{% url 'accounts:login' %}?next={{ hotspot.get_absolute_url|urlencode }}">Log in to follow hotspot</a>
+    {% endif %}
     {% if demo_mode %}<span class="demo-badge"><span class="status-dot" aria-hidden="true"></span>Demo dataset</span>{% endif %}
   </section>
 

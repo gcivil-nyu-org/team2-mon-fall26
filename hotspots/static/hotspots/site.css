@@ -196,7 +196,6 @@ dd { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; overflow-wr
   .brand-mark { width: 25px; height: 25px; }
   .site-header nav { gap: 20px; }
   .nav-link { font-size: 12px; }
-  .data-link { display: none; }
   .page-shell { padding: 27px 20px 30px; }
   .page-intro { align-items: flex-start; gap: 14px; margin-bottom: 23px; }
   h1 { font-size: 29px; letter-spacing: -.8px; }
@@ -346,7 +345,6 @@ dd { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; overflow-wr
   .header-inner { gap: 12px; padding: 0 16px; }
   .brand > span { font-size: 17px; }
   .site-header nav { gap: 14px; }
-  .site-header nav .map-nav-link { display: none; }
   .account-nav { gap: 10px; padding-left: 12px; }
   .account-name > span:last-child { display: none; }
   .button-small { padding: 8px 10px; }
@@ -586,9 +584,9 @@ dd { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; overflow-wr
 .preference-option input { margin-top: 2px; width: 16px; height: 16px; flex-shrink: 0; }
 @media (max-width: 760px) {
   .inbox-item a { padding: 14px 16px; }
-  /* Signed-in navigation has five links: give it its own scrollable row so the page never scrolls sideways. */
+  /* Keep every navigation link visible, including for signed-in administrators. */
   .header-inner { flex-wrap: wrap; row-gap: 0; padding-top: 10px; }
-  .site-header nav { order: 3; flex: 1 0 100%; margin-left: 0; min-height: 44px; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--line); }
-  .site-header nav::-webkit-scrollbar { display: none; }
+  .site-header nav { order: 3; flex: 1 0 100%; flex-wrap: wrap; row-gap: 0; margin-left: 0; border-top: 1px solid var(--line); }
+  .site-header nav .nav-link { min-height: 44px; }
   .account-nav { margin-left: auto; }
 }

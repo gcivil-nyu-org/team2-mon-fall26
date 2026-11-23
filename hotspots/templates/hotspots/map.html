@@ -28,14 +28,14 @@
         <label for="filter-borough">Borough</label>
         <select id="filter-borough" name="borough" data-autosubmit>
           <option value="">All boroughs</option>
-          {% for value in filter_options.borough %}<option value="{{ value }}"{% if value == filters.borough %} selected{% endif %}>{{ value }}</option>{% endfor %}
+          {% for value in filter_options.borough %}<option value="{{ value }}"{% if value|lower == filters.borough|lower %} selected{% endif %}>{{ value }}</option>{% endfor %}
         </select>
       </div>
       <div class="filter-field">
         <label for="filter-neighborhood">Neighborhood</label>
         <select id="filter-neighborhood" name="neighborhood" data-autosubmit>
           <option value="">All neighborhoods</option>
-          {% for group in filter_options.neighborhood %}<optgroup label="{{ group.borough }}">{% for value in group.names %}<option value="{{ value }}"{% if value == filters.neighborhood %} selected{% endif %}>{{ value }}</option>{% endfor %}</optgroup>{% endfor %}
+          {% for group in filter_options.neighborhood %}<optgroup label="{{ group.borough }}">{% for value in group.names %}<option value="{{ value }}"{% if value|lower == filters.neighborhood|lower %} selected{% endif %}>{{ value }}</option>{% endfor %}</optgroup>{% endfor %}
         </select>
       </div>
       <div class="filter-field">
@@ -64,6 +64,7 @@
         {% if is_filtered %}<a class="button button-secondary" href="{% url 'hotspots:map' %}">Clear all</a>{% endif %}
       </div>
     </form>
+    {% if neighborhood_cleared %}<p class="field-help" role="status">The previous neighborhood is outside the selected borough, so its filter was cleared.</p>{% endif %}
     {% if filter_chips %}
     <ul class="filter-chips" aria-label="Active search and filters">
       {% for chip in filter_chips %}<li><span>{{ chip.label }}: <strong>{{ chip.value }}</strong></span><a href="{{ chip.remove_url }}" aria-label="Remove {{ chip.label|lower }} {{ chip.value }}">×</a></li>{% endfor %}
