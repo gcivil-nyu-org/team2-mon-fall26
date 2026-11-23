@@ -183,7 +183,7 @@
   const near = (mapElement.dataset.near || "").split(",").map(Number);
   const hasNear = !profileOnly && near.length === 2 && near.every(Number.isFinite);
   if (hasNear) {
-    const youIcon = L.divIcon({ className: "", html: '<span class="you-are-here"></span>', iconSize: [18, 18], iconAnchor: [9, 9] });
+    const youIcon = L.divIcon({ className: "you-are-here-icon", html: '<span class="you-are-here"></span>', iconSize: [18, 18], iconAnchor: [9, 9] });
     L.marker(near, { icon: youIcon, title: "Your location", alt: "Your location", keyboard: false, zIndexOffset: 1000 })
       .bindPopup("Your location")
       .addTo(map);
