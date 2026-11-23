@@ -4,6 +4,15 @@ Last updated: **November 23, 2026**.
 
 This document records implementation progress, remaining work, and development history for Connect NYC. GitHub and ZenHub remain the sources for requirements, assignments, and workflow status. Update this record as work progresses; preserve the dated archive below.
 
+## Final-presentation features — November 23, 2026
+
+Four features were added for the final presentation on stacked branches, each building on the previous one so they merge in order without conflicts: `linj-review-replies` → `linj-user-settings` → `linj-user-profiles` → `linj-near-me`. They are not yet pushed, reviewed or merged into `develop`, and they are outside the existing Stories, so the team should decide whether to add Stories and estimates for them.
+
+- **Review replies and votes:** written reviews take helpful (▲) and not-helpful (▼) votes and replies. Downvotes change the accepted US15 rule ("no downvotes"); votes still never affect star averages. Replies are an E05 flaggable type with the comment rules, and review authors get an in-app notice.
+- **Settings and dark mode:** `/settings/` holds every notification category (two new: replies to my reviews, outcomes of content I flagged) and a Light / Dark / Match my device theme; the header has a theme switch. `/inbox/preferences/` redirects to it.
+- **Public user profiles:** `/users/<username>/` with totals, badges and recent public activity, linked from author names site-wide.
+- **Near me:** browser location sorts hotspots by distance with distances and a location marker. Geolocation needs HTTPS (or localhost): confirm the production URL serves HTTPS before demonstrating it there.
+
 ## PR #85 release repair — November 16, 2026
 
 PR #85 promoted map clustering and forum moderation to main at `6322569`. Travis PR build #71 and main build #72 each failed one of 294 tests: the map asset-order test expected unhashed filenames, while the correctly rendered page used manifest-hashed static URLs. This prevents successful release validation; merging #85 alone does not establish production deployment.
@@ -140,6 +149,16 @@ Closed test issue #44 is excluded from product completion progress.
 5. Preserve E03 hotspot-review, E08 discussion and E05 shared-moderation boundaries when planning forum reporting integration.
 
 ## Development archive
+
+### November 23, 2026 — Final-presentation features (replies and votes, settings and dark mode, profiles, Near me)
+
+- Branched from `develop` `9749dfb` (after PR #110). Branches are stacked in merge order: `linj-review-replies`, `linj-user-settings`, `linj-user-profiles`, `linj-near-me`.
+- Replies and votes: `ReviewVote.value` (+1/−1, existing votes stay upvotes) and `ReviewReply` (`reviews/0004`); `REVIEW_REPLY` registered in `moderation/registry.py` with `automod.reply_hold_reasons`; `Notification.Kind.REVIEW_REPLY` and the `review_replies` preference (`notifications/0003`). Removing a review removes its replies, and the confirmation page says so.
+- Settings: `accounts.UserSettings.theme` (`accounts/0002`) and the `flag_outcomes` preference (`notifications/0004`). The dark stylesheet `theme-dark.css` is generated from `site.css` by `scripts/build_dark_theme.py`; rerun it after changing colours.
+- Profiles: `accounts/profiles.py` counts only public content; star-only ratings remain anonymous (#100) and are counted only on the owner's view.
+- Near me: `sort=nearest&near=<lat>,<lng>` on the map and API (rounded to 4 decimals, about 10 m); not a filter, so counts and chips are unchanged.
+- Verified on MariaDB 10.11 with `collectstatic` and the CI-style settings (`DJANGO_DEBUG=0`, `DEMO_MODE=0`): all **301 tests passed on develop before the work** and **349 pass on `linj-near-me`** (48 new). Each intermediate branch also passed its full suite (322, 331, 339). Black, Flake8, `manage.py check`, `makemigrations --check` and `git diff --check` pass. Not yet run on MySQL 8.4 or Travis.
+- Browser checks (headless Chrome, demo data): replies, votes, profile and settings pages in light and dark themes at 1280 px; Near me with a simulated Times Square location; the map and hotspot profile fit a 390 px screen with no horizontal scroll. No JavaScript errors.
 
 ### November 23, 2026 — First testing-party fixes for integration
 
