@@ -227,15 +227,16 @@ def hold_reasons(review, is_new):
             (Reason.SPAM, "Author has had several reviews removed by moderators")
         )
     text = review.body
-    if not text:
-        return reasons  # A rating with no text has nothing else to check.
-
-    reasons.extend(_wording_reasons(text))
-    duplicate = _duplicate_reason(
-        text, author, Review.objects.exclude(pk=review.pk).exclude(body=""), "review"
-    )
-    if duplicate:
-        reasons.append(duplicate)
+    if text:
+        reasons.extend(_wording_reasons(text))
+        duplicate = _duplicate_reason(
+            text,
+            author,
+            Review.objects.exclude(pk=review.pk).exclude(body=""),
+            "review",
+        )
+        if duplicate:
+            reasons.append(duplicate)
 
     if not is_trusted(author, exclude_pk=review.pk):
         reasons.extend(_style_reasons(text))

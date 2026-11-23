@@ -79,7 +79,7 @@
       <div class="hotspot-chooser js-only">
         <label for="hotspot-select">Choose a hotspot</label>
         <select id="hotspot-select">
-          {% for hotspot in hotspots %}<option value="{{ hotspot.pk }}">{{ hotspot.display_name }} — {{ hotspot.borough }}</option>{% endfor %}
+          {% for hotspot in map_data %}<option value="{{ hotspot.id }}">{{ hotspot.choice_label }}</option>{% endfor %}
         </select>
       </div>
     </div>
@@ -111,7 +111,7 @@
   <div class="dataset-note"><span class="source-badge official-badge">NYC Open Data</span><p>{% if demo_mode %}This demo shows a {{ total_count }}-record sample of official hotspot locations. {% endif %}Location information comes from the NYC Open Data hotspot dataset. Open a profile to see its source dates.</p></div>
   <details class="hotspot-directory">
     <summary>{% if is_filtered %}Browse {{ hotspot_count }} matching hotspot profile{{ hotspot_count|pluralize }}{% else %}Browse all {{ hotspot_count }} hotspot profiles{% endif %}</summary>
-    <ul>{% for hotspot in hotspots %}<li><a href="{{ hotspot.get_absolute_url }}"><span>{{ hotspot.display_name }}</span><span>{{ hotspot.borough }} · {{ hotspot.provider|default:"Provider not provided" }} · Record {{ hotspot.pk }}</span></a></li>{% endfor %}</ul>
+    <ul>{% for hotspot in map_data %}<li><a href="{{ hotspot.profile_url }}"><span>{{ hotspot.choice_label }}</span><span>{{ hotspot.provider|default:"Provider not provided" }} · Record {{ hotspot.id }}</span></a></li>{% endfor %}</ul>
   </details>
   {{ map_data|json_script:"map-data" }}
   {% elif is_filtered %}

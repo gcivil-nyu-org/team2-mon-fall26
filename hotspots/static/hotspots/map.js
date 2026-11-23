@@ -69,17 +69,6 @@
   }
 
   if (chooser) {
-    const labels = new Map();
-    for (const hotspot of hotspots) {
-      const label = `${hotspot.name} — ${hotspot.borough}`;
-      labels.set(label, (labels.get(label) || 0) + 1);
-    }
-    for (const option of chooser.options) {
-      const hotspot = hotspots.find((item) => String(item.id) === option.value);
-      if (!hotspot) continue;
-      const label = `${hotspot.name} — ${hotspot.borough}`;
-      option.textContent = labels.get(label) > 1 ? `${label} (Record ${hotspot.id})` : label;
-    }
     chooser.addEventListener("change", () => {
       const hotspot = hotspots.find((item) => String(item.id) === chooser.value);
       if (hotspot) selectHotspot(hotspot, true);
@@ -159,9 +148,9 @@
         const button = document.createElement("button");
         button.type = "button";
         button.className = "popup-hotspot-choice";
-        button.textContent = hotspot.name;
+        button.textContent = hotspot.choice_label;
         const description = document.createElement("small");
-        description.textContent = [`Record ${hotspot.id}`, hotspot.provider, hotspot.ssid].filter(Boolean).join(" · ");
+        description.textContent = [hotspot.provider, hotspot.ssid].filter(Boolean).join(" · ");
         button.append(description);
         button.addEventListener("click", () => selectHotspot(hotspot));
         popup.append(button);

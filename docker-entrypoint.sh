@@ -3,7 +3,7 @@ set -e
 
 python manage.py migrate --noinput
 python manage.py collectstatic --noinput
-python manage.py import_hotspots
+python manage.py import_hotspots --if-empty
 
 if [ "$DEMO_MODE" = "1" ]; then
   python manage.py seed_demo_reviews
