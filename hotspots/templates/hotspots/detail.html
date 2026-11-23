@@ -108,7 +108,7 @@
                 <button type="submit" class="button button-primary button-small">Post reply</button>
               </form>
             </details>
-            {% elif user_role == "visitor" %}
+            {% elif user_role == "visitor" and not review.is_demo %}
             <p class="reply-login"><a href="{% url 'accounts:login' %}?next={{ request.path|urlencode }}%23review-{{ review.pk }}">Log in to reply</a></p>
             {% endif %}
           </div>

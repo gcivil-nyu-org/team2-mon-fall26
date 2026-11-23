@@ -125,6 +125,21 @@ class ReplyTests(TestCase):
         response = self.client.get(reverse("notifications:open", args=[notice.pk]))
         self.assertTrue(response["Location"].endswith(f"#reply-{reply.pk}"))
 
+    def test_visitor_sees_log_in_to_reply_except_on_demo_reviews(self):
+        with self.settings(DEMO_MODE=True):
+            demo = Review.objects.create(
+                hotspot=self.hotspot,
+                author=make_user("demo_ana"),
+                rating=5,
+                body="Demo text.",
+                is_demo=True,
+            )
+            page = self.client.get(self.hotspot.get_absolute_url())
+        login = reverse("accounts:login")
+        self.assertContains(page, f"%23review-{self.review.pk}")
+        self.assertNotContains(page, f"%23review-{demo.pk}")
+        self.assertContains(page, login)
+
     def test_own_reply_and_preference_off_send_no_notice(self):
         self.reply(user=self.author)
         NotificationPreference.objects.create(user=self.author, review_replies=False)
