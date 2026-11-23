@@ -3,6 +3,7 @@ from django.contrib.admin.forms import AdminAuthenticationForm
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
+from .models import UserSettings
 from .roles import CONTRIBUTORS_GROUP, add_to_group
 from .throttling import LoginCooldownMixin
 
@@ -66,3 +67,10 @@ class LoginForm(LoginCooldownMixin, AuthenticationForm):
 
 class AdminLoginForm(LoginCooldownMixin, AdminAuthenticationForm):
     pass
+
+
+class ThemeForm(forms.ModelForm):
+    class Meta:
+        model = UserSettings
+        fields = ("theme",)
+        widgets = {"theme": forms.RadioSelect}

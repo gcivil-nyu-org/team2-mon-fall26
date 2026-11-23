@@ -5,7 +5,7 @@
   {% else %}
   <article class="forum-comment-card">
     <div class="forum-comment-head">
-      <strong>{{ comment.author.username }}</strong>
+      <a class="author-link" href="{% url 'accounts:profile' comment.author.username %}"><strong>{{ comment.author.username }}</strong></a>
       {% if comment.is_held %}<span class="held-badge">Awaiting moderator approval</span>{% endif %}
       <time datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|date:"M j, Y · g:i A" }}</time>
     </div>

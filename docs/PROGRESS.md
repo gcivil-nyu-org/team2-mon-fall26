@@ -4,6 +4,15 @@ Last updated: **November 23, 2026**.
 
 This document records implementation progress, remaining work, and development history for Connect NYC. GitHub and ZenHub remain the sources for requirements, assignments, and workflow status. Update this record as work progresses; preserve the dated archive below.
 
+## Final-presentation features — November 23, 2026
+
+Lin's four final-presentation features are tracked together in [PR #113](https://github.com/gcivil-nyu-org/team2-mon-fall26/pull/113), targeting `develop`. The original sprint records retain their estimates. Deployment and acceptance of these additions are tracked separately.
+
+- **Review replies and votes:** written reviews take helpful (▲) and not-helpful (▼) votes and replies. Downvotes change the accepted US15 rule ("no downvotes"); votes still never affect star averages. Replies are an E05 flaggable type with the comment rules, and review authors get an in-app notice.
+- **Settings and dark mode:** `/settings/` holds every notification category (two new: replies to my reviews, outcomes of content I flagged) and a Light / Dark / Match my device theme; the header has a theme switch. `/inbox/preferences/` redirects to it.
+- **Public user profiles:** `/users/<username>/` with totals, badges and recent public activity, linked from author names site-wide.
+- **Near me:** browser location sorts hotspots by distance with distances and a location marker. Geolocation needs HTTPS (or localhost): confirm the production URL serves HTTPS before demonstrating it there.
+
 ## PR #85 release repair — November 16, 2026
 
 PR #85 promoted map clustering and forum moderation to main at `6322569`. Travis PR build #71 and main build #72 each failed one of 294 tests: the map asset-order test expected unhashed filenames, while the correctly rendered page used manifest-hashed static URLs. This prevents successful release validation; merging #85 alone does not establish production deployment.
@@ -92,7 +101,7 @@ Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #
 | [US12 / #22 — Average rating](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/22) | Read-side implemented; Jiahao retains ownership. Owner acceptance test merged in PR #48 and rechecked with E03: 1 and 3 → 2.0; add 5 → 3.0; edit 1 to 4 → 4.0; delete 5 → 3.5; unrated hotspot shows "No ratings yet" and a null API average. Contribution UI is implemented in PR #53. |
 | [US13 / #23 — Edit own rating/review](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/23) | Accepted and closed. Implemented (code + automated tests). Edit link only on the author's own entries; `/reviews/<id>/edit/` returns 404 for other users and for demo reviews. Averages update from the saved rating. |
 | [US14 / #24 — Delete own rating/review](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/24) | Accepted and closed. Implemented (code + automated tests). Delete link only on own entries; a confirmation page precedes a POST-only delete; other users get 404; averages update. |
-| [US15 / #25 — Helpful-review upvotes](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/25) | Accepted and closed. Implemented (code + automated tests, MLP). `ReviewVote` is unique per user and review; POST toggles add/remove; count shown on each written review; no downvotes; votes never affect star averages. Authors cannot upvote their own review; the current implementation is included in the team’s accepted scope. |
+| [US15 / #25 — Helpful-review upvotes](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/25) | The accepted story delivered helpful upvotes. PR #113 adds a “Not helpful” option for written reviews. A contributor can switch or remove their vote. Authors cannot vote on their own reviews. Neither direction changes the star average. |
 
 ### E04 — Official data
 
@@ -111,7 +120,7 @@ Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #
 | E05 | [US21 / #31 — Flag inappropriate content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/31) | Story closed; implemented in PR #60 and promoted to main through #67 for hotspot reviews. Signed-in contributors see a Flag link on other users' published written reviews and star-only ratings (#100) and choose a reason ("Something else" requires details). One flag per user per item, enforced by a database constraint; authors cannot flag their own reviews; visitors are sent to log in. Flags close automatically if the author deletes the review. E08 forum content uses the same flow once registered. |
 | E06 | [US22 / #32 — Report Working/Unavailable](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/32) | Story closed (3 points). Working/Unavailable reporting and #68 safe login-return fix are merged into main. Production controls are visible; deployed submission acceptance remains to be completed. |
 | E06 | [US23 / #33 — Reliability and report recency](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/33) | Story closed (5 points). Reliability and report recency are merged into main; the three-reporter threshold and 30-day reporting window are retained. |
-| E06 | [US24 / #34 — Sort by rating/reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/34) | Story closed (3 points). Rating/reliability sorting is merged into main and covered by the integrated test suite. |
+| E06 | [US24 / #34 — Sort by rating/reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/34) | Story closed (3 points). Rating and reliability sorting shipped in the original story. PR #113 adds distance sorting to the map and API. Browser geolocation requires a secure context or localhost. |
 | E07 | [US25 / #35 — Follow/unfollow](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/35) | Accepted in production on November 2 and closed. Follow/unfollow updates only the relationship, preserves the hotspot/reviews, and safely returns visitors after login. |
 | E07 | [US26 / #36 — My followed hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/36) | Accepted in production on November 2 and closed. Verified the personal list, correct profile link and helpful empty state after unfollowing. |
 | E07 | [US27 / #37 — Notifications](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/37) | Merged into develop through PR #77; production promotion is PR #78, pending the reviewed concurrency fix. In-app Inbox at `/inbox/` with header unread count, All/Unread filters, "Mark all as read" and per-type opt-outs at `/inbox/preferences/`. Followers get one unread summary per hotspot for new ratings/reviews (counted once, when public) and for availability reports; a "may be down" alert when 3 people report Unavailable within 24 hours or reliability falls below 50%, and a "working again" notice at 70%; linked discussions; and hotspot retirement. Authors and flaggers get moderation notices (held, hidden by flags, approved, removed with reason; flag outcome). Opening marks read and goes to the content, or back to the Inbox if it is gone. Rules in [E07-NOTIFICATIONS.md](E07-NOTIFICATIONS.md) await team agreement; not estimated. |
@@ -141,6 +150,16 @@ Closed test issue #44 is excluded from product completion progress.
 5. Preserve E03 hotspot-review, E08 discussion and E05 shared-moderation boundaries when planning forum reporting integration.
 
 ## Development archive
+
+### November 23, 2026 — Final-presentation features (replies and votes, settings and dark mode, profiles, Near me)
+
+- Branched from `develop` `9749dfb` (after PR #110). Branches are stacked in merge order: `linj-review-replies`, `linj-user-settings`, `linj-user-profiles`, `linj-near-me`.
+- Replies and votes: `ReviewVote.value` (+1/−1, existing votes stay upvotes) and `ReviewReply` (`reviews/0004`); `REVIEW_REPLY` registered in `moderation/registry.py` with `automod.reply_hold_reasons`; `Notification.Kind.REVIEW_REPLY` and the `review_replies` preference (`notifications/0003`). Removing a review removes its replies, and the confirmation page says so.
+- Settings: `accounts.UserSettings.theme` (`accounts/0002`) and the `flag_outcomes` preference (`notifications/0004`). The dark stylesheet `theme-dark.css` is generated from `site.css` by `scripts/build_dark_theme.py`; rerun it after changing colours.
+- Profiles: `accounts/profiles.py` counts only public content; star-only ratings remain anonymous (#100) and are counted only on the owner's view.
+- Near me: `sort=nearest&near=<lat>,<lng>` on the map and API (rounded to 4 decimals, about 10 m); not a filter, so counts and chips are unchanged.
+- Verified on MariaDB 10.11 with `collectstatic` and the CI-style settings (`DJANGO_DEBUG=0`, `DEMO_MODE=0`): all **301 tests passed on develop before the work** and **350 pass on `linj-near-me`** (49 new). Each branch also passes its full suite on its own (323, 332, 340). Black, Flake8, `manage.py check`, `makemigrations --check` and `git diff --check` pass. Not yet run on MySQL 8.4 or Travis.
+- Browser checks (headless Chrome, demo data, 62 scripted checks with real clicks, no JavaScript errors): voting up/down/switch/remove; posting, blocked, empty and held replies; flagging a reply through the form; deleting a reply; visitor view and "Log in to reply" return; reply notice opening the reply; Settings opt-out stopping reply notices; the header theme switch; administrator approve/remove from the queue and the resulting author and flagger notices; profile links and 404; Near me from the button and the Sort menu, with filters, "Stop using my location", denied permission and the API. Dark mode was reviewed on every main page, including the forum, Inbox and administrator pages. No horizontal scrolling at 390 px. The header fits from 1024 px up for contributors and administrators. It still overflows at 761–1023 px, as it already did on develop, but by less than before.
 
 ### November 23, 2026 — First testing-party fixes for integration
 
@@ -323,3 +342,11 @@ Closed test issue #44 is excluded from product completion progress.
 - **#97.** The application can enforce HTTPS, set Secure cookies and send HSTS behind a trusted TLS endpoint. The integration HTTPS probe timed out and the local AWS session had expired. Verify the integration and production listeners and certificates, enable the settings on a working TLS endpoint, then check the live redirects, cookies and HSTS before closing the report.
 
 All 318 Django tests passed on MySQL 8.4 with manifest-based static assets. Coverage reported 99%. The suite includes concurrent updates to the login counter, review of edited comments, preservation of replies, and redirects and cookies under the HTTPS configuration. Black, Flake8, Django system checks, and the migration consistency check passed. Both new migrations applied to a local database with existing data.
+
+### November 23, 2026 — PR #113 review
+
+Three regression tests failed on Lin's original revision and passed after the review corrections. Public badges now count eligible written reviews at active hotspots. The author's delete confirmation explains that replies are also removed and counts only replies the author may see. Opening a reply notification returns to the Inbox if its parent review became a star-only rating. Settings writes are atomic, and votes and replies use the current review under a database lock. After a session expires, signing back in returns a contributor to the hotspot to retry.
+
+The distance query carries rounded coordinates in the results URL, which can appear in browser history and server access logs. Verify browser location on an HTTPS deployment before using it in the live presentation.
+
+The updated suite passed all 354 tests on MySQL 8.4 with `DEMO_MODE=0`, `DJANGO_DEBUG=0` and manifest static files. Coverage reported 98% for the repository's configured measurement. Black, Flake8, the Django system check and the migration consistency check passed.

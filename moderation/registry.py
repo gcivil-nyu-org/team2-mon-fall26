@@ -82,6 +82,13 @@ def _set_review_held(review, held):
     review.is_held = held
 
 
+def _review_removal_effect(review):
+    count = review.replies.count()
+    if not count:
+        return ""
+    return f"This also removes {count} {'reply' if count == 1 else 'replies'}."
+
+
 REVIEW = FlaggableType(
     key="review",
     label="Hotspot review",
@@ -91,6 +98,63 @@ REVIEW = FlaggableType(
     set_held=_set_review_held,
     held_queryset=_held_reviews,
     affects_rating=True,
+    removal_effect=_review_removal_effect,
+)
+
+
+# --- Replies to hotspot reviews ----------------------------------------------
+
+
+def _public_review_replies():
+    from reviews.services import public_replies
+
+    return public_replies()
+
+
+def _describe_review_reply(reply):
+    review = reply.review
+    hotspot = review.hotspot
+    public = not reply.is_held and _public_review_replies().filter(pk=reply.pk).exists()
+    return {
+        "author": reply.author.username,
+        "author_id": reply.author_id,
+        "text": reply.body,
+        "rating": None,
+        "reference": (
+            f"Reply to {review.author.username}'s review of "
+            f"{hotspot.display_name} (NYC ID {hotspot.pk})"
+        ),
+        "url": f"{hotspot.get_absolute_url()}#reply-{reply.pk}" if public else "",
+        "created_at": reply.created_at,
+        "is_demo": False,
+        "is_held": reply.is_held,
+        "is_public": public,
+        # Replies can't be edited, so their creation time identifies the text.
+        "version": reply.created_at.isoformat(),
+    }
+
+
+def _held_review_replies():
+    from reviews.models import ReviewReply
+
+    return ReviewReply.objects.filter(is_held=True)
+
+
+def _set_review_reply_held(reply, held):
+    from reviews.models import ReviewReply
+
+    ReviewReply.objects.filter(pk=reply.pk).update(is_held=held)
+    reply.is_held = held
+
+
+REVIEW_REPLY = FlaggableType(
+    key="reply",
+    label="Review reply",
+    model_label="reviews.ReviewReply",
+    public_queryset=_public_review_replies,
+    describe=_describe_review_reply,
+    set_held=_set_review_reply_held,
+    held_queryset=_held_review_replies,
 )
 
 
@@ -209,7 +273,10 @@ FORUM_COMMENT = FlaggableType(
     removal_effect=_comment_removal_effect,
 )
 
-_TYPES = {flaggable.key: flaggable for flaggable in (REVIEW, FORUM_POST, FORUM_COMMENT)}
+_TYPES = {
+    flaggable.key: flaggable
+    for flaggable in (REVIEW, REVIEW_REPLY, FORUM_POST, FORUM_COMMENT)
+}
 
 
 def all_types():

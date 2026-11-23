@@ -527,17 +527,24 @@ class InboxViewTests(TestCase):
 
     def test_preferences_default_on_and_save(self):
         self.client.force_login(self.user)
-        response = self.client.get(reverse("notifications:preferences"))
-        self.assertContains(response, "checked", count=4)
+        # The old preferences URL now opens the Settings page.
+        old = self.client.get(reverse("notifications:preferences"))
+        self.assertRedirects(old, reverse("accounts:settings") + "#notifications")
+        response = self.client.get(reverse("accounts:settings"))
+        # Six notification categories plus the default "Match my device" theme.
+        self.assertContains(response, "checked", count=7)
         self.assertFalse(NotificationPreference.objects.exists())
         self.client.post(
-            reverse("notifications:preferences"), {"followed_discussions": "on"}
+            reverse("accounts:settings"),
+            {"followed_discussions": "on", "theme": "system"},
         )
         preference = NotificationPreference.objects.get(user=self.user)
         self.assertFalse(preference.followed_reviews)
         self.assertFalse(preference.followed_availability)
         self.assertFalse(preference.followed_availability_alerts)
         self.assertTrue(preference.followed_discussions)
+        self.assertFalse(preference.review_replies)
+        self.assertFalse(preference.flag_outcomes)
 
     def test_inbox_paginates(self):
         for index in range(25):

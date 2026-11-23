@@ -31,7 +31,7 @@
       <div class="forum-detail-content">
         <div class="forum-meta">
           <span class="forum-topic-tag">{{ post.get_topic_type_display }}</span>
-          <span>Posted by <strong>{{ post.author.username }}</strong></span>
+          <span>Posted by <a class="author-link" href="{% url 'accounts:profile' post.author.username %}"><strong>{{ post.author.username }}</strong></a></span>
           <time datetime="{{ post.created_at|date:'c' }}">{{ post.created_at|date:"M j, Y · g:i A" }}</time>
           {% if user.is_authenticated and post.author_id == user.pk %}
             <a href="{% url 'forum:edit_post' post.pk %}">Edit discussion</a>

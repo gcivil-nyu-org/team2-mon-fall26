@@ -1,13 +1,23 @@
 from django.conf import settings
 from django.db.models import Avg, Count, Q
 
-from .models import Review
+from .models import Review, ReviewReply
 
 
 def visible_reviews():
     """Reviews the public may see: never held for moderation (E05); demo rows only in demo mode."""
     reviews = Review.objects.filter(is_held=False)
     return reviews if settings.DEMO_MODE else reviews.filter(is_demo=False)
+
+
+def public_replies():
+    """Replies anyone can see: not held, under a public review of an active hotspot."""
+    return ReviewReply.objects.filter(
+        is_held=False,
+        review__is_held=False,
+        review__is_demo=False,
+        review__hotspot__is_active=True,
+    ).exclude(review__body="")
 
 
 def rating_summary(reviews):

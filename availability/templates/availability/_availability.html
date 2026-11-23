@@ -19,7 +19,7 @@
       {% if availability.reports %}
       <ul>
         {% for report in availability.reports %}
-        <li><span class="availability-status is-{{ report.status }}">{{ report.get_status_display }}</span><span>{{ report.reporter.get_full_name|default:report.reporter.username }}</span><time datetime="{{ report.created_at|date:'c' }}">{{ report.created_at|date:"M j, Y" }}</time></li>
+        <li><span class="availability-status is-{{ report.status }}">{{ report.get_status_display }}</span><a class="author-link" href="{% url 'accounts:profile' report.reporter.username %}">{{ report.reporter.get_full_name|default:report.reporter.username }}</a><time datetime="{{ report.created_at|date:'c' }}">{{ report.created_at|date:"M j, Y" }}</time></li>
         {% endfor %}
       </ul>
       {% else %}
