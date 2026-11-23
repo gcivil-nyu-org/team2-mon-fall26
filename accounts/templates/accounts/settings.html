@@ -1,0 +1,53 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Settings · Connect NYC{% endblock %}
+{% block settings_nav_class %}is-current{% endblock %}
+{% block content %}
+<section class="settings-page" aria-labelledby="settings-title">
+  <div class="page-intro"><div><h1 id="settings-title">Settings</h1><p>Choose what appears in your Inbox and how Connect NYC looks for you.</p></div></div>
+  <form method="post" class="settings-form" novalidate>
+    {% csrf_token %}
+    <section class="settings-card" id="appearance" aria-labelledby="appearance-title">
+      <h2 id="appearance-title">Appearance</h2>
+      <p class="settings-help">Dark mode is easier on the eyes at night. “Match my device” follows your system setting.</p>
+      <fieldset class="theme-options">
+        <legend class="visually-hidden">Theme</legend>
+        {% for choice in theme_form.theme %}
+        <label class="theme-option theme-option-{{ choice.data.value }}" for="{{ choice.id_for_label }}">
+          {{ choice.tag }}
+          <span class="theme-swatch" aria-hidden="true"><span></span><span></span></span>
+          <span>{{ choice.choice_label }}</span>
+        </label>
+        {% endfor %}
+      </fieldset>
+    </section>
+
+    <section class="settings-card" id="notifications" aria-labelledby="notifications-title">
+      <h2 id="notifications-title">Notifications</h2>
+      <p class="settings-help">Notifications appear in your <a href="{% url 'notifications:inbox' %}">Inbox</a>. Everything is on until you switch it off.</p>
+      <fieldset class="preference-options">
+        <legend>Hotspots you follow</legend>
+        {% for field in followed_fields %}
+        <label class="preference-option" for="{{ field.id_for_label }}">{{ field }}<span>{{ field.label }}</span></label>
+        {% endfor %}
+      </fieldset>
+      <fieldset class="preference-options">
+        <legend>Your activity</legend>
+        {% for field in contribution_fields %}
+        <label class="preference-option" for="{{ field.id_for_label }}">{{ field }}<span>{{ field.label }}</span></label>
+        {% endfor %}
+      </fieldset>
+      <div class="settings-always">
+        <h3>Always sent</h3>
+        <ul>
+          <li>Moderation decisions about your own reviews, replies, posts and comments</li>
+          <li>When a hotspot you follow is removed from the public list</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="settings-actions">
+      <button type="submit" class="button button-primary">Save settings</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

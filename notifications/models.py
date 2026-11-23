@@ -45,6 +45,7 @@ class Notification(models.Model):
         REVIEW_APPROVED = "review_approved", "Content approved"
         REVIEW_REMOVED = "review_removed", "Content removed by a moderator"
         FLAG_RESOLVED = "flag_resolved", "Flag reviewed"
+        REVIEW_REPLY = "review_reply", "Reply to your review"
 
     FOLLOWED_KINDS = {
         Kind.FOLLOWED_REVIEW,
@@ -108,6 +109,8 @@ class Notification(models.Model):
     def category(self):
         if self.kind == self.Kind.AVAILABILITY_ALERT:
             return "Availability alert"
+        if self.kind == self.Kind.REVIEW_REPLY:
+            return "Reply"
         return "Followed hotspot" if self.kind in self.FOLLOWED_KINDS else "Moderation"
 
     @property
@@ -117,6 +120,8 @@ class Notification(models.Model):
             return f"discussion post “{self.subject}”"
         if self.content_label == "comment":
             return f"comment on “{self.subject}”"
+        if self.content_label == "reply":
+            return f"reply to {self.subject}'s review of {self.hotspot_name or 'a hotspot'}"
         return f"review of {self.hotspot_name or 'a hotspot'}"
 
     @property
@@ -146,6 +151,8 @@ class Notification(models.Model):
                 f"{hotspot} was removed from the public hotspot list. "
                 "It no longer appears on the map or in your followed hotspots."
             )
+        if self.kind == kind.REVIEW_REPLY:
+            return f"{self.actor_name} replied to your review of {hotspot}: “{self.detail}”"
         if self.kind == kind.REVIEW_HELD:
             return (
                 f"Your {what} is waiting for a moderator. "
@@ -166,6 +173,8 @@ class Notification(models.Model):
                 flagged = f"the discussion post you flagged, “{self.subject}”,"
             elif self.content_label == "comment":
                 flagged = f"the comment you flagged on “{self.subject}”"
+            elif self.content_label == "reply":
+                flagged = f"the reply you flagged on {hotspot}"
             else:
                 flagged = f"the review you flagged on {hotspot}"
             return (
@@ -175,7 +184,7 @@ class Notification(models.Model):
 
 
 class NotificationPreference(models.Model):
-    """Per-user opt-outs for followed-hotspot updates. No row means everything is on."""
+    """Per-user opt-outs for followed-hotspot updates and replies. No row means all on."""
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -195,6 +204,8 @@ class NotificationPreference(models.Model):
     followed_discussions = models.BooleanField(
         "New discussions about hotspots I follow", default=True
     )
+    review_replies = models.BooleanField("Replies to my reviews", default=True)
+    flag_outcomes = models.BooleanField("Outcomes of content I flagged", default=True)
 
     def __str__(self):
         return f"Notification preferences for {self.user_id}"

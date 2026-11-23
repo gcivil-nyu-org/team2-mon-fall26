@@ -1,0 +1,14 @@
+{% extends "hotspots/base.html" %}
+{% block title %}Delete your reply · Connect NYC{% endblock %}
+{% block content %}
+  <section class="auth-card" aria-labelledby="delete-title">
+    <h1 id="delete-title">Delete your reply?</h1>
+    <p class="auth-intro">This permanently removes your reply to {{ reply.review.author.username }}'s review of {{ hotspot.display_name }}.</p>
+    <blockquote class="moderation-excerpt"><p>{{ reply.body|truncatechars:300|linebreaksbr }}</p></blockquote>
+    <form method="post" class="auth-form">
+      {% csrf_token %}
+      <button type="submit" class="button button-danger auth-submit">Yes, delete</button>
+      <a class="button button-secondary auth-submit" href="{{ hotspot.get_absolute_url }}#reply-{{ reply.pk }}">Keep my reply</a>
+    </form>
+  </section>
+{% endblock %}
