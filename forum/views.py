@@ -1,15 +1,19 @@
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.http import require_http_methods
 
 from accounts.permissions import contributor_required
 from moderation import automod
 from moderation import services as moderation
 from moderation.registry import FORUM_COMMENT, FORUM_POST
+from moderation.signals import withdraw_open_flags
 from notifications import services as notify
 
-from .forms import ForumCommentForm, ForumPostForm
+from .forms import ForumCommentForm, ForumPostEditForm, ForumPostForm
 from .models import ForumComment, ForumVote
 from .services import public_comments, public_posts, visible_posts
 
@@ -23,9 +27,9 @@ COMMENT_HELD_MESSAGE = (
 )
 
 
-def _check_and_hold(flaggable, item):
+def _check_and_hold(flaggable, item, *, is_new=True):
     """E05 tier 2: hold suspicious text for an administrator. Returns True if held."""
-    reasons = automod.forum_hold_reasons(item, is_new=True)
+    reasons = automod.forum_hold_reasons(item, is_new=is_new)
     if reasons:
         moderation.hold(flaggable, item, reasons)
     return item.is_held
@@ -155,9 +159,13 @@ def create_post(request):
 
 
 @contributor_required
+@transaction.atomic
 def add_comment(request, post_pk):
     # Held discussions accept no comments until a moderator publishes them.
-    post = get_object_or_404(public_posts(), pk=post_pk)
+    posts = public_posts()
+    if request.method == "POST":
+        posts = posts.select_for_update()
+    post = get_object_or_404(posts, pk=post_pk)
     if request.method != "POST":
         return redirect("forum:detail", pk=post.pk)
 
@@ -216,15 +224,115 @@ def _toggle_vote(request, post=None, comment=None):
 
 
 @contributor_required
+@transaction.atomic
 def toggle_post_vote(request, post_pk):
-    post = get_object_or_404(public_posts(), pk=post_pk)
+    post = get_object_or_404(public_posts().select_for_update(), pk=post_pk)
     return _toggle_vote(request, post=post)
 
 
 @contributor_required
+@transaction.atomic
 def toggle_comment_vote(request, comment_pk):
     comment = get_object_or_404(
-        public_comments().select_related("post", "author"),
+        public_comments().select_related("post").select_for_update(of=("self",)),
         pk=comment_pk,
     )
     return _toggle_vote(request, comment=comment)
+
+
+def _own_forum_item(request, pk, kind):
+    """Lock the thread before an author change, in the same order as new replies."""
+    writing = request.method == "POST"
+    posts = visible_posts(request.user)
+    if writing:
+        posts = posts.select_for_update()
+    if kind == "discussion":
+        return get_object_or_404(
+            posts, pk=pk, author=request.user, author_removed=False
+        )
+    comments = ForumComment.objects.filter(pk=pk, author=request.user)
+    post = get_object_or_404(posts, pk__in=comments.values("post_id"))
+    if writing:
+        comments = comments.select_for_update()
+    return get_object_or_404(comments, post=post)
+
+
+@contributor_required
+@require_http_methods(["GET", "POST"])
+@transaction.atomic
+def edit_own(request, pk, kind):
+    item = _own_forum_item(request, pk, kind)
+    is_post = kind == "discussion"
+    post = item if is_post else item.post
+    destination = (
+        post.get_absolute_url()
+        if is_post
+        else f"{post.get_absolute_url()}#comment-{pk}"
+    )
+    form_class = ForumPostEditForm if is_post else ForumCommentForm
+    form = form_class(request.POST if request.method == "POST" else None, instance=item)
+    if form.is_bound and form.is_valid():
+        if is_post:
+            item.save(update_fields=["title", "body", "updated_at"])
+        else:
+            item.edited_at = timezone.now()
+            item.save(update_fields=["body", "edited_at"])
+        held = _check_and_hold(
+            FORUM_POST if is_post else FORUM_COMMENT, item, is_new=False
+        )
+        if held:
+            messages.info(
+                request, POST_HELD_MESSAGE if is_post else COMMENT_HELD_MESSAGE
+            )
+        else:
+            messages.success(request, "Your changes have been saved.")
+        return redirect(destination)
+    return render(
+        request,
+        "forum/author_form.html",
+        {"form": form, "kind": kind, "back": destination},
+    )
+
+
+@contributor_required
+@require_http_methods(["GET", "POST"])
+@transaction.atomic
+def delete_own(request, pk, kind):
+    item = _own_forum_item(request, pk, kind)
+    is_post = kind == "discussion"
+    post = item if is_post else item.post
+    if request.method == "GET":
+        back = (
+            post.get_absolute_url()
+            if is_post
+            else f"{post.get_absolute_url()}#comment-{pk}"
+        )
+        return render(
+            request,
+            "forum/author_form.html",
+            {"deleting": True, "kind": kind, "back": back},
+        )
+    if is_post and post.comments.exists():
+        post.author_removed = True
+        post.title = "Deleted discussion"
+        post.body = ""
+        post.hotspot = None
+        post.save(
+            update_fields=["author_removed", "title", "body", "hotspot", "updated_at"]
+        )
+        post.votes.all().delete()
+        withdraw_open_flags(post)
+        messages.success(
+            request, "Your discussion was deleted. Existing replies were kept."
+        )
+        return redirect(post)
+    if not is_post:
+        # Detach children before Django collects cascades. Their authors keep their replies.
+        item.replies.update(parent_id=item.parent_id)
+    item.delete()
+    messages.success(request, f"Your {kind} was deleted.")
+    if not is_post:
+        if not post.author_removed or post.comments.exists():
+            return redirect(f"{post.get_absolute_url()}#comments")
+        post.delete()
+    return redirect("forum:list")

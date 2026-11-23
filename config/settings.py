@@ -76,6 +76,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "accounts.throttling.LoginCooldownHeaders",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -148,7 +149,12 @@ X_FRAME_OPTIONS = "DENY"
 # Send the origin on cross-origin tile requests, as required by the tile provider.
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 # Enable these behind HTTPS on AWS; the local demo uses HTTP on loopback only.
-SESSION_COOKIE_SECURE = os.environ.get("DJANGO_SECURE_COOKIES", "0") == "1"
+SECURE_SSL_REDIRECT = os.environ.get("DJANGO_ENFORCE_HTTPS", "0") == "1"
+SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]
+SECURE_HSTS_SECONDS = 3600 if SECURE_SSL_REDIRECT else 0
+SESSION_COOKIE_SECURE = (
+    SECURE_SSL_REDIRECT or os.environ.get("DJANGO_SECURE_COOKIES", "0") == "1"
+)
 CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
 # Behind an HTTPS load balancer (e.g. AWS), list the public origin(s) so login and
 # sign-up forms pass CSRF checks, and trust the proxy's X-Forwarded-Proto header.

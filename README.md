@@ -30,7 +30,7 @@ The demo includes hotspot discovery, account access, hotspot reviews, administra
 | [US22–US24 / #32–#34](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/6) (E06) | Contributors report Working or Unavailable. Profiles show recent reports and reliability when sufficient reports exist; discovery supports rating/reliability sorting. |
 | [US25–US26 / #35–#36](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/7) (E07) | Signed-in users follow/unfollow an active hotspot and access their own list through My followed hotspots. If a session expires, login returns to the hotspot profile so the user can retry the action. |
 | [US27 / #37](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/37) (E07) | An in-app Inbox with an unread count in the header. Followers get one summary per hotspot for new ratings/reviews and for availability reports, an alert when a followed hotspot may be down (and when it recovers), and notices about linked discussions and retirement. Authors and flaggers get moderation decisions. Selecting a notification opens the related hotspot, review or discussion. Rules: [docs/E07-NOTIFICATIONS.md](docs/E07-NOTIFICATIONS.md) (proposed, pending team agreement). |
-| [US28–US30 / #38–#40](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) (E08) | Visitors browse public topics and comments; contributors create discussions, post threaded replies and toggle helpful upvotes on posts and comments. Optional hotspot links do not create reviews or affect ratings. |
+| [US28–US30 / #38–#40](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/15) (E08) | Visitors browse discussions. Contributors start topics, post threaded replies and vote. Authors can edit or delete their own text. Deletion requires confirmation and preserves existing replies. Optional hotspot links keep discussions separate from reviews and ratings. |
 
 The profile includes a small rating aggregation service for its dependency on US12 / #22 under E03; that story remains owned by Jiahao. US18 / #28 retains its E04 parent and is integrated into the E01 interface. Rating and review contributions (E03: create, edit, delete, helpful upvotes) are implemented. Implementation, issue closure and production acceptance are tracked separately in the progress record.
 
@@ -133,9 +133,9 @@ Tests cover stable imports and review relationships, invalid-file rollback, shar
 
 ## Community moderation (E05)
 
-One shared reporting and moderation workflow for community content. Hotspot reviews are supported today; E08 forum posts, comments and replies plug in by adding a `FlaggableType` entry in `moderation/registry.py`.
+Hotspot ratings and reviews, forum posts, comments and replies share the E05 reporting and moderation workflow in `moderation/registry.py`.
 
-**Automated checks** (`moderation/automod.py`, built-in rules, no external service) run when a user submits or edits a rating or written review. Administrators can then review held contributions.
+**Automated checks** in `moderation/automod.py` run when a user submits or edits community content. Administrators review held contributions. Editing a held comment invalidates approval of the previous text.
 
 | Tier | What triggers it | Result |
 | --- | --- | --- |
@@ -213,6 +213,8 @@ Jiahao can extend the active-hotspot queryset and map interface for search/filte
 
 Accounts use Django's built-in user model and session login. Passwords are stored only as salted PBKDF2-SHA256 hashes, and the existing password validators apply at sign-up. Usernames and emails are unique regardless of letter case.
 
+The public and Django admin login forms share a MySQL counter per username. Five consecutive failed sign-ins start a two-minute cooldown. A countdown shows when the button will unlock. Refreshing the page or switching browsers leaves the deadline in place. A successful login clears earlier failures. Counts below five expire after 24 hours without a failure.
+
 | Role | Who | Can |
 | --- | --- | --- |
 | Visitor | Not signed in | Browse the map, search, filter and read reviews |
@@ -235,7 +237,7 @@ def import_records(request): ...
 
 Class-based views can use `ContributorRequiredMixin` and `AdministratorRequiredMixin`. Templates receive `user_role` (`visitor`, `contributor` or `administrator`) and `user_is_administrator`. The hotspot profile's contribution prompt lives in `hotspots/templates/hotspots/_contribute.html`; E03 / US11 connects its signed-in branch to the review form.
 
-Behind an HTTPS load balancer, set `DJANGO_CSRF_TRUSTED_ORIGINS` to the public `https://` origin and `DJANGO_BEHIND_HTTPS_PROXY=1`, together with `DJANGO_SECURE_COOKIES=1`, so sign-up and login forms pass CSRF checks over HTTPS.
+To enable HTTPS on Elastic Beanstalk, first verify a public hostname with a valid certificate and a working HTTPS listener. Configure the load balancer to check `/healthz/` and to set the forwarded protocol itself. Set `DJANGO_CSRF_TRUSTED_ORIGINS` to the public HTTPS origin and `DJANGO_BEHIND_HTTPS_PROXY=1` when only the trusted proxy can reach Django. Then set `DJANGO_ENFORCE_HTTPS=1`. Django redirects HTTP requests to HTTPS, marks session and CSRF cookies Secure, and sends a one-hour HSTS policy. The HTTP health probe remains available. Verify redirects, cookies, and login on the target environment before closing #97. [Elastic Beanstalk HTTPS configuration](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/configuring-https.html)
 
 ## Runtime notes
 

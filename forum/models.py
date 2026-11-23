@@ -27,6 +27,7 @@ class ForumPost(models.Model):
     # E05: held posts are hidden from everyone but their author until an
     # administrator approves or removes them (same rules as hotspot reviews).
     is_held = models.BooleanField(default=False)
+    author_removed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -62,6 +63,7 @@ class ForumComment(models.Model):
     # E05: held comments are shown only to their author until a moderator decides.
     is_held = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["created_at", "pk"]

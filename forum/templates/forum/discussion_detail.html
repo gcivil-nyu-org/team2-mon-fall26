@@ -6,6 +6,12 @@
   <section class="forum-page forum-detail" aria-labelledby="discussion-title">
     <p class="forum-back"><a href="{% url 'forum:list' %}">← All discussions</a></p>
     <article class="forum-detail-card">
+      {% if post.author_removed %}
+        <div class="forum-detail-content">
+          <h1 id="discussion-title">{{ post.title }}</h1>
+          <p>The author deleted this discussion. Existing replies are preserved.</p>
+        </div>
+      {% else %}
       <div class="forum-detail-votes">
         {% if user.is_authenticated and post.author_id != user.pk %}
           <form method="post" action="{% url 'forum:post_vote' post.pk %}">
@@ -27,6 +33,10 @@
           <span class="forum-topic-tag">{{ post.get_topic_type_display }}</span>
           <span>Posted by <strong>{{ post.author.username }}</strong></span>
           <time datetime="{{ post.created_at|date:'c' }}">{{ post.created_at|date:"M j, Y · g:i A" }}</time>
+          {% if user.is_authenticated and post.author_id == user.pk %}
+            <a href="{% url 'forum:edit_post' post.pk %}">Edit discussion</a>
+            <a href="{% url 'forum:delete_post' post.pk %}">Delete discussion</a>
+          {% endif %}
         </div>
         <h1 id="discussion-title">{{ post.title }}{% if post.is_held %} <span class="held-badge">Awaiting moderator approval</span>{% endif %}</h1>
         {% if post.is_held %}<p class="held-note">Only you can see this discussion until a moderator approves it. Nobody can comment on it yet.</p>{% endif %}
@@ -36,11 +46,12 @@
           <p class="forum-flag">{% if flagged_post %}<span class="flag-state">Flagged for review</span>{% else %}<a class="flag-link" href="{% url 'moderation:flag' 'post' post.pk %}" aria-label="Flag discussion post by {{ post.author.username }} as inappropriate">Flag</a>{% endif %}</p>
         {% endif %}
       </div>
+      {% endif %}
     </article>
 
     <section class="forum-comments" id="comments" aria-labelledby="comments-title">
       <h2 id="comments-title">Comments <span>{{ comment_count }}</span></h2>
-      {% if post.is_held %}
+      {% if post.is_held or post.author_removed %}
       {% elif user.is_authenticated %}
         <form id="comment-form" class="forum-comment-form" method="post" action="{% url 'forum:comment' post.pk %}">
           {% csrf_token %}

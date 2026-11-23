@@ -14,7 +14,7 @@ def visible_posts(user=None):
 
 
 def public_posts():
-    return ForumPost.objects.filter(is_held=False)
+    return ForumPost.objects.filter(is_held=False, author_removed=False)
 
 
 def public_comments():

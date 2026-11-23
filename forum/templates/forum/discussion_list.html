@@ -20,6 +20,12 @@
     <div class="forum-feed" aria-label="Discussion topics">
       {% for post in posts %}
         <article class="forum-post-card">
+          {% if post.author_removed %}
+            <div class="forum-post-summary">
+              <h2><a href="{{ post.get_absolute_url }}">{{ post.title }}</a></h2>
+              <a class="forum-comment-link" href="{{ post.get_absolute_url }}#comments">{{ post.comment_count }} comment{{ post.comment_count|pluralize }}</a>
+            </div>
+          {% else %}
           <div class="forum-post-votes">
             {% if user.is_authenticated and post.author_id != user.pk %}
               <form method="post" action="{% url 'forum:post_vote' post.pk %}">
@@ -46,6 +52,7 @@
             {% if post.hotspot %}<p class="forum-related">Related hotspot: <a href="{{ post.hotspot.get_absolute_url }}">{{ post.hotspot.display_name }}</a></p>{% endif %}
             <a class="forum-comment-link" href="{{ post.get_absolute_url }}#comments">{{ post.comment_count }} comment{{ post.comment_count|pluralize }}</a>
           </div>
+          {% endif %}
         </article>
       {% empty %}
         <div class="forum-empty">

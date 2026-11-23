@@ -11,6 +11,10 @@
     </div>
     <div class="forum-comment-body">{{ comment.body|linebreaks }}</div>
     <div class="forum-comment-actions">
+      {% if user.is_authenticated and comment.author_id == user.pk %}
+        <a href="{% url 'forum:edit_comment' comment.pk %}">Edit comment</a>
+        <a href="{% url 'forum:delete_comment' comment.pk %}">Delete comment</a>
+      {% endif %}
       {% if comment.is_held %}
         <span class="held-note">Only you can see this until a moderator approves it.</span>
       {% elif user.is_authenticated and comment.author_id != user.pk %}
@@ -26,7 +30,7 @@
         {% endif %}
       {% endif %}
       {% if user.is_authenticated and not comment.is_held %}
-        <a href="{{ post.get_absolute_url }}?reply_to={{ comment.pk }}#comment-form">Reply</a>
+        {% if not post.author_removed %}<a href="{{ post.get_absolute_url }}?reply_to={{ comment.pk }}#comment-form">Reply</a>{% endif %}
         {% if comment.author_id != user.pk %}
           {% if comment.pk in flagged_comment_ids %}<span class="flag-state">Flagged for review</span>{% else %}<a class="flag-link" href="{% url 'moderation:flag' 'comment' comment.pk %}" aria-label="Flag comment by {{ comment.author.username }} as inappropriate">Flag</a>{% endif %}
         {% endif %}

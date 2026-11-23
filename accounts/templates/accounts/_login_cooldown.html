@@ -1,0 +1,6 @@
+{% if form.retry_after %}
+  <p class="form-alert" id="login-cooldown" data-seconds="{{ form.retry_after }}" data-form="{{ form_id }}">
+    You can try again in <span data-remaining>{{ form.retry_after }}</span> seconds.
+  </p>
+  <noscript><p>Reload this page when the wait is over to log in.</p></noscript>
+{% endif %}

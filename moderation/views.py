@@ -33,10 +33,14 @@ def _removal_effect(flaggable, obj):
 
 @contributor_required
 @require_http_methods(["GET", "POST"])
+@transaction.atomic
 def flag_content(request, kind, pk):
     """US21: a signed-in contributor flags someone else's content, once."""
     flaggable = get_type(kind)
-    obj = get_object_or_404(flaggable.public_queryset(), pk=pk)
+    items = flaggable.public_queryset()
+    if request.method == "POST":
+        items = items.select_for_update(of=("self",))
+    obj = get_object_or_404(items, pk=pk)
     info = flaggable.describe(obj)
     if info["author_id"] == request.user.pk:
         messages.info(request, "You can't flag your own content.")

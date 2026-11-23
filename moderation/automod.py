@@ -267,7 +267,10 @@ def is_trusted_in_forum(user):
     )
     published = (
         ForumPost.objects.filter(
-            author=user, is_held=False, created_at__lte=settled_before
+            author=user,
+            is_held=False,
+            author_removed=False,
+            created_at__lte=settled_before,
         ).count()
         + ForumComment.objects.filter(
             author=user, is_held=False, created_at__lte=settled_before

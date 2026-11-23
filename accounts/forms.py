@@ -1,8 +1,10 @@
 from django import forms
+from django.contrib.admin.forms import AdminAuthenticationForm
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
 from .roles import CONTRIBUTORS_GROUP, add_to_group
+from .throttling import LoginCooldownMixin
 
 User = get_user_model()
 
@@ -52,7 +54,7 @@ class SignUpForm(UserCreationForm):
         return user
 
 
-class LoginForm(AuthenticationForm):
+class LoginForm(LoginCooldownMixin, AuthenticationForm):
     """US07: one generic error that never reveals which field was wrong."""
 
     error_messages = {
@@ -60,3 +62,7 @@ class LoginForm(AuthenticationForm):
         "invalid_login": "The username or password is incorrect. Please try again.",
         "inactive": "The username or password is incorrect. Please try again.",
     }
+
+
+class AdminLoginForm(LoginCooldownMixin, AdminAuthenticationForm):
+    pass
