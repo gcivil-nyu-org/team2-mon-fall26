@@ -9,4 +9,6 @@ urlpatterns = [
     path("accounts/login/", views.AccountLoginView.as_view(), name="login"),
     path("accounts/logout/", views.AccountLogoutView.as_view(), name="logout"),
     path("manage/", views.admin_home, name="admin_home"),
+    path("settings/", views.settings_view, name="settings"),
+    path("settings/theme/", views.set_theme, name="set_theme"),
 ]

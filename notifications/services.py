@@ -377,7 +377,7 @@ def content_removed(info, obj, reason_label, flagger_ids):
             **fields,
         )
     count += _create(
-        [pk for pk in flagger_ids if pk != info.get("author_id")],
+        _wants_flag_outcomes([pk for pk in flagger_ids if pk != info.get("author_id")]),
         Kind.FLAG_RESOLVED,
         hotspot,
         target,
@@ -387,10 +387,22 @@ def content_removed(info, obj, reason_label, flagger_ids):
     return count
 
 
+def _wants_flag_outcomes(user_ids):
+    """Flaggers who have not switched off flag-outcome notices."""
+    from .models import NotificationPreference
+
+    opted_out = set(
+        NotificationPreference.objects.filter(
+            user_id__in=list(user_ids), flag_outcomes=False
+        ).values_list("user_id", flat=True)
+    )
+    return [pk for pk in user_ids if pk not in opted_out]
+
+
 def flags_resolved(flagger_ids, obj, removed):
     """Tell the people who flagged an item that a moderator made a decision."""
     return _create(
-        flagger_ids,
+        _wants_flag_outcomes(flagger_ids),
         Kind.FLAG_RESOLVED,
         _hotspot_of(obj),
         obj,

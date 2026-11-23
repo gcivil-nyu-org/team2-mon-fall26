@@ -613,3 +613,35 @@ dd { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; overflow-wr
   .site-header nav::-webkit-scrollbar { display: none; }
   .account-nav { margin-left: auto; }
 }
+
+/* Settings page and light/dark switch */
+.theme-toggle-form { margin: 0; }
+.theme-toggle { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--white); color: var(--brand); cursor: pointer; }
+.theme-toggle:hover { border-color: var(--brand); }
+.theme-toggle svg { width: 18px; height: 18px; }
+.theme-icon-sun, :root[data-theme="dark"] .theme-icon-moon { display: none; }
+:root[data-theme="dark"] .theme-icon-sun { display: block; }
+.settings-page { max-width: 760px; margin: 0 auto; }
+.settings-form { display: grid; gap: 22px; }
+.settings-card { padding: 26px 28px; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); scroll-margin-top: 24px; }
+.settings-card h2 { font-size: 19px; font-weight: 660; letter-spacing: -.3px; }
+.settings-help { margin: 6px 0 18px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.settings-card .preference-options { margin-bottom: 18px; }
+.settings-card legend { margin-bottom: 8px; padding: 0; font-size: 13px; font-weight: 700; }
+.theme-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; border: 0; }
+.theme-option { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.theme-option:has(input:checked) { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+.theme-option input { position: absolute; opacity: 0; pointer-events: none; }
+.theme-option:has(input:focus-visible) { outline: 3px solid #8bb7ff; outline-offset: 2px; }
+.theme-swatch { display: grid; grid-template-columns: 1fr 1fr; height: 54px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.theme-option-light .theme-swatch span { background: #f5f8fc; }
+.theme-option-light .theme-swatch span + span { background: #fff; }
+.theme-option-dark .theme-swatch span { background: #0e1621; }
+.theme-option-dark .theme-swatch span + span { background: #162130; }
+.theme-option-system .theme-swatch span { background: #f5f8fc; }
+.theme-option-system .theme-swatch span + span { background: #162130; }
+.settings-always { padding: 14px 16px; border-radius: 8px; background: var(--canvas); font-size: 13px; line-height: 1.55; }
+.settings-always h3 { font-size: 13px; font-weight: 700; }
+.settings-always ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); }
+.settings-actions { display: flex; justify-content: flex-end; }
+@media (max-width: 560px) { .theme-options { grid-template-columns: 1fr; } .settings-card { padding: 22px 18px; } }

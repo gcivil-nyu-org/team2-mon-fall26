@@ -10,7 +10,7 @@
     <p>Updates on hotspots you follow and decisions about your reviews, discussions and flags.</p>
   </div>
   <div class="inbox-actions">
-    <a class="button button-secondary button-small" href="{% url 'notifications:preferences' %}">Preferences</a>
+    <a class="button button-secondary button-small" href="{% url 'accounts:settings' %}#notifications">Notification settings</a>
     {% if has_unread %}
       <form method="post" action="{% url 'notifications:mark_all_read' %}">{% csrf_token %}<button type="submit" class="button button-primary button-small">Mark all as read</button></form>
     {% endif %}

@@ -205,6 +205,7 @@ class NotificationPreference(models.Model):
         "New discussions about hotspots I follow", default=True
     )
     review_replies = models.BooleanField("Replies to my reviews", default=True)
+    flag_outcomes = models.BooleanField("Outcomes of content I flagged", default=True)
 
     def __str__(self):
         return f"Notification preferences for {self.user_id}"

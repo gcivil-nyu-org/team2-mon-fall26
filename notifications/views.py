@@ -1,13 +1,13 @@
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from accounts.permissions import contributor_required
 
 from . import services
-from .forms import PreferenceForm
-from .models import Notification, NotificationPreference
+from .models import Notification
 
 PAGE_SIZE = 20
 
@@ -65,12 +65,5 @@ def mark_all_read(request):
 @contributor_required
 @require_http_methods(["GET", "POST"])
 def preferences(request):
-    preference = NotificationPreference.objects.filter(
-        user=request.user
-    ).first() or NotificationPreference(user=request.user)
-    form = PreferenceForm(request.POST or None, instance=preference)
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "Your notification preferences have been saved.")
-        return redirect("notifications:inbox")
-    return render(request, "notifications/preferences.html", {"form": form})
+    """Notification preferences moved to the Settings page; keep old links working."""
+    return redirect(f"{reverse('accounts:settings')}#notifications")

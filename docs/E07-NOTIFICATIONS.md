@@ -6,7 +6,7 @@ Story: [US27 / #37](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/37
 
 - **Channel:** in-app only — the **Inbox** page (`/inbox/`) and an unread count in the header for signed-in contributors. No email or push: the app has no mail configuration and the Story only needs in-app delivery.
 - **Timing:** notifications are created immediately, when the content becomes publicly visible (a held review counts only once approved). Routine followed-hotspot activity is folded into one unread summary per hotspot; there are no timed digests.
-- **Preferences:** `/inbox/preferences/`. Each followed-hotspot type (review summaries, availability-report summaries, availability alerts, discussions) and replies to your reviews can be switched off. Everything is on by default; no preference row means all on. Moderation notices and hotspot retirement are always sent.
+- **Preferences:** the **Settings** page (`/settings/#notifications`; the old `/inbox/preferences/` link redirects there). Each followed-hotspot type (review summaries, availability-report summaries, availability alerts, discussions), replies to your reviews, and the outcomes of content you flagged can be switched off. Everything is on by default; no preference row means all on. Moderation decisions about your own content and hotspot retirement are always sent.
 - **Never notified:** about your own actions, about activity on retired hotspots, or about demo reviews.
 
 ## Followed hotspots (sent to each follower)
@@ -48,7 +48,7 @@ Settings in `config/settings.py`; the values are proposals for the team.
 
 Sent once per reply, when it becomes public (on posting, or when a moderator approves a held reply). Your own replies to your review, replies to demo reviews and replies on retired hotspots send nothing.
 
-## Moderation (sent to the author or flagger; always on)
+## Moderation (sent to the author or flagger)
 
 | Event | Recipient | Opens |
 | --- | --- | --- |
@@ -56,7 +56,7 @@ Sent once per reply, when it becomes public (on posting, or when a moderator app
 | Review hidden after enough community flags | Author | `#contribute` |
 | Held review approved | Author | `#contribute` |
 | Review removed — includes the moderation reason; never the private log note or who flagged it | Author | The hotspot's contribution panel |
-| Flagged review removed / kept (dismissed or approved) | Each user who flagged it | The review if still public, otherwise the hotspot's reviews |
+| Flagged review removed / kept (dismissed or approved) — can be switched off in Settings | Each user who flagged it | The review if still public, otherwise the hotspot's reviews |
 
 Dismissing flags does not notify the author, who was never told the review was flagged.
 
