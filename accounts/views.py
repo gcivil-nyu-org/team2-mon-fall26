@@ -2,9 +2,11 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.views import LoginView, LogoutView
+from django.db import transaction
 from django.db.models import Count, Q
-from django.shortcuts import redirect, render, resolve_url
+from django.shortcuts import get_object_or_404, redirect, render, resolve_url
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_http_methods, require_POST
 from django.views.generic import FormView
 
 from hotspots.models import Hotspot
@@ -12,8 +14,13 @@ from moderation.models import ModerationRecord
 from moderation.services import held_count, open_item_count
 from reviews.models import Review
 
-from .forms import LoginForm, SignUpForm
-from .permissions import administrator_required
+from notifications.forms import PreferenceForm
+from notifications.models import NotificationPreference
+
+from .forms import LoginForm, SignUpForm, ThemeForm
+from .models import UserSettings
+from .profiles import profile_context
+from .permissions import administrator_required, contributor_required
 from .roles import ADMINISTRATOR, ROLE_LABELS, role_for
 
 User = get_user_model()
@@ -109,3 +116,73 @@ def admin_home(request):
         ).count(),
     }
     return render(request, "accounts/admin_home.html", context)
+
+
+# --- Settings (notification preferences and appearance) ---------------------
+
+FOLLOWED_FIELDS = (
+    "followed_reviews",
+    "followed_availability",
+    "followed_availability_alerts",
+    "followed_discussions",
+)
+CONTRIBUTION_FIELDS = ("review_replies", "flag_outcomes")
+
+
+def _settings_for(user):
+    return UserSettings.objects.filter(user=user).first() or UserSettings(user=user)
+
+
+@contributor_required
+@require_http_methods(["GET", "POST"])
+def settings_view(request):
+    """One page for a signed-in user's notification categories and appearance."""
+    preference = NotificationPreference.objects.filter(
+        user=request.user
+    ).first() or NotificationPreference(user=request.user)
+    data = request.POST if request.method == "POST" else None
+    theme_form = ThemeForm(data, instance=_settings_for(request.user))
+    preference_form = PreferenceForm(data, instance=preference)
+    if (
+        request.method == "POST"
+        and theme_form.is_valid()
+        and preference_form.is_valid()
+    ):
+        with transaction.atomic():
+            UserSettings.objects.update_or_create(
+                user=request.user, defaults={"theme": theme_form.cleaned_data["theme"]}
+            )
+            NotificationPreference.objects.update_or_create(
+                user=request.user, defaults=preference_form.cleaned_data
+            )
+        messages.success(request, "Your settings have been saved.")
+        return redirect("accounts:settings")
+    return render(
+        request,
+        "accounts/settings.html",
+        {
+            "theme_form": theme_form,
+            "followed_fields": [preference_form[name] for name in FOLLOWED_FIELDS],
+            "contribution_fields": [
+                preference_form[name] for name in CONTRIBUTION_FIELDS
+            ],
+        },
+    )
+
+
+@contributor_required
+@require_POST
+def set_theme(request):
+    """The header's light/dark switch: save the theme and return to the same page."""
+    theme = request.POST.get("theme")
+    if theme in UserSettings.Theme.values:
+        UserSettings.objects.update_or_create(
+            user=request.user, defaults={"theme": theme}
+        )
+    return redirect(safe_next_url(request) or "accounts:settings")
+
+
+def profile(request, username):
+    """A contributor's public profile: totals, badges and recent public activity."""
+    user = get_object_or_404(User, username=username, is_active=True)
+    return render(request, "accounts/profile.html", profile_context(user, request.user))

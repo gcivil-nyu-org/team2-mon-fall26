@@ -50,7 +50,7 @@ All flags are visible to moderators. An item is hidden automatically when `MODER
 **Automated checks**
 - A review containing a link, email address, phone number or configured blocked term is rejected with an explanation and nothing is saved.
 - A review matching a hold rule is saved, hidden from the public page, the map API and the average, and listed under **Held for review** with the rule that triggered it.
-- The author sees their held review marked "Awaiting moderator approval"; other users and visitors do not see it, and it cannot be flagged or upvoted.
+- The author sees their held review marked "Awaiting moderator approval"; other users and visitors do not see it, and it cannot be flagged, voted on or replied to.
 - An edit is re-checked. An edit never publishes a held review, and it never clears a hold or restores a removed review, even when the hold or removal happens while the author is editing.
 - A trusted author is not held for capitals, repetition or posting speed.
 
@@ -64,4 +64,8 @@ All flags are visible to moderators. An item is hidden automatically when `MODER
 - Removing an item that no longer exists changes nothing and logs nothing.
 - Visitors are sent to log in and contributors get 403 for every administrator page and action.
 
-Test coverage: `moderation/tests.py` (US19–US21), `moderation/test_automod.py` (rules, holds, auto-hide, bulk), `moderation/test_review_fixes.py` (concurrent edits, stale approvals, bulk confirmation), `moderation/test_forum.py` (the same rules for discussion posts and comments).
+**Replies to reviews**
+- A reply to a written review uses the discussion-comment rules: blocked text is rejected and nothing is saved; promotional wording, profanity, duplicates, capitals, repetition, posting speed and repeat offenders hold it. Held replies are shown only to their author.
+- Contributors can flag other people's public replies. Every flag reaches moderators. Three distinct reporters whose accounts were at least 24 hours old when they flagged a reply trigger automatic hiding. Administrators approve, remove or dismiss replies from the same queues, as **Review reply**. Removing a review also removes its replies, and the confirmation page says how many.
+
+Test coverage: `reviews/test_replies.py` (replies, votes and their moderation), `moderation/tests.py` (US19–US21), `moderation/test_automod.py` (rules, holds, auto-hide, bulk), `moderation/test_review_fixes.py` (concurrent edits, stale approvals, bulk confirmation), `moderation/test_forum.py` (the same rules for discussion posts and comments).

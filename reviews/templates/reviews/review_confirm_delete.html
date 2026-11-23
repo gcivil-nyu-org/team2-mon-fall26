@@ -4,6 +4,7 @@
   <section class="auth-card" aria-labelledby="delete-title">
     <h1 id="delete-title">Delete your rating and review?</h1>
     <p class="auth-intro">This permanently removes your {{ review.rating }} / 5 rating{% if review.body %} and written review{% endif %} for {{ hotspot.display_name }}. The hotspot's average rating will update.</p>
+    <p>Deleting this review also deletes its replies.{% if visible_reply_count %} This review has {{ visible_reply_count }} visible repl{{ visible_reply_count|pluralize:"y,ies" }}.{% endif %}</p>
     <form method="post" class="auth-form">
       {% csrf_token %}
       <button type="submit" class="button button-danger auth-submit">Yes, delete</button>

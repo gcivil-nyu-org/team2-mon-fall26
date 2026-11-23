@@ -1,0 +1,102 @@
+{% extends "hotspots/base.html" %}
+{% block title %}{{ profile_user.username }} · Connect NYC{% endblock %}
+{% block content %}
+<section class="user-profile" aria-labelledby="profile-title">
+  <header class="user-profile-header">
+    <span class="user-profile-avatar" aria-hidden="true">{{ profile_user.username|slice:":1"|upper }}</span>
+    <div>
+      <h1 id="profile-title">{{ profile_user.username }}</h1>
+      <p class="user-profile-meta">
+        <span class="role-badge{% if is_administrator_profile %} role-administrator{% endif %}">{% if is_administrator_profile %}Administrator{% else %}Contributor{% endif %}</span>
+        Member since {{ profile_user.date_joined|date:"F Y" }}
+      </p>
+    </div>
+    {% if is_own_profile %}<a class="button button-secondary button-small user-profile-edit" href="{% url 'accounts:settings' %}">Settings</a>{% endif %}
+  </header>
+
+  {% if is_own_profile %}
+  <p class="user-profile-own-note">This is how other people see your profile.{% if rating_count %} You have {{ rating_count }} published rating{{ rating_count|pluralize }}; star-only ratings stay anonymous, so only you see this count.{% endif %}{% if held_count %} {{ held_count }} of your reviews {{ held_count|pluralize:"is,are" }} waiting for a moderator.{% endif %}</p>
+  {% endif %}
+
+  <dl class="user-profile-stats" aria-label="Contributions">
+    <div><dt>Written reviews</dt><dd>{{ stats.reviews }}</dd></div>
+    <div><dt>Helpful votes received</dt><dd>{{ stats.helpful_votes }}</dd></div>
+    <div><dt>Review replies</dt><dd>{{ stats.replies }}</dd></div>
+    <div><dt>Availability reports</dt><dd>{{ stats.reports }}</dd></div>
+    <div><dt>Discussions started</dt><dd>{{ stats.posts }}</dd></div>
+    <div><dt>Discussion comments</dt><dd>{{ stats.comments }}</dd></div>
+  </dl>
+
+  <section class="user-profile-section" aria-labelledby="badges-title">
+    <h2 id="badges-title">Badges</h2>
+    {% if badges %}
+    <ul class="badge-list">
+      {% for badge in badges %}<li class="profile-badge profile-badge-{{ badge.key }}"><strong>{{ badge.label }}</strong><span>{{ badge.description }}</span></li>{% endfor %}
+    </ul>
+    {% else %}
+    <p class="user-profile-empty">No badges yet. Badges are earned by reviewing hotspots, reporting whether Wi-Fi works and starting discussions.</p>
+    {% endif %}
+  </section>
+
+  <div class="user-profile-grid">
+    <section class="user-profile-section" aria-labelledby="reviews-title">
+      <h2 id="reviews-title">Recent reviews</h2>
+      {% if recent_reviews %}
+      <ul class="activity-list">
+        {% for review in recent_reviews %}
+        <li>
+          <a class="activity-title" href="{{ review.hotspot.get_absolute_url }}#review-{{ review.pk }}">{{ review.hotspot.display_name }}</a>
+          <span class="activity-meta"><span class="review-rating"><span aria-hidden="true">★</span> {{ review.rating }} / 5</span> · {{ review.created_at|date:"M j, Y" }} · ▲ {{ review.upvote_count }} · ▼ {{ review.downvote_count }}{% if review.reply_count %} · {{ review.reply_count }} repl{{ review.reply_count|pluralize:"y,ies" }}{% endif %}</span>
+          <p>{{ review.body|truncatechars:180 }}</p>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="user-profile-empty">No written reviews yet.</p>{% endif %}
+    </section>
+
+    <section class="user-profile-section" aria-labelledby="discussions-title">
+      <h2 id="discussions-title">Recent discussions</h2>
+      {% if recent_posts %}
+      <ul class="activity-list">
+        {% for post in recent_posts %}
+        <li>
+          <a class="activity-title" href="{{ post.get_absolute_url }}">{{ post.title }}</a>
+          <span class="activity-meta">{{ post.get_topic_type_display }} · {{ post.created_at|date:"M j, Y" }} · {{ post.comment_count }} comment{{ post.comment_count|pluralize }}{% if post.hotspot %} · {{ post.hotspot.display_name }}{% endif %}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="user-profile-empty">No discussions started yet.</p>{% endif %}
+    </section>
+
+    <section class="user-profile-section" aria-labelledby="replies-title">
+      <h2 id="replies-title">Recent replies to reviews</h2>
+      {% if recent_replies %}
+      <ul class="activity-list">
+        {% for reply in recent_replies %}
+        <li>
+          <a class="activity-title" href="{{ reply.review.hotspot.get_absolute_url }}#reply-{{ reply.pk }}">Reply to {{ reply.review.author.username }} on {{ reply.review.hotspot.display_name }}</a>
+          <span class="activity-meta">{{ reply.created_at|date:"M j, Y" }}</span>
+          <p>{{ reply.body|truncatechars:160 }}</p>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="user-profile-empty">No replies yet.</p>{% endif %}
+    </section>
+
+    <section class="user-profile-section" aria-labelledby="reports-title">
+      <h2 id="reports-title">Recent availability reports</h2>
+      {% if recent_reports %}
+      <ul class="activity-list">
+        {% for report in recent_reports %}
+        <li class="activity-report">
+          <span class="availability-status is-{{ report.status }}">{{ report.get_status_display }}</span>
+          <a href="{{ report.hotspot.get_absolute_url }}#availability">{{ report.hotspot.display_name }}</a>
+          <span class="activity-meta">{{ report.created_at|date:"M j, Y" }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="user-profile-empty">No availability reports yet.</p>{% endif %}
+    </section>
+  </div>
+</section>
+{% endblock %}

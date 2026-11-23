@@ -242,6 +242,47 @@ def discussion_started(post):
     )
 
 
+def review_replied(reply):
+    """Someone replied to a user's written review: tell the review's author.
+
+    Sent when the reply becomes public (on posting, or on approval) and only once
+    per reply. Authors can switch these off in their settings.
+    """
+    from reviews.models import ReviewReply
+
+    review = reply.review
+    hotspot = review.hotspot
+    if (
+        reply.is_held
+        or review.is_held
+        or review.is_demo
+        or not review.body
+        or not hotspot.is_active
+        or review.author_id == reply.author_id
+        or not review.author.is_active
+    ):
+        return 0
+    preference = getattr(review.author, "notification_preference", None)
+    if preference is not None and not preference.review_replies:
+        return 0
+    already = Notification.objects.filter(
+        kind=Kind.REVIEW_REPLY,
+        content_type=ContentType.objects.get_for_model(ReviewReply),
+        object_id=reply.pk,
+    ).exists()
+    if already:
+        return 0
+    detail = reply.body if len(reply.body) <= 120 else f"{reply.body[:119]}…"
+    return _create(
+        [review.author_id],
+        Kind.REVIEW_REPLY,
+        hotspot,
+        reply,
+        actor_name=reply.author.username,
+        detail=detail,
+    )
+
+
 def hotspot_retired(hotspot):
     """An administrator removed a hotspot from public discovery (E04). Always sent."""
     return _create(_followers(hotspot), Kind.FOLLOWED_RETIRED, hotspot)
@@ -253,19 +294,25 @@ def hotspot_retired(hotspot):
 def _content_fields(obj):
     """Snapshot fields that say which kind of content a moderation notice is about."""
     from forum.models import ForumComment, ForumPost
+    from reviews.models import ReviewReply
 
     if isinstance(obj, ForumPost):
         return {"content_label": "post", "subject": obj.title[:200]}
     if isinstance(obj, ForumComment):
         return {"content_label": "comment", "subject": obj.post.title[:200]}
+    if isinstance(obj, ReviewReply):
+        return {"content_label": "reply", "subject": obj.review.author.username[:200]}
     return {}
 
 
 def _hotspot_of(obj):
     from forum.models import ForumComment
+    from reviews.models import ReviewReply
 
     if isinstance(obj, ForumComment):
         return obj.post.hotspot
+    if isinstance(obj, ReviewReply):
+        return obj.review.hotspot
     return getattr(obj, "hotspot", None)
 
 
@@ -291,7 +338,7 @@ def content_hidden(info, obj):
 def content_approved(info, obj, flagger_ids):
     """A moderator published held content. Followers hear about it now, if not before."""
     from forum.models import ForumPost
-    from reviews.models import Review
+    from reviews.models import Review, ReviewReply
 
     count = _author_notice(Kind.REVIEW_APPROVED, obj, info)
     count += flags_resolved(flagger_ids, obj, removed=False)
@@ -299,6 +346,8 @@ def content_approved(info, obj, flagger_ids):
         count += review_published(obj)
     elif isinstance(obj, ForumPost):
         count += discussion_started(obj)
+    elif isinstance(obj, ReviewReply):
+        count += review_replied(obj)
     return count
 
 
@@ -309,10 +358,15 @@ def content_removed(info, obj, reason_label, flagger_ids):
     discussion, or the hotspot of a removed review.
     """
     from forum.models import ForumComment
+    from reviews.models import ReviewReply
 
     hotspot = _hotspot_of(obj)
     fields = _content_fields(obj)
-    target = obj.post if isinstance(obj, ForumComment) else None
+    target = None
+    if isinstance(obj, ForumComment):
+        target = obj.post
+    elif isinstance(obj, ReviewReply):
+        target = obj.review
     count = 0
     if info.get("author_id") and not info.get("is_demo"):
         count += _create(
@@ -324,7 +378,7 @@ def content_removed(info, obj, reason_label, flagger_ids):
             **fields,
         )
     count += _create(
-        [pk for pk in flagger_ids if pk != info.get("author_id")],
+        _wants_flag_outcomes([pk for pk in flagger_ids if pk != info.get("author_id")]),
         Kind.FLAG_RESOLVED,
         hotspot,
         target,
@@ -334,10 +388,22 @@ def content_removed(info, obj, reason_label, flagger_ids):
     return count
 
 
+def _wants_flag_outcomes(user_ids):
+    """Flaggers who have not switched off flag-outcome notices."""
+    from .models import NotificationPreference
+
+    opted_out = set(
+        NotificationPreference.objects.filter(
+            user_id__in=list(user_ids), flag_outcomes=False
+        ).values_list("user_id", flat=True)
+    )
+    return [pk for pk in user_ids if pk not in opted_out]
+
+
 def flags_resolved(flagger_ids, obj, removed):
     """Tell the people who flagged an item that a moderator made a decision."""
     return _create(
-        flagger_ids,
+        _wants_flag_outcomes(flagger_ids),
         Kind.FLAG_RESOLVED,
         _hotspot_of(obj),
         obj,
@@ -376,6 +442,29 @@ def _review_url(notification):
     if review.is_held:
         return None
     return f"{base}#review-{review.pk}" if review.body else f"{base}#reviews"
+
+
+def _reply_url(notification):
+    """A reply notice opens the reply under its review, if the viewer may see it."""
+    from reviews.models import ReviewReply
+
+    reply = (
+        ReviewReply.objects.select_related("review__hotspot")
+        .filter(pk=notification.object_id, review__hotspot__is_active=True)
+        .first()
+    )
+    if reply is None:
+        return None
+    review = reply.review
+    own = reply.author_id == notification.recipient_id
+    if (
+        (reply.is_held and not own)
+        or review.is_held
+        or review.is_demo
+        or not review.body
+    ):
+        return None
+    return f"{review.hotspot.get_absolute_url()}#reply-{reply.pk}"
 
 
 def _forum_url(notification):
@@ -427,6 +516,11 @@ def target_url(notification):
         return post.get_absolute_url() if post else None
     if notification.content_label in ("post", "comment"):
         return _forum_url(notification)
+    model = notification.content_type.model if notification.content_type else ""
+    if model == "reviewreply":
+        url = _reply_url(notification)
+        if url or kind not in (Kind.FLAG_RESOLVED, Kind.REVIEW_REMOVED):
+            return url
     if notification.object_id and notification.content_type.model == "review":
         url = _review_url(notification)
         if url or kind != Kind.FLAG_RESOLVED:
