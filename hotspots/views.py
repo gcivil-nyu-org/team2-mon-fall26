@@ -1,3 +1,5 @@
+from collections import Counter
+
 from django.conf import settings
 from django.db.models import Avg, Count, Q
 from django.http import JsonResponse
@@ -27,12 +29,18 @@ def _map_settings():
 
 
 def _serialize_hotspot(hotspot, summary, reliability):
+    name = hotspot.display_name
+    location = hotspot.location_description
+    choice_name = name
+    if location and hotspot.name == name and name.casefold() != location.casefold():
+        choice_name = f"{name} — {location}"
     return {
         "id": hotspot.pk,
-        "name": hotspot.display_name,
+        "name": name,
+        "choice_label": f"{choice_name} — {hotspot.borough}",
         "latitude": float(hotspot.latitude),
         "longitude": float(hotspot.longitude),
-        "location": hotspot.location_description,
+        "location": location,
         "borough": hotspot.borough,
         "neighborhood": hotspot.neighborhood_name,
         "provider": hotspot.provider,
@@ -76,6 +84,11 @@ def _map_data(hotspots, sort=None):
             "has_demo_reviews": bool(row and row["demo_count"]),
         }
         records.append(_serialize_hotspot(hotspot, summary, availability[hotspot.pk]))
+    label_counts = Counter(record["choice_label"] for record in records)
+    for record in records:
+        label = record["choice_label"]
+        if label_counts[label] > 1:
+            record["choice_label"] = f"{label} (Record {record['id']})"
     if settings.DEMO_MODE and not sort:
         records.sort(key=lambda record: record["id"] != 1344)
     return records
@@ -92,7 +105,6 @@ def map_view(request):
     total_count = active_hotspots.count()
     context = {
         **_map_settings(),
-        "hotspots": hotspots,
         "map_data": map_data,
         "hotspot_count": len(map_data),
         "total_count": total_count,
@@ -113,11 +125,7 @@ def detail(request, pk):
     all_reviews = visible_reviews().filter(hotspot=hotspot)
     summary = rating_summary(all_reviews)
     availability = hotspot_availability(hotspot)
-    written = (
-        all_reviews.exclude(body="")
-        .select_related("author")
-        .annotate(upvote_count=Count("votes"))
-    )
+    reviews = all_reviews.select_related("author").annotate(upvote_count=Count("votes"))
     voted_ids = set()
     user_review = None
     user_report = None
@@ -141,7 +149,7 @@ def detail(request, pk):
     context = {
         **_map_settings(),
         "hotspot": hotspot,
-        "reviews": written,
+        "reviews": reviews,
         "voted_ids": voted_ids,
         "flagged_ids": flagged_ids(request.user, REVIEW),
         "user_review": user_review,

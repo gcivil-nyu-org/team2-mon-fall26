@@ -1,8 +1,14 @@
 # Project progress
 
-Last updated: **November 8, 2026**.
+Last updated: **November 23, 2026**.
 
 This document records implementation progress, remaining work, and development history for Connect NYC. GitHub and ZenHub remain the sources for requirements, assignments, and workflow status. Update this record as work progresses; preserve the dated archive below.
+
+## PR #85 release repair — November 16, 2026
+
+PR #85 promoted map clustering and forum moderation to main at `6322569`. Travis PR build #71 and main build #72 each failed one of 294 tests: the map asset-order test expected unhashed filenames, while the correctly rendered page used manifest-hashed static URLs. This prevents successful release validation; merging #85 alone does not establish production deployment.
+
+The repair resolves the test's expected URLs through Django's configured static storage, preserving checks for Leaflet, the clustering plugin, its CSS, and map-script order. The separate profile test still excludes clustering. Runtime code, migrations and CI gates are unchanged. See the dated validation entry below; the repair still needs independent review, merge and successful CI, followed by synchronization to develop and deployment verification.
 
 ## Current release and presentation record — November 2, 2026
 
@@ -40,7 +46,7 @@ E04 administrator import/list/edit/retirement (US16–US17, Boqing) is implement
 
 | Epic | Implementation status | Remaining scope |
 | --- | --- | --- |
-| [E01 — Finding a Wi-Fi Hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/1) | Merged; Epic closed | Preserve discovery behavior while integrating new contributions. |
+| [E01 — Finding a Wi-Fi Hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/1) | Existing scope merged; Epic closed. PR #85 adds map clustering to main. | Merge the manifest-aware asset-test repair, then verify CI and deployment of clustering. |
 | [E02 — Account Registration & Access](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/2) | Accepted and closed in Week 6; production confirmed by Boqing on October 26 | Preserve account and permission regressions. |
 | [E03 — Rate & Review Hotspots](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/3) | Accepted and closed in Week 6, including helpful votes | Preserve rating/review ownership and moderation behavior. |
 | [E04 — Maintain Official Hotspot Data](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/4) | PR #54 merged; accepted and closed in Week 6 | Scheduled refresh and restoration remain outside the current increment. |
@@ -57,8 +63,8 @@ E04 administrator import/list/edit/retirement (US16–US17, Boqing) is implement
 
 | Story | Owner | Status and remaining work |
 | --- | --- | --- |
-| [US01 / #8 — Interactive map](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/8) | Boqing | Implemented. Official markers, matching preview/profile links, and distinct selection for records sharing coordinates. |
-| [US02 / #9 — Location search](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/9) | Jiahao | Merged in PR #48. Free-text `q` search over name, address/description, neighborhood, borough and ZIP; every word must match. Matching markers only, "X of Y hotspots match" count, and a separate no-match message. |
+| [US01 / #8 — Interactive map](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/8) | Boqing | Implemented. Official markers, matching preview/profile links, distinct selection for shared coordinates, and clustering promoted in PR #85. Map choices now include room or street descriptions and use a record ID for identical locations (#98). |
+| [US02 / #9 — Location search](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/9) | Jiahao | Merged in PR #48. Free-text `q` search matches each word across name, provider, address/description, neighborhood, borough and ZIP (#94). Matching markers only, "X of Y hotspots match" count, and a separate no-match message. |
 | [US03 / #10 — Borough/neighborhood filters](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/10) | Jiahao | Merged in PR #48. `borough` and `neighborhood` (2010 NTA name, grouped by borough) filters; each can be selected, changed, or removed with its chip or "Clear all". |
 | [US04 / #11 — Provider filter](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/11) | Jiahao | Merged in PR #48. `provider` filter using the same select/change/remove behavior. |
 | [US05 / #12 — Hotspot-type filter](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/12) | Jiahao | Merged in PR #48 against the official `type` field (`access_type`: Free, Limited Free, Partner Site), labelled "Access type". Team to confirm whether a grouped `location_type` filter is also wanted. |
@@ -82,7 +88,7 @@ Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #
 
 | Story | Status and remaining work |
 | --- | --- |
-| [US11 / #21 — Rate/review a hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/21) | Accepted and closed. Implemented (code + automated tests). Signed-in contributors choose 1–5 stars and an optional review (max 2,000 characters) at `/hotspots/<id>/review/`; saved against the hotspot and the user. One review per user per hotspot (database constraint); a second attempt goes to edit. Visitors are redirected to log in. |
+| [US11 / #21 — Rate/review a hotspot](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/21) | Accepted and closed. Implemented (code + automated tests). Signed-in contributors choose 1–5 stars and an optional review (max 2,000 characters) at `/hotspots/<id>/review/`; saved against the hotspot and the user. One review per user per hotspot (database constraint); a second attempt goes to edit. Visitors are redirected to log in. Star-only submissions follow the same posting limit as written reviews (#100). |
 | [US12 / #22 — Average rating](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/22) | Read-side implemented; Jiahao retains ownership. Owner acceptance test merged in PR #48 and rechecked with E03: 1 and 3 → 2.0; add 5 → 3.0; edit 1 to 4 → 4.0; delete 5 → 3.5; unrated hotspot shows "No ratings yet" and a null API average. Contribution UI is implemented in PR #53. |
 | [US13 / #23 — Edit own rating/review](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/23) | Accepted and closed. Implemented (code + automated tests). Edit link only on the author's own entries; `/reviews/<id>/edit/` returns 404 for other users and for demo reviews. Averages update from the saved rating. |
 | [US14 / #24 — Delete own rating/review](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/24) | Accepted and closed. Implemented (code + automated tests). Delete link only on own entries; a confirmation page precedes a POST-only delete; other users get 404; averages update. |
@@ -93,7 +99,7 @@ Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #
 | Story | Status and remaining work |
 | --- | --- |
 | [US16 / #26 — Import/view official records](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/26) | Accepted and closed. Implemented by Boqing. Administrator CSV upload and paginated/searchable Active/Retired list; shared atomic importer validates the whole file, preserves IDs and contribution links, and reports created/updated counts. Merged in PR #54; production acceptance confirmed by Boqing on October 26. |
-| [US17 / #27 — Update/remove records](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/27) | Accepted and closed. Implemented by Boqing. Allowlisted editing preserves identity/acquisition date; confirmed POST retires the record, hiding public discovery and contribution routes while retaining reviews/votes. Reimport and edits never reactivate retired records. Merged in PR #54; production acceptance confirmed by Boqing on October 26. |
+| [US17 / #27 — Update/remove records](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/27) | Accepted and closed. Implemented by Boqing. Allowlisted editing preserves identity/acquisition date; confirmed POST retires the record, hiding public discovery and contribution routes while retaining reviews/votes. Reimport and edits never reactivate retired records. Container restarts preserve staff edits and source dates (#107). Merged in PR #54; production acceptance confirmed by Boqing on October 26. |
 | [US18 / #28 — Official/community labels](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/28) | Implemented by Boqing and integrated into E01. Official fields, source dates, community feedback, and fictional demo contributions are visibly distinguished. |
 
 ### E05–E08 — Remaining community features
@@ -102,7 +108,7 @@ Owner: Jiahao (Week 6). All five stories are implemented and merged through PR #
 | --- | --- | --- |
 | E05 | [US19 / #29 — Review content and flags](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/29) | Story closed; implemented in PR #60 and promoted to main through #67. `/manage/moderation/` (administrators only; contributors get 403) opens on **Held for review** (automated holds and community auto-hides, with Approve/Remove and bulk actions) and also has flagged content (type, link to the original, flag count, reasons, notes), recent ratings and reviews (newest 50 per page, including rating-only entries, with open-flag counts), and the moderation log. Linked from `/manage/`. |
 | E05 | [US20 / #30 — Remove violations](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/30) | Story closed; implemented in PR #60 and promoted to main through #67. Removal requires a confirmation page and a moderation reason (proposed list in `moderation.models.Reason`; team to confirm). The review is deleted, so it leaves public pages and the average recalculates; a `ModerationRecord` keeps a text snapshot, reason, note, flag count and administrator. Administrators cannot edit text. "Dismiss flags" closes flags without changing content and is logged. |
-| E05 | [US21 / #31 — Flag inappropriate content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/31) | Story closed; implemented in PR #60 and promoted to main through #67 for hotspot reviews. Signed-in contributors see a Flag link on other users' written reviews and choose a reason ("Something else" requires details). One flag per user per item, enforced by a database constraint; authors cannot flag their own reviews; visitors are sent to log in. Flags close automatically if the author deletes the review. E08 forum content uses the same flow once registered. |
+| E05 | [US21 / #31 — Flag inappropriate content](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/31) | Story closed; implemented in PR #60 and promoted to main through #67 for hotspot reviews. Signed-in contributors see a Flag link on other users' published written reviews and star-only ratings (#100) and choose a reason ("Something else" requires details). One flag per user per item, enforced by a database constraint; authors cannot flag their own reviews; visitors are sent to log in. Flags close automatically if the author deletes the review. E08 forum content uses the same flow once registered. |
 | E06 | [US22 / #32 — Report Working/Unavailable](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/32) | Story closed (3 points). Working/Unavailable reporting and #68 safe login-return fix are merged into main. Production controls are visible; deployed submission acceptance remains to be completed. |
 | E06 | [US23 / #33 — Reliability and report recency](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/33) | Story closed (5 points). Reliability and report recency are merged into main; the three-reporter threshold and 30-day reporting window are retained. |
 | E06 | [US24 / #34 — Sort by rating/reliability](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/34) | Story closed (3 points). Rating/reliability sorting is merged into main and covered by the integrated test suite. |
@@ -134,6 +140,21 @@ Closed test issue #44 is excluded from product completion progress.
 5. Preserve E03 hotspot-review, E08 discussion and E05 shared-moderation boundaries when planning forum reporting integration.
 
 ## Development archive
+
+### November 23, 2026 — First testing-party fixes for integration
+
+- [#98](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/98) and [#94](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/94) cover hotspot discovery. In Chrome, choosing Picnic Area on a shared marker also selected the Picnic Area profile. Searching City Tech returned the same two records as its provider filter in the local sample.
+- [#100](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/100) applies posting limits to star-only ratings and makes published ratings reportable. A held rating stays out of the public average and map API. Rating-only entries omit the rater's name in the public profile and flag form.
+- [#107](https://github.com/gcivil-nyu-org/team2-mon-fall26/issues/107) limits automatic sample loading to an empty catalog. A local web-container restart preserved a staff correction and the newer source date. Explicit imports still update official fields.
+- Five regression checks failed on the previous code. All 301 Django tests passed on isolated MySQL 8.4 after the fixes, alongside Black, Flake8, Django system checks and the migration consistency check.
+- The integration branch is `develop`. Its GitHub rules require one independent approval before merge. The next acceptance step is to check the deployed integration build against these four reports.
+
+### November 16, 2026 — PR #85 static-asset test repair
+
+- Reproduced the single failing map-clustering test from Travis builds #71 and #72 against isolated MySQL 8.4 after `collectstatic`, with the pinned project dependencies and production manifest storage.
+- Replaced hard-coded static filenames with Django's resolved static URLs. Retained the script-order, stylesheet-presence and profile-exclusion checks; no application, database or CI configuration changes.
+- The two targeted map/profile tests pass with both production hashed URLs and development URLs. All **294 tests pass on isolated MySQL 8.4** with production manifest storage; Black, Flake8, Django system checks, migration consistency and `collectstatic` pass. Coverage is **98%** across the existing `--source=.` scope, including tests and migrations.
+- Merge and remote CI/deployment remain follow-up steps. Preserve the existing main approval rule and synchronize the repair back to develop after merging.
 
 ### November 15, 2026 — E05 moderation for E08 discussion posts and comments
 

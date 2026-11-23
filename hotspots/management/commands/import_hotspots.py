@@ -5,12 +5,18 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from hotspots.importing import HotspotImportError, import_hotspots
+from hotspots.models import Hotspot
 
 
 class Command(BaseCommand):
     help = "Validate and upsert official hotspot CSV rows without deleting existing hotspots or reviews."
 
     def add_arguments(self, parser):
+        parser.add_argument(
+            "--if-empty",
+            action="store_true",
+            help="Initialize an empty catalog and preserve existing records on startup.",
+        )
         parser.add_argument(
             "path",
             nargs="?",
@@ -23,6 +29,9 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        if options["if_empty"] and Hotspot.objects.exists():
+            self.stdout.write("Hotspot catalog already initialized. Skipped import.")
+            return
         try:
             source_date = date.fromisoformat(options["source_date"])
         except ValueError as exc:
@@ -32,7 +41,9 @@ class Command(BaseCommand):
 
         try:
             with Path(options["path"]).open(encoding="utf-8-sig", newline="") as source:
-                result = import_hotspots(source, source_date)
+                result = import_hotspots(
+                    source, source_date, create_only=options["if_empty"]
+                )
         except HotspotImportError as exc:
             raise CommandError(str(exc)) from exc
         except OSError as exc:

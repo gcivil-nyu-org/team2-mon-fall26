@@ -13,9 +13,10 @@ from .models import Hotspot
 from .sorting import SORTS
 
 # Fields matched by the free-text location search (US02): landmark/site name,
-# street address or description, neighborhood, borough and ZIP code.
+# provider (also used in display names), address, neighborhood, borough and ZIP.
 SEARCH_FIELDS = [
     "name",
+    "provider",
     "location_description",
     "neighborhood_name",
     "borough",
@@ -56,7 +57,7 @@ def apply_filters(queryset, values):
     if query:
         # Each word must appear in at least one location field, so
         # "bryant park" and "park bryant" both find Bryant Park.
-        for word in query.split():
+        for word in query.replace(" — ", " ").split():
             match = Q()
             for field in SEARCH_FIELDS:
                 match |= Q(**{f"{field}__icontains": word})

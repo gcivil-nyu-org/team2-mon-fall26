@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -61,11 +62,18 @@ def create_review(request, hotspot_pk):
         review.author = request.user
         try:
             with transaction.atomic():
+                # Count this author's submissions in order, even across different hotspots.
+                get_user_model().objects.select_for_update().only("pk").get(
+                    pk=request.user.pk
+                )
                 review.save()
+                held = _check_and_hold(review, is_new=True)
         except IntegrityError:
+            if not Review.objects.filter(hotspot=hotspot, author=request.user).exists():
+                raise
             messages.info(request, "You already reviewed this hotspot.")
         else:
-            if _check_and_hold(review, is_new=True):
+            if held:
                 messages.info(request, HELD_MESSAGE)
             else:
                 notify.review_published(review)

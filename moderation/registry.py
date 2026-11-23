@@ -44,8 +44,7 @@ class FlaggableType:
 def _public_reviews():
     from reviews.services import visible_reviews
 
-    # Only written reviews are shown individually, so only they can be flagged.
-    return visible_reviews().exclude(body="").filter(hotspot__is_active=True)
+    return visible_reviews().filter(hotspot__is_active=True)
 
 
 def _describe_review(review):

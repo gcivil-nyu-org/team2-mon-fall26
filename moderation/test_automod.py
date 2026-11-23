@@ -175,6 +175,18 @@ class SubmitAndHoldFlowTests(TestCase):
     def profile(self):
         return self.client.get(self.hotspot.get_absolute_url())
 
+    @override_settings(MODERATION_BURST_LIMIT=1)
+    def test_rating_only_uses_the_same_hold_policy_and_public_average(self):
+        Review.objects.create(hotspot=make_hotspot(501), author=self.author, rating=3)
+        response = self.submit("", rating=1)
+        review = Review.objects.get(hotspot=self.hotspot, author=self.author)
+        self.assertTrue(review.is_held)
+        self.assertContains(response, "waiting for a moderator")
+        self.assertEqual(response.context["rating_summary"]["average"], 5.0)
+        data = self.client.get(reverse("hotspots:data")).json()["hotspots"]
+        record = next(item for item in data if item["id"] == self.hotspot.pk)
+        self.assertEqual((record["average_rating"], record["rating_count"]), (5.0, 1))
+
     def test_blocked_text_shows_an_error_and_saves_nothing(self):
         response = self.submit("Cheap watches at https://watches.example")
         self.assertContains(

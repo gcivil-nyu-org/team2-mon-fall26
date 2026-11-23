@@ -75,7 +75,7 @@ def _record(row, source_date):
     return hotspot
 
 
-def import_hotspots(source, source_date):
+def import_hotspots(source, source_date, *, create_only=False):
     """Import a decoded CSV stream, preserving retired records and review links.
 
     Validate the entire file before writing. Existing IDs are updated in place;
@@ -114,6 +114,13 @@ def import_hotspots(source, source_date):
         raise HotspotImportError("The CSV has no hotspot rows; nothing was changed.")
 
     created_count = 0
+    # Concurrent first starts may both see an empty catalog. Only manual imports
+    # can overwrite an existing row, including one inserted since that check.
+    save_record = (
+        Hotspot.objects.get_or_create
+        if create_only
+        else Hotspot.objects.update_or_create
+    )
     with transaction.atomic():
         for hotspot in records:
             defaults = {
@@ -121,12 +128,10 @@ def import_hotspots(source, source_date):
                 for field in Hotspot._meta.concrete_fields
                 if not field.primary_key and field.name != "is_active"
             }
-            _, created = Hotspot.objects.update_or_create(
-                hotspot_id=hotspot.pk, defaults=defaults
-            )
+            _, created = save_record(hotspot_id=hotspot.pk, defaults=defaults)
             created_count += created
     return {
         "total": len(records),
         "created": created_count,
-        "updated": len(records) - created_count,
+        "updated": 0 if create_only else len(records) - created_count,
     }
