@@ -30,8 +30,9 @@ MODERATION_BLOCKED_TERMS = [
     if term.strip()
 ]
 MODERATION_AUTO_HIDE_FLAGS = (
-    3  # distinct user flags that hide a review until an admin decides
+    3  # distinct eligible flags that hide an item until an admin decides
 )
+MODERATION_FLAGGER_MIN_AGE_HOURS = 24  # account age when a flag is submitted
 MODERATION_TRUSTED_MIN_REVIEWS = (
     3  # published reviews, with none removed, to skip soft rules
 )

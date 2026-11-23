@@ -1,3 +1,4 @@
+from datetime import timedelta
 from io import StringIO
 
 from django.contrib.auth import SESSION_KEY, get_user_model
@@ -7,6 +8,7 @@ from django.core.management.base import CommandError
 from django.http import HttpResponse
 from django.test import TestCase, override_settings
 from django.urls import include, path, reverse
+from django.utils import timezone
 
 from hotspots.tests import make_hotspot
 from reviews.models import Review
@@ -48,6 +50,10 @@ urlpatterns = [
 def make_user(username="alex", password=PASSWORD, **fields):
     fields.setdefault("email", f"{username}@example.com")
     return User.objects.create_user(username=username, password=password, **fields)
+
+
+def make_established_user(username):
+    return make_user(username, date_joined=timezone.now() - timedelta(days=2))
 
 
 def make_administrator(username="admin"):

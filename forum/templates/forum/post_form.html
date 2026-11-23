@@ -12,6 +12,23 @@
       {% include "accounts/_field.html" with field=form.topic_type %}
       {% include "accounts/_field.html" with field=form.title %}
       {% include "accounts/_field.html" with field=form.body %}
+      <div class="form-field" id="hotspot-search">
+        <label for="hotspot-query">Find a related hotspot</label>
+        <input id="hotspot-query" name="hotspot_q" type="search" value="{{ form.hotspot_query }}" maxlength="100" placeholder="Name, address, borough or record number">
+        <div><button class="button button-secondary" name="hotspot_page" value="1" formnovalidate formaction="{% url 'forum:create' %}#hotspot-search">Find hotspots</button></div>
+        {% if form.hotspot_query %}
+          <p class="field-help" role="status">
+            {% if form.hotspot_page.paginator.count %}{{ form.hotspot_page.paginator.count }} matching hotspot{{ form.hotspot_page.paginator.count|pluralize }}. Page {{ form.hotspot_page.number }} of {{ form.hotspot_page.paginator.num_pages }}.
+            {% else %}No matching hotspots. Try a different name or address.{% endif %}
+          </p>
+          {% if form.hotspot_page.has_other_pages %}
+            <div>
+              {% if form.hotspot_page.has_previous %}<button class="button button-secondary" name="hotspot_page" value="{{ form.hotspot_page.previous_page_number }}" formnovalidate formaction="{% url 'forum:create' %}#hotspot-search">Previous matches</button>{% endif %}
+              {% if form.hotspot_page.has_next %}<button class="button button-secondary" name="hotspot_page" value="{{ form.hotspot_page.next_page_number }}" formnovalidate formaction="{% url 'forum:create' %}#hotspot-search">Next matches</button>{% endif %}
+            </div>
+          {% endif %}
+        {% endif %}
+      </div>
       {% include "accounts/_field.html" with field=form.hotspot %}
       <button type="submit" class="button button-primary auth-submit">Post discussion</button>
     </form>

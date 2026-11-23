@@ -74,6 +74,85 @@ class ForumTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(ForumPost.objects.filter(title="A discussion").exists())
 
+    def test_retired_related_hotspot_keeps_context_without_a_broken_link(self):
+        hotspot = make_hotspot()
+        self.post.hotspot = hotspot
+        self.post.save(update_fields=["hotspot"])
+        pages = (reverse("forum:list"), self.post.get_absolute_url())
+        for url in pages:
+            self.assertContains(
+                self.client.get(url), f'href="{hotspot.get_absolute_url()}"'
+            )
+        hotspot.is_active = False
+        hotspot.save(update_fields=["is_active"])
+        for url in pages:
+            with self.subTest(url=url):
+                page = self.client.get(url)
+                self.assertContains(page, hotspot.display_name)
+                self.assertContains(page, "no longer listed")
+                self.assertNotContains(page, f'href="{hotspot.get_absolute_url()}"')
+        self.post.refresh_from_db()
+        self.assertEqual(self.post.hotspot_id, hotspot.pk)
+
+    def test_hotspot_search_pages_keep_the_draft_and_distinguish_the_choices(self):
+        self.client.force_login(self.reader)
+        for pk in range(1, 28):
+            make_hotspot(
+                pk, name="Recreation Center", location_description=f"Room {pk}"
+            )
+        make_hotspot(28, name="Recreation Center", is_active=False)
+        url = reverse("forum:create")
+        initial = self.client.get(url)
+        self.assertNotContains(initial, "Room 1")
+        draft = {
+            "title": "A quiet workspace",
+            "body": "Can we work here?",
+            "topic_type": "question",
+        }
+        query = {**draft, "hotspot_page": "1", "hotspot_q": "Recreation"}
+        first = self.client.post(url, query)
+        self.assertContains(first, "27 matching hotspots")
+        self.assertContains(first, "Room 1 — Manhattan (Record 1)")
+        self.assertNotContains(first, "(Record 26)")
+        self.assertContains(first, draft["body"])
+        self.assertEqual(first.context["form"]["title"].value(), draft["title"])
+        self.assertEqual(first.context["form"]["body"].value(), draft["body"])
+        second = self.client.post(url, {**query, "hotspot_page": "2", "hotspot": "1"})
+        self.assertContains(second, "Room 26 — Manhattan (Record 26)")
+        self.assertContains(second, '<option value="1" selected>')
+        self.assertNotContains(second, "(Record 28)")
+        self.assertEqual(ForumPost.objects.count(), 1)
+        by_id = self.client.post(url, {**query, "hotspot_q": "26"})
+        self.assertContains(by_id, "Room 26 — Manhattan (Record 26)")
+        miss = self.client.post(url, {**query, "hotspot_q": "unmatched name"})
+        self.assertContains(miss, "No matching hotspots")
+        self.assertContains(miss, draft["title"])
+        self.client.post(url, {**draft, "hotspot": "26"})
+        self.assertEqual(ForumPost.objects.get(title=draft["title"]).hotspot_id, 26)
+
+    def test_invalid_reply_keeps_draft_inline_and_retries_under_the_same_parent(self):
+        parent = ForumComment.objects.create(
+            post=self.post, author=self.author, body="Entrance?"
+        )
+        self.client.force_login(self.reader)
+        url = reverse("forum:comment", args=[self.post.pk])
+        body = "More info at https://example.com"
+        invalid = self.client.post(url, {"body": body, "parent_id": parent.pk})
+        self.assertContains(invalid, body)
+        self.assertContains(invalid, "Comments can&#x27;t include links")
+        self.assertContains(invalid, f'name="parent_id" value="{parent.pk}"')
+        self.assertContains(invalid, f'action="{url}#comment-form"')
+        self.assertTrue(invalid.context["comment_form"]["body"].errors)
+        self.assertEqual(ForumComment.objects.count(), 1)
+        saved = self.client.post(
+            url, {"body": "Use the side entrance.", "parent_id": parent.pk}
+        )
+        reply = ForumComment.objects.get(author=self.reader)
+        self.assertEqual(reply.parent, parent)
+        self.assertEqual(
+            saved.url, f"{self.post.get_absolute_url()}#comment-{reply.pk}"
+        )
+
     def test_invalid_post_does_not_create_topic(self):
         self.client.force_login(self.reader)
         response = self.client.post(

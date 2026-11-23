@@ -49,7 +49,7 @@
             </div>
             <h2><a href="{{ post.get_absolute_url }}">{{ post.title }}</a>{% if post.is_held %} <span class="held-badge">Awaiting moderator approval</span>{% endif %}</h2>
             <p class="forum-excerpt">{{ post.body|truncatechars:260 }}</p>
-            {% if post.hotspot %}<p class="forum-related">Related hotspot: <a href="{{ post.hotspot.get_absolute_url }}">{{ post.hotspot.display_name }}</a></p>{% endif %}
+            {% include "forum/_related_hotspot.html" %}
             <a class="forum-comment-link" href="{{ post.get_absolute_url }}#comments">{{ post.comment_count }} comment{{ post.comment_count|pluralize }}</a>
           </div>
           {% endif %}

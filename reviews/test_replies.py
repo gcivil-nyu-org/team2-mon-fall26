@@ -4,7 +4,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from accounts.tests import make_administrator, make_user
+from accounts.tests import make_administrator, make_established_user, make_user
 from hotspots.tests import make_hotspot
 from moderation import services as moderation
 from moderation.models import ContentFlag, ModerationRecord, Reason
@@ -302,10 +302,17 @@ class ReplyModerationTests(TestCase):
         self.assertFalse(ContentFlag.objects.exists())
 
     @override_settings(MODERATION_AUTO_HIDE_FLAGS=3)
-    def test_widely_flagged_reply_is_hidden(self):
-        for index in range(3):
-            self.flag(make_user(f"f{index}"))
+    def test_only_established_reporters_count_toward_hiding_a_reply(self):
+        self.flag(make_user("new-reporter"))
+        self.flag(make_established_user("first"))
+        self.flag(make_established_user("second"))
+        self.assertFalse(
             moderation.auto_hide_if_widely_flagged(REVIEW_REPLY, self.reply)
+        )
+        self.flag(make_established_user("third"))
+        self.assertTrue(
+            moderation.auto_hide_if_widely_flagged(REVIEW_REPLY, self.reply)
+        )
         self.reply.refresh_from_db()
         self.assertTrue(self.reply.is_held)
         self.assertTrue(notices(self.replier, Kind.REVIEW_HIDDEN).exists())

@@ -20,7 +20,7 @@ The checks run when a contributor submits or edits a rating or written review.
 
 | Tier | Triggers | Outcome |
 | --- | --- | --- |
-| Block | A link, except official domains such as `.gov`/`.edu`; an email address; a phone number; a term listed in `MODERATION_BLOCKED_TERMS` (empty by default; set as a comma-separated environment value) | The form shows an error and nothing is saved. |
+| Block | External links in any letter case, email addresses, phone numbers, and terms from `MODERATION_BLOCKED_TERMS`. People can cite government, education and NYPL sites and identify an official SSID or the guest.net network by name. | The form keeps the draft and explains the error. |
 | Hold | Promotional wording; profanity; text identical to another review; mostly capital letters; heavily repeated characters or words; at least `MODERATION_BURST_LIMIT` (3) earlier reviews within `MODERATION_BURST_MINUTES` (10) minutes; an author with `MODERATION_REPEAT_OFFENDER_REMOVALS` (2) or more removed reviews | Saved but hidden from the public, the map API and average ratings until an administrator approves or removes it. |
 | Trust | `MODERATION_TRUSTED_MIN_REVIEWS` (3) published reviews at least `MODERATION_TRUSTED_MIN_AGE_HOURS` (24) hours old, with none ever removed | The capitals, repetition and posting-speed rules are skipped. Spam, profanity and duplicate rules still apply. |
 
@@ -36,7 +36,7 @@ Star-only ratings count toward the same posting limit as written reviews. The ac
 
 ### Community auto-hide
 
-When `MODERATION_AUTO_HIDE_FLAGS` (3) different users have open flags on a public review, it is hidden in the same way as an automated hold.
+All flags are visible to moderators. An item is hidden automatically when `MODERATION_AUTO_HIDE_FLAGS` (3) different reporters have open flags and each account was at least `MODERATION_FLAGGER_MIN_AGE_HOURS` (24) hours old when its flag was submitted. A flag retains its original eligibility as the account ages.
 
 ### Decisions
 
@@ -55,7 +55,7 @@ When `MODERATION_AUTO_HIDE_FLAGS` (3) different users have open flags on a publi
 - A trusted author is not held for capitals, repetition or posting speed.
 
 **Community auto-hide**
-- The third distinct user flag on a public review hides it until an administrator decides. Earlier flags leave it public.
+- The third eligible flag on a public item hides it until an administrator decides. Flags from newer accounts stay available for manual review.
 
 **Administrator decisions**
 - An administrator can approve a held item. Approval publishes exactly the text the administrator viewed; if the author edited it after the queue was opened, nothing is published and the administrator is told to check the new text.
@@ -66,6 +66,6 @@ When `MODERATION_AUTO_HIDE_FLAGS` (3) different users have open flags on a publi
 
 **Replies to reviews**
 - A reply to a written review uses the discussion-comment rules: blocked text is rejected and nothing is saved; promotional wording, profanity, duplicates, capitals, repetition, posting speed and repeat offenders hold it. Held replies are shown only to their author.
-- Contributors can flag other people's public replies; three distinct flags hide a reply. Administrators approve, remove or dismiss replies from the same queues, as **Review reply**. Removing a review also removes its replies, and the confirmation page says how many.
+- Contributors can flag other people's public replies. Every flag reaches moderators. Three distinct reporters whose accounts were at least 24 hours old when they flagged a reply trigger automatic hiding. Administrators approve, remove or dismiss replies from the same queues, as **Review reply**. Removing a review also removes its replies, and the confirmation page says how many.
 
 Test coverage: `reviews/test_replies.py` (replies, votes and their moderation), `moderation/tests.py` (US19–US21), `moderation/test_automod.py` (rules, holds, auto-hide, bulk), `moderation/test_review_fixes.py` (concurrent edits, stale approvals, bulk confirmation), `moderation/test_forum.py` (the same rules for discussion posts and comments).

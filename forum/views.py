@@ -87,7 +87,7 @@ def discussion_list(request):
     return render(request, "forum/discussion_list.html", {"posts": posts})
 
 
-def discussion_detail(request, pk):
+def discussion_detail(request, pk, *, comment_form=None, reply_to_id=None):
     post = get_object_or_404(
         _vote_counts(
             visible_posts(request.user).select_related("author", "hotspot"),
@@ -116,7 +116,7 @@ def discussion_detail(request, pk):
     top_level_comments = _prune_hidden(top_level_comments)
 
     reply_to = None
-    reply_to_id = request.GET.get("reply_to")
+    reply_to_id = reply_to_id or request.GET.get("reply_to")
     if reply_to_id:
         reply_to = next(
             (
@@ -134,7 +134,9 @@ def discussion_detail(request, pk):
             "comments": top_level_comments,
             "comment_events": _comment_events(top_level_comments),
             "comment_count": sum(not comment.is_held for comment in comments),
-            "comment_form": ForumCommentForm(),
+            "comment_form": (
+                comment_form if comment_form is not None else ForumCommentForm()
+            ),
             "reply_to": reply_to,
             "flagged_post": post.pk in moderation.flagged_ids(request.user, FORUM_POST),
             "flagged_comment_ids": moderation.flagged_ids(request.user, FORUM_COMMENT),
@@ -144,8 +146,15 @@ def discussion_detail(request, pk):
 
 @contributor_required
 def create_post(request):
-    form = ForumPostForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
+    submitted = request.method == "POST"
+    searching = submitted and "hotspot_page" in request.POST
+    form = ForumPostForm(
+        data=request.POST if submitted and not searching else None,
+        initial=request.POST.dict() if searching else None,
+        hotspot_query=request.POST.get("hotspot_q", ""),
+        page_number=request.POST.get("hotspot_page", 1),
+    )
+    if form.is_bound and form.is_valid():
         post = form.save(commit=False)
         post.author = request.user
         post.save()
@@ -189,13 +198,12 @@ def add_comment(request, post_pk):
         else:
             messages.success(request, "Your reply has been posted.")
         return redirect(f"{post.get_absolute_url()}#comment-{comment.pk}")
-    errors = form.errors.get("body")
-    if errors and form.data.get("body", "").strip():
-        for error in errors:
-            messages.error(request, error)
-    else:
-        messages.error(request, "Please enter a comment before posting.")
-    return redirect(f"{post.get_absolute_url()}#comments")
+    return discussion_detail(
+        request,
+        post.pk,
+        comment_form=form,
+        reply_to_id=str(parent.pk) if parent else None,
+    )
 
 
 def _toggle_vote(request, post=None, comment=None):
