@@ -12,10 +12,12 @@ def visible_reviews():
 
 def public_replies():
     """Replies anyone can see: not held, under a public review of an active hotspot."""
-    replies = ReviewReply.objects.filter(
-        is_held=False, review__is_held=False, review__hotspot__is_active=True
+    return ReviewReply.objects.filter(
+        is_held=False,
+        review__is_held=False,
+        review__is_demo=False,
+        review__hotspot__is_active=True,
     ).exclude(review__body="")
-    return replies if settings.DEMO_MODE else replies.filter(review__is_demo=False)
 
 
 def rating_summary(reviews):

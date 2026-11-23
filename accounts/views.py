@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.views import LoginView, LogoutView
+from django.db import transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render, resolve_url
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -147,8 +148,13 @@ def settings_view(request):
         and theme_form.is_valid()
         and preference_form.is_valid()
     ):
-        theme_form.save()
-        preference_form.save()
+        with transaction.atomic():
+            UserSettings.objects.update_or_create(
+                user=request.user, defaults={"theme": theme_form.cleaned_data["theme"]}
+            )
+            NotificationPreference.objects.update_or_create(
+                user=request.user, defaults=preference_form.cleaned_data
+            )
         messages.success(request, "Your settings have been saved.")
         return redirect("accounts:settings")
     return render(
@@ -170,9 +176,9 @@ def set_theme(request):
     """The header's light/dark switch: save the theme and return to the same page."""
     theme = request.POST.get("theme")
     if theme in UserSettings.Theme.values:
-        settings_row = _settings_for(request.user)
-        settings_row.theme = theme
-        settings_row.save()
+        UserSettings.objects.update_or_create(
+            user=request.user, defaults={"theme": theme}
+        )
     return redirect(safe_next_url(request) or "accounts:settings")
 
 

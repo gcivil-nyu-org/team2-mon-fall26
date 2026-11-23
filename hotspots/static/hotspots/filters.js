@@ -23,14 +23,14 @@
   }
 
   // "Near me": ask the browser for the visitor's location, then reload the results
-  // sorted by distance. The location is rounded and only kept in the page URL.
+  // sorted by distance. The results URL includes the rounded coordinates.
   function locate() {
     if (!navigator.geolocation || !window.isSecureContext) {
       showNearStatus("Your browser can't share your location on this page. Search by neighborhood or ZIP code instead.");
       return;
     }
     if (nearButton) nearButton.setAttribute("aria-busy", "true");
-    showNearStatus("Finding your location…");
+    showNearStatus("Finding your location… The results URL will include your rounded coordinates.");
     navigator.geolocation.getCurrentPosition(
       (position) => {
         nearInput.value = `${position.coords.latitude.toFixed(4)},${position.coords.longitude.toFixed(4)}`;

@@ -1,6 +1,9 @@
 """The Settings page: notification categories and the light/dark theme."""
 
+from unittest.mock import patch
+
 from django.contrib.contenttypes.models import ContentType
+from django.db import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
 
@@ -75,6 +78,15 @@ class SettingsPageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(UserSettings.objects.exists())
         self.assertFalse(NotificationPreference.objects.exists())
+
+    def test_theme_is_rolled_back_if_preferences_cannot_be_saved(self):
+        self.client.force_login(self.user)
+        with patch.object(
+            NotificationPreference, "save", side_effect=IntegrityError("fixture")
+        ), self.assertRaises(IntegrityError):
+            self.client.post(self.url, {**ALL_ON, "theme": "dark"})
+        self.assertFalse(UserSettings.objects.filter(user=self.user).exists())
+        self.assertFalse(NotificationPreference.objects.filter(user=self.user).exists())
 
     def test_header_toggle_sets_theme_and_returns_to_page(self):
         self.client.force_login(self.user)

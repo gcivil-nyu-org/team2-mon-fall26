@@ -136,6 +136,22 @@ class ProfilePageTests(TestCase):
             self.client.get(reverse("hotspots:map")), f'href="{profile_url(self.user)}"'
         )
 
+    @override_settings(MODERATION_TRUSTED_MIN_REVIEWS=2)
+    def test_private_ratings_and_retired_hotspots_do_not_earn_public_badges(self):
+        Review.objects.create(hotspot=self.hotspot, author=self.user, rating=4)
+        Review.objects.create(
+            hotspot=make_hotspot(4001, is_active=False),
+            author=self.user,
+            rating=3,
+            body="Before retirement.",
+        )
+        Review.objects.filter(author=self.user).update(
+            created_at=timezone.now() - timedelta(days=3)
+        )
+        self.assertNotContains(
+            self.client.get(profile_url(self.user)), "Trusted reviewer"
+        )
+
     def test_badges(self):
         trusted_age = timezone.now() - timedelta(days=3)
         boroughs = ["Manhattan", "Brooklyn", "Queens"]

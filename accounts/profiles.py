@@ -33,13 +33,13 @@ def _public_reviews(user):
     return visible_reviews().filter(author=user, is_demo=False, hotspot__is_active=True)
 
 
-def _badges(user, stats, borough_count):
+def _badges(user, stats, borough_count, written_reviews):
     badges = []
     if is_administrator(user):
         badges.append(
             Badge("moderator", "Moderator", "Keeps Connect NYC safe and accurate.")
         )
-    if is_trusted(user):
+    if is_trusted(user, reviews=written_reviews):
         badges.append(
             Badge(
                 "trusted",
@@ -110,7 +110,7 @@ def profile_context(user, viewer):
         "held_count": (
             Review.objects.filter(author=user, is_held=True).count() if is_own else 0
         ),
-        "badges": _badges(user, stats, borough_count),
+        "badges": _badges(user, stats, borough_count, written),
         "recent_reviews": written.select_related("hotspot").annotate(
             # distinct: votes and replies are joined together.
             upvote_count=Count(

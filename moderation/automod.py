@@ -160,7 +160,7 @@ def _removed_count(user):
     ).count()
 
 
-def is_trusted(user, exclude_pk=None):
+def is_trusted(user, exclude_pk=None, *, reviews=None):
     """Established authors: enough published reviews that have stood for a while, none removed.
 
     Requiring older reviews stops a new account from posting a few clean reviews in
@@ -171,7 +171,9 @@ def is_trusted(user, exclude_pk=None):
     settled_before = timezone.now() - timedelta(
         hours=_setting("MODERATION_TRUSTED_MIN_AGE_HOURS", 24)
     )
-    published = Review.objects.filter(
+    if reviews is None:
+        reviews = Review.objects.all()
+    published = reviews.filter(
         author=user, is_held=False, is_demo=False, created_at__lte=settled_before
     ).exclude(pk=exclude_pk)
     return (

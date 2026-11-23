@@ -86,7 +86,7 @@ def _review_removal_effect(review):
     count = review.replies.count()
     if not count:
         return ""
-    return f"Its {count} repl{'ies' if count != 1 else 'y'} are removed with it."
+    return f"This also removes {count} {'reply' if count == 1 else 'replies'}."
 
 
 REVIEW = FlaggableType(
@@ -114,12 +114,7 @@ def _public_review_replies():
 def _describe_review_reply(reply):
     review = reply.review
     hotspot = review.hotspot
-    public = (
-        not reply.is_held
-        and not review.is_held
-        and hotspot.is_active
-        and _public_reviews().filter(pk=review.pk).exists()
-    )
+    public = not reply.is_held and _public_review_replies().filter(pk=reply.pk).exists()
     return {
         "author": reply.author.username,
         "author_id": reply.author_id,

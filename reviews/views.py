@@ -1,10 +1,13 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model
+from django.contrib.auth.views import redirect_to_login
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from accounts.permissions import contributor_required
+from accounts.roles import is_contributor
 from accounts.views import safe_next_url
 from hotspots.models import Hotspot
 from moderation import automod
@@ -40,10 +43,13 @@ def _check_and_hold(review, is_new):
     return review.is_held
 
 
-def _own_review_or_404(request, pk):
+def _own_review_or_404(request, pk, *, lock=False):
     # Other users' reviews return 404, so they cannot be edited or deleted by URL.
+    reviews = Review.objects.select_related("hotspot")
+    if lock:
+        reviews = reviews.select_for_update(of=("self",))
     return get_object_or_404(
-        Review.objects.select_related("hotspot"),
+        reviews,
         pk=pk,
         author=request.user,
         is_demo=False,
@@ -134,8 +140,9 @@ def edit_review(request, pk):
 
 
 @contributor_required
+@transaction.atomic
 def delete_review(request, pk):
-    review = _own_review_or_404(request, pk)
+    review = _own_review_or_404(request, pk, lock=request.method == "POST")
     if request.method == "POST":
         review.delete()
         messages.success(request, "Your rating and review have been deleted.")
@@ -143,7 +150,15 @@ def delete_review(request, pk):
     return render(
         request,
         "reviews/review_confirm_delete.html",
-        {"review": review, "hotspot": review.hotspot},
+        {
+            "review": review,
+            "hotspot": review.hotspot,
+            "visible_reply_count": (
+                review.replies.filter(Q(is_held=False) | Q(author=request.user)).count()
+                if review.body
+                else 0
+            ),
+        },
     )
 
 
@@ -157,15 +172,19 @@ def _votable_reviews():
     )
 
 
-@contributor_required
 @require_POST
+@transaction.atomic
 def toggle_vote(request, pk):
     """Vote a written review up (helpful) or down (not helpful).
 
     Voting the same way again removes the vote; voting the other way switches it.
     Votes never change star averages.
     """
-    review = get_object_or_404(_votable_reviews(), pk=pk)
+    review = get_object_or_404(
+        _votable_reviews().select_for_update(of=("self",)), pk=pk
+    )
+    if not is_contributor(request.user):
+        return redirect_to_login(_hotspot_url(review.hotspot))
     destination = safe_next_url(request) or _hotspot_url(review.hotspot)
     if review.author_id == request.user.pk:
         messages.info(request, "You can't vote on your own review.")
@@ -173,17 +192,11 @@ def toggle_vote(request, pk):
     value = (
         ReviewVote.DOWN if request.POST.get("direction") == "down" else ReviewVote.UP
     )
-    with transaction.atomic():
-        vote = (
-            ReviewVote.objects.select_for_update()
-            .filter(review=review, user=request.user)
-            .first()
-        )
-        if vote is None:
-            ReviewVote.objects.get_or_create(
-                review=review, user=request.user, defaults={"value": value}
-            )
-        elif vote.value == value:
+    vote, created = ReviewVote.objects.get_or_create(
+        review=review, user=request.user, defaults={"value": value}
+    )
+    if not created:
+        if vote.value == value:
             vote.delete()
         else:
             vote.value = value
@@ -191,12 +204,18 @@ def toggle_vote(request, pk):
     return redirect(destination)
 
 
-@contributor_required
 @require_POST
+@transaction.atomic
 def add_reply(request, pk):
     """Reply to a public written review. Replies get the same E05 checks as comments."""
     # Demo reviews are sample content, so they take no replies.
-    review = get_object_or_404(_votable_reviews().filter(is_demo=False), pk=pk)
+    review = get_object_or_404(
+        _votable_reviews().select_for_update(of=("self",)), pk=pk, is_demo=False
+    )
+    if not is_contributor(request.user):
+        return redirect_to_login(
+            f"{review.hotspot.get_absolute_url()}#review-{review.pk}"
+        )
     form = ReviewReplyForm(request.POST)
     if not form.is_valid():
         for error in form.errors.get("body", []):
@@ -205,13 +224,12 @@ def add_reply(request, pk):
     reply = form.save(commit=False)
     reply.review = review
     reply.author = request.user
-    with transaction.atomic():
-        # Count this author's replies in order, so the posting-speed rule holds.
-        get_user_model().objects.select_for_update().only("pk").get(pk=request.user.pk)
-        reply.save()
-        reasons = automod.reply_hold_reasons(reply, is_new=True)
-        if reasons:
-            moderation.hold(REVIEW_REPLY, reply, reasons)
+    # Count this author's replies in order, so the posting-speed rule holds.
+    get_user_model().objects.select_for_update().only("pk").get(pk=request.user.pk)
+    reply.save()
+    reasons = automod.reply_hold_reasons(reply, is_new=True)
+    if reasons:
+        moderation.hold(REVIEW_REPLY, reply, reasons)
     if reply.is_held:
         messages.info(request, REPLY_HELD_MESSAGE)
     else:

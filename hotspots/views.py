@@ -108,7 +108,9 @@ def _attach_replies(reviews, user):
 
     Held replies are shown only to their author (E05), like held discussion comments.
     """
-    written = {review.pk: review for review in reviews if review.body}
+    written = {
+        review.pk: review for review in reviews if review.body and not review.is_demo
+    }
     for review in reviews:
         review.reply_list = []
     if not written:

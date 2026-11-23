@@ -103,6 +103,11 @@ class ReplyTests(TestCase):
         response = self.client.post(self.url, {"body": CLEAN})
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse("accounts:login"), response["Location"])
+        login_form = self.client.get(response.url)
+        self.assertEqual(
+            login_form.context["next"],
+            f"{self.hotspot.get_absolute_url()}#review-{self.review.pk}",
+        )
         self.client.force_login(self.replier)
         self.assertEqual(self.client.get(self.url).status_code, 405)
         self.assertFalse(ReviewReply.objects.exists())
@@ -215,8 +220,36 @@ class ReplyTests(TestCase):
 
     def test_deleting_a_review_removes_its_replies(self):
         self.reply()
-        self.review.delete()
+        self.client.force_login(self.author)
+        response = self.client.post(reverse("reviews:delete", args=[self.review.pk]))
+        self.assertRedirects(response, f"{self.hotspot.get_absolute_url()}#reviews")
+        self.assertFalse(Review.objects.filter(pk=self.review.pk).exists())
         self.assertFalse(ReviewReply.objects.exists())
+
+    def test_author_sees_deletion_effect_before_confirming(self):
+        self.reply()
+        ReviewReply.objects.create(
+            review=self.review, author=self.replier, body="Pending", is_held=True
+        )
+        self.client.force_login(self.author)
+        page = self.client.get(reverse("reviews:delete", args=[self.review.pk]))
+        self.assertContains(page, "Deleting this review also deletes its replies.")
+        self.assertContains(page, "1 visible reply")
+        self.assertNotContains(page, "2 visible replies")
+        self.assertContains(
+            page, f'href="{self.hotspot.get_absolute_url()}#reviews">Keep my review</a>'
+        )
+        self.client.get(self.hotspot.get_absolute_url())
+        self.assertEqual(self.review.replies.count(), 2)
+
+    def test_reply_notice_returns_to_inbox_if_parent_becomes_rating_only(self):
+        self.reply()
+        notice = notices(self.author).get()
+        self.review.body = ""
+        self.review.save(update_fields=["body"])
+        self.client.force_login(self.author)
+        response = self.client.get(reverse("notifications:open", args=[notice.pk]))
+        self.assertRedirects(response, reverse("notifications:inbox"))
 
 
 class ReplyModerationTests(TestCase):
@@ -305,9 +338,9 @@ class ReplyModerationTests(TestCase):
         page = self.client.get(
             reverse("moderation:remove", args=["review", self.review.pk])
         )
-        self.assertContains(page, "Its 1 reply are removed with it.")
+        self.assertContains(page, "This also removes 1 reply.")
         self.assertEqual(
-            REVIEW.removal_effect(self.review), "Its 1 reply are removed with it."
+            REVIEW.removal_effect(self.review), "This also removes 1 reply."
         )
 
     def test_author_deleting_reply_withdraws_flags(self):

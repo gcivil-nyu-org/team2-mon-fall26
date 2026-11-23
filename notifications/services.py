@@ -256,6 +256,7 @@ def review_replied(reply):
         reply.is_held
         or review.is_held
         or review.is_demo
+        or not review.body
         or not hotspot.is_active
         or review.author_id == reply.author_id
         or not review.author.is_active
@@ -456,7 +457,12 @@ def _reply_url(notification):
         return None
     review = reply.review
     own = reply.author_id == notification.recipient_id
-    if (reply.is_held and not own) or review.is_held:
+    if (
+        (reply.is_held and not own)
+        or review.is_held
+        or review.is_demo
+        or not review.body
+    ):
         return None
     return f"{review.hotspot.get_absolute_url()}#reply-{reply.pk}"
 
